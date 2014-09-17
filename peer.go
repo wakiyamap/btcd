@@ -342,6 +342,7 @@ func (p *peer) pushVersionMsg() error {
 	// Advertise our max supported protocol version.
 	msg.ProtocolVersion = maxProtocolVersion
 
+	btcdmon.Inc("msg.sent.version", 1, 1)
 	p.QueueMessage(msg, nil)
 	return nil
 }
@@ -370,6 +371,7 @@ func (p *peer) updateAddresses(msg *wire.MsgVersion) {
 		hasTimestamp := p.ProtocolVersion() >=
 			wire.NetAddressTimeVersion
 		if p.server.addrManager.NeedMoreAddresses() && hasTimestamp {
+			btcdmon.Inc("msg.sent.getaddr", 1, 1)
 			p.QueueMessage(wire.NewMsgGetAddr(), nil)
 		}
 
@@ -487,6 +489,7 @@ func (p *peer) handleVersionMsg(msg *wire.MsgVersion) {
 	}
 
 	// Send verack.
+	btcdmon.Inc("msg.sent.verack", 1, 1)
 	p.QueueMessage(wire.NewMsgVerAck(), nil)
 
 	// Update the address manager and request known addresses from the
@@ -1526,6 +1529,7 @@ out:
 			verAckReceived := p.verAckReceived
 			p.StatsMtx.Unlock()
 
+			btcdmon.Inc("msg.recv.verack", 1, 1)
 			if !versionSent {
 				peerLog.Infof("Received 'verack' from peer %v "+
 					"before version was sent -- disconnecting", p)
@@ -1537,7 +1541,6 @@ out:
 				break out
 			}
 			p.verAckReceived = true
-
 		case *wire.MsgGetAddr:
 			p.handleGetAddrMsg(msg)
 
@@ -1549,7 +1552,6 @@ out:
 
 		case *wire.MsgPong:
 			p.handlePongMsg(msg)
-
 		case *wire.MsgAlert:
 			// Intentionally ignore alert messages.
 			//
@@ -1559,6 +1561,7 @@ out:
 			// is currently unwilling to support other
 			// implementions' alert messages, we will not relay
 			// theirs.
+			btcdmon.Inc("msg.recv.alert", 1, 1)
 
 		case *wire.MsgMemPool:
 			p.handleMemPoolMsg(msg)
@@ -1600,6 +1603,7 @@ out:
 			p.handleFilterLoadMsg(msg)
 
 		case *wire.MsgReject:
+			btcdmon.Inc("msg.recv.reject", 1, 1)
 			// Nothing to do currently.  Logging of the rejected
 			// message is handled already in readMessage.
 
@@ -1800,6 +1804,7 @@ out:
 			case *wire.MsgPing:
 				// expects pong
 				// Also set up statistics.
+				btcdmon.Inc("msg.sent.ping", 1, 1)
 				p.StatsMtx.Lock()
 				if p.protocolVersion > wire.BIP0031Version {
 					p.lastPingNonce = m.Nonce
@@ -1808,6 +1813,7 @@ out:
 				p.StatsMtx.Unlock()
 			case *wire.MsgMemPool:
 				// Should return an inv.
+				btcdmon.Inc("msg.sent.mempool", 1, 1)
 			case *wire.MsgGetData:
 				// Should get us block, tx, or not found.
 				btcdmon.Inc("msg.sent.getdata", 1, 1)
