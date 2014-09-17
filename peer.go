@@ -1810,6 +1810,7 @@ out:
 				// Should return an inv.
 			case *wire.MsgGetData:
 				// Should get us block, tx, or not found.
+				btcdmon.Inc("msg.sent.getdata", 1, 1)
 			case *wire.MsgGetHeaders:
 				// Should get us headers back.
 			default:
