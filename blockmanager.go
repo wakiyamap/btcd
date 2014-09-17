@@ -229,6 +229,8 @@ func (b *blockManager) updateChainState(newestHash *wire.ShaHash, newestHeight i
 	b.chainState.Lock()
 	defer b.chainState.Unlock()
 
+	btcdmon.Gauge("blocks.current_height", newestHeight, 1.0)
+
 	b.chainState.newestHash = newestHash
 	b.chainState.newestHeight = newestHeight
 	medianTime, err := b.blockChain.CalcPastMedianTime()
@@ -546,6 +548,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			bmsg.peer.Disconnect()
 			return
 		}
+		btcdmon.Inc("msg.recv.block.unrequested", 1, 1)
 	}
 
 	// When in headers-first mode, if the block matches the hash of the
@@ -597,6 +600,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 
 		// Convert the error into an appropriate reject message and
 		// send it.
+		btcdmon.Inc("blocks.rejects", 1, 1)
 		code, reason := errToRejectErr(err)
 		bmsg.peer.PushRejectMsg(wire.CmdBlock, code, reason,
 			blockSha, false)
@@ -637,6 +641,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			}
 		}
 
+		btcdmon.Inc("blocks.orphans", 1, 1)
 		orphanRoot := b.blockChain.GetOrphanRoot(blockSha)
 		locator, err := b.blockChain.LatestBlockLocator()
 		if err != nil {

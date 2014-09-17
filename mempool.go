@@ -183,6 +183,7 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		if err != nil {
 			str := fmt.Sprintf("multi-signature script parse "+
 				"failure: %v", err)
+			btcdmon.Inc("tx.script_standard.no.invalid_script", 1, 1)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 
@@ -190,12 +191,14 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		// from 1 to maxStandardMultiSigKeys public keys.
 		if numPubKeys < 1 {
 			str := "multi-signature script with no pubkeys"
+			btcdmon.Inc("tx.script_standard.no.multisig_no_pub_keys", 1, 1)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 		if numPubKeys > maxStandardMultiSigKeys {
 			str := fmt.Sprintf("multi-signature script with %d "+
 				"public keys which is more than the allowed "+
 				"max of %d", numPubKeys, maxStandardMultiSigKeys)
+			btcdmon.Inc("tx.script_standard.no.over_max_multisig_keys", 1, 1)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 
@@ -203,10 +206,12 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		// least 1 signature and no more signatures than available
 		// public keys.
 		if numSigs < 1 {
+			btcdmon.Inc("tx.script_standard.no.multisig_no_keys", 1, 1)
 			return txRuleError(wire.RejectNonstandard,
 				"multi-signature script with no signatures")
 		}
 		if numSigs > numPubKeys {
+			btcdmon.Inc("tx.script_standard.no.too_many_sigs", 1, 1)
 			str := fmt.Sprintf("multi-signature script with %d "+
 				"signatures which is more than the available "+
 				"%d public keys", numSigs, numPubKeys)
@@ -214,10 +219,12 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		}
 
 	case txscript.NonStandardTy:
+		btcdmon.Inc("tx.script_standard.no.non_standard_script", 1, 1)
 		return txRuleError(wire.RejectNonstandard,
 			"non-standard script form")
 	}
 
+	btcdmon.Inc("tx.script_standard.yes", 1, 1)
 	return nil
 }
 
@@ -232,6 +239,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	msgTx := tx.MsgTx()
 
 	// The transaction must be a currently supported version.
+	btcdmon.Gauge("tx.seen.version_num", int64(msgTx.Version), 1)
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
 		str := fmt.Sprintf("transaction version %d is not in the "+
 			"valid range of %d-%d", msgTx.Version, 1,
@@ -243,26 +251,32 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// considered for inclusion in a block.
 	adjustedTime := mp.server.timeSource.AdjustedTime()
 	if !blockchain.IsFinalizedTransaction(tx, height, adjustedTime) {
+		btcdmon.Inc("tx.seen.final.no", 1, 1)
 		return txRuleError(wire.RejectNonstandard,
 			"transaction is not finalized")
 	}
+	btcdmon.Inc("tx.seen.final.yes", 1, 1)
 
 	// Since extremely large transactions with a lot of inputs can cost
 	// almost as much to process as the sender fees, limit the maximum
 	// size of a transaction.  This also helps mitigate CPU exhaustion
 	// attacks.
 	serializedLen := msgTx.SerializeSize()
+	btcdmon.Gauge("tx.seen.serialize_size", int64(serializedLen), 1)
 	if serializedLen > maxStandardTxSize {
 		str := fmt.Sprintf("transaction size of %v is larger than max "+
 			"allowed size of %v", serializedLen, maxStandardTxSize)
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 
+	btcdmon.Gauge("tx.seen.inputs.num", int64(len(msgTx.TxIn)), 1)
 	for i, txIn := range msgTx.TxIn {
 		// Each transaction input signature script must not exceed the
 		// maximum size allowed for a standard transaction.  See
 		// the comment on maxStandardSigScriptSize for more details.
 		sigScriptLen := len(txIn.SignatureScript)
+		btcdmon.Gauge("tx.seen.inputs.sig_script_len", int64(sigScriptLen), 1)
+		btcdmon.Gauge("tx.seen.inputs.sequence_num", int64(txIn.Sequence), 1)
 		if sigScriptLen > maxStandardSigScriptSize {
 			str := fmt.Sprintf("transaction input %d: signature "+
 				"script size of %d bytes is large than max "+
@@ -283,8 +297,25 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// None of the output public key scripts can be a non-standard script or
 	// be "dust" (except when the script is a null data script).
 	numNullDataOutputs := 0
+	btcdmon.Gauge("tx.seen.outputs.num", int64(len(msgTx.TxOut)), 1)
 	for i, txOut := range msgTx.TxOut {
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
+
+		switch scriptClass {
+		case txscript.PubKeyTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.p2pk", 1, 1)
+		case txscript.PubKeyHashTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.p2pkh", 1, 1)
+		case txscript.ScriptHashTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.p2sh", 1, 1)
+		case txscript.MultiSigTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.bare_multisig", 1, 1)
+		case txscript.NullDataTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.op_return", 1, 1)
+		case txscript.NonStandardTy:
+			btcdmon.Inc("tx.seen.outputs.script_type.non_standard", 1, 1)
+		}
+
 		err := checkPkScriptStandard(txOut.PkScript, scriptClass)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
@@ -304,14 +335,18 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
 		} else if isDust(txOut) {
+			btcdmon.Inc("tx.seen.outputs.num.dust", 1, 1)
+			btcdmon.Gauge("tx.seen.outputs.dust_value", txOut.Value, 1)
 			str := fmt.Sprintf("transaction output %d: payment "+
 				"of %d is dust", i, txOut.Value)
 			return txRuleError(wire.RejectDust, str)
 		}
+		btcdmon.Gauge("tx.seen.outputs.value", txOut.Value, 1)
 	}
 
 	// A standard transaction must not have more than one output script that
 	// only carries data.
+	btcdmon.Gauge("tx.seen.num_op_returns", int64(numNullDataOutputs), 1)
 	if numNullDataOutputs > 1 {
 		str := "more than one transaction output in a nulldata script"
 		return txRuleError(wire.RejectNonstandard, str)
@@ -423,6 +458,7 @@ func (mp *txMemPool) removeOrphan(txHash *wire.ShaHash) {
 	}
 
 	// Remove the transaction from the orphan pool.
+	btcdmon.Dec("mempool.orphans", 1, 1)
 	delete(mp.orphans, *txHash)
 }
 
@@ -482,6 +518,7 @@ func (mp *txMemPool) addOrphan(tx *btcutil.Tx) {
 	mp.limitNumOrphans()
 
 	mp.orphans[*tx.Sha()] = tx
+	btcdmon.Inc("mempool.orphans", 1, 1)
 	for _, txIn := range tx.MsgTx().TxIn {
 		originTxHash := txIn.PreviousOutPoint.Hash
 		if mp.orphansByPrev[originTxHash] == nil {
@@ -614,6 +651,7 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx) {
 		for _, txIn := range txDesc.Tx.MsgTx().TxIn {
 			delete(mp.outpoints, txIn.PreviousOutPoint)
 		}
+		btcdmon.Dec("mempool.tx", 1, 1)
 		delete(mp.pool, *txHash)
 		mp.lastUpdated = time.Now()
 	}
@@ -709,6 +747,7 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 		Height: height,
 		Fee:    fee,
 	}
+	btcdmon.Inc("mempool.tx", 1, 1)
 	for _, txIn := range tx.MsgTx().TxIn {
 		mp.outpoints[txIn.PreviousOutPoint] = tx
 	}
@@ -1062,6 +1101,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// which examines the actual spend data and prevents double spends.
 	err = mp.checkPoolDoubleSpend(tx)
 	if err != nil {
+		btcdmon.Inc("mempool.double_spends", 1, 1)
 		return nil, err
 	}
 
@@ -1169,6 +1209,9 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// high-priority transactions, don't require a fee for it.
 	serializedSize := int64(tx.MsgTx().SerializeSize())
 	minFee := calcMinRequiredTxRelayFee(serializedSize)
+	btcdmon.Gauge("tx.seen.tx_fee", txFee, 1)
+	btcdmon.Gauge("tx.seen.fee_ratio", txFee/minFee, 1)
+	btcdmon.Gauge("tx.seen.min_fee", minFee, 1)
 	if serializedSize >= (defaultBlockPrioritySize-1000) && txFee < minFee {
 		str := fmt.Sprintf("transaction %v has %d fees which is under "+
 			"the required amount of %d", txHash, txFee,
@@ -1210,6 +1253,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		if mp.pennyTotal >= cfg.FreeTxRelayLimit*10*1000 {
 			str := fmt.Sprintf("transaction %v has been rejected "+
 				"by the rate limiter due to low fees", txHash)
+			btcdmon.Inc("mempool.rate_limit", 1, 1)
 			return nil, txRuleError(wire.RejectInsufficientFee, str)
 		}
 		oldTotal := mp.pennyTotal

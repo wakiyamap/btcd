@@ -272,6 +272,7 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 
 	// Add the new peer and start it.
 	srvrLog.Debugf("New peer %s", p)
+	btcdmon.Gauge("peers.total_connected", int64(s.ConnectedCount()), 1)
 	if p.inbound {
 		state.peers[p] = struct{}{}
 		p.Start()
@@ -291,6 +292,7 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 // invoked from the peerHandler goroutine.
 func (s *server) handleDonePeerMsg(state *peerState, p *peer) {
 	var list map[*peer]struct{}
+	btcdmon.Gauge("peers.total_connected", int64(s.ConnectedCount()), 1)
 	if p.persistent {
 		list = state.persistentPeers
 	} else if p.inbound {
@@ -331,6 +333,7 @@ func (s *server) handleBanPeerMsg(state *peerState, p *peer) {
 	direction := directionString(p.inbound)
 	srvrLog.Infof("Banned peer %s (%s) for %v", host, direction,
 		cfg.BanDuration)
+	btcdmon.Gauge("peers.banned", int64(len(state.banned)), 1)
 	state.banned[host] = time.Now().Add(cfg.BanDuration)
 
 }
@@ -930,6 +933,7 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesSent += bytesSent
+	btcdmon.Gauge("bandwidth.bytes_sent", int64(s.bytesSent), 0.1)
 }
 
 // AddBytesReceived adds the passed number of bytes to the total bytes received
@@ -939,6 +943,7 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesReceived += bytesReceived
+	btcdmon.Gauge("bandwidth.bytes_recv", int64(s.bytesReceived), 0.1)
 }
 
 // NetTotals returns the sum of all bytes received and sent across the network
