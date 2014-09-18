@@ -687,7 +687,6 @@ func (s *server) peerHandler() {
 				nconnected++
 			}
 		})
-		srvrLog.Infof("Getting total connected: %v", nconnected)
 		btcdmon.Gauge("peers.total_connected", nconnected, 1)
 	}
 
