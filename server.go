@@ -272,7 +272,6 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 
 	// Add the new peer and start it.
 	srvrLog.Debugf("New peer %s", p)
-	btcdmon.Gauge("peers.total_connected", int64(s.ConnectedCount()), 1)
 	if p.inbound {
 		state.peers[p] = struct{}{}
 		p.Start()
@@ -681,6 +680,16 @@ func (s *server) peerHandler() {
 
 	// if nothing else happens, wake us up soon.
 	time.AfterFunc(10*time.Second, func() { s.wakeup <- struct{}{} })
+	exportNumConnected := func() {
+		nconnected := int64(0)
+		state.forAllPeers(func(p *peer) {
+			if p.Connected() {
+				nconnected++
+			}
+		})
+		srvrLog.Infof("Getting total connected: %v", nconnected)
+		btcdmon.Gauge("peers.total_connected", nconnected, 1)
+	}
 
 out:
 	for {
@@ -688,15 +697,14 @@ out:
 		// New peers connected to the server.
 		case p := <-s.newPeers:
 			s.handleAddPeerMsg(state, p)
-
+			exportNumConnected()
 		// Disconnected peers.
 		case p := <-s.donePeers:
 			s.handleDonePeerMsg(state, p)
-
 		// Block accepted in mainchain or orphan, update peer height.
 		case umsg := <-s.peerHeightsUpdate:
 			s.handleUpdatePeerHeights(state, umsg)
-
+			exportNumConnected()
 		// Peer to ban.
 		case p := <-s.banPeers:
 			s.handleBanPeerMsg(state, p)

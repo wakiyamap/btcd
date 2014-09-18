@@ -44,11 +44,9 @@ func btcdMain(serverChan chan<- *server) error {
 
 	// Show version at startup.
 	btcdLog.Infof("Version %s", version())
-	if cfg.BtcdmonHost != "" {
-		// TODO(roasbeef): Do something about the error...
-		btcdmon, _ = statsd.Dial(cfg.BtcdmonHost, "btcd")
-		btcdLog.Infof("Exporting monitoring metrics...")
-	}
+	// TODO(roasbeef): Do something about the error...
+	btcdmon, _ = statsd.Dial(cfg.BtcdmonHost, "btcd")
+	btcdLog.Infof("Exporting monitoring metrics...")
 
 	// Enable http profiling server if requested.
 	if cfg.Profile != "" {
