@@ -12,7 +12,6 @@ import (
 	prand "math/rand"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/btcsuite/btcutil/bloom"
 	"github.com/btcsuite/go-socks/socks"
 	"github.com/davecgh/go-spew/spew"
+	InfluxDB "github.com/influxdb/influxdb/client"
 )
 
 const (
@@ -342,7 +342,13 @@ func (p *peer) pushVersionMsg() error {
 	// Advertise our max supported protocol version.
 	msg.ProtocolVersion = maxProtocolVersion
 
-	btcdmon.Inc("msg.sent.version", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"version"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(msg, nil)
 	return nil
 }
@@ -371,8 +377,14 @@ func (p *peer) updateAddresses(msg *wire.MsgVersion) {
 		hasTimestamp := p.ProtocolVersion() >=
 			wire.NetAddressTimeVersion
 		if p.server.addrManager.NeedMoreAddresses() && hasTimestamp {
-			btcdmon.Inc("msg.sent.getaddr", 1, 1)
-			p.QueueMessage(wire.NewMsgGetAddr(), nil)
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "msg_sent",
+					Columns: []string{"getaddr"},
+					Points:  [][]interface{}{{1}},
+				},
+			})
+			p.QueueMessage(btcwire.NewMsgGetAddr(), nil)
 		}
 
 		// Mark the address as a known good address.
@@ -400,12 +412,22 @@ func (p *peer) handleVersionMsg(msg *wire.MsgVersion) {
 		return
 	}
 
-	btcdmon.Gauge("peers.version", int64(msg.ProtocolVersion), 1)
-	btcdmon.Inc("msg.recv.version", 1, 1)
-
 	// Notify and disconnect clients that have a protocol version that is
 	// too old.
 	if msg.ProtocolVersion < int32(wire.MultipleAddressVersion) {
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "msg_recv",
+				Columns: []string{"version"},
+				Points:  [][]interface{}{{1}},
+			},
+			&InfluxDB.Series{
+				Name:    "peers",
+				Columns: []string{"version", "user_agent"},
+				Points: [][]interface{}{{msg.ProtocolVersion},
+					{msg.UserAgent}},
+			},
+		})
 		// Send a reject message indicating the protocol version is
 		// obsolete and wait for the message to be sent before
 		// disconnecting.
@@ -489,8 +511,15 @@ func (p *peer) handleVersionMsg(msg *wire.MsgVersion) {
 	}
 
 	// Send verack.
-	btcdmon.Inc("msg.sent.verack", 1, 1)
-	p.QueueMessage(wire.NewMsgVerAck(), nil)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"verack"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
+	p.userAgent = msg.UserAgent
+	p.QueueMessage(btcwire.NewMsgVerAck(), nil)
 
 	// Update the address manager and request known addresses from the
 	// remote peer for outbound connections.  This is skipped when running
@@ -533,7 +562,13 @@ func (p *peer) pushTxMsg(sha *wire.ShaHash, doneChan, waitChan chan struct{}) er
 		<-waitChan
 	}
 
-	btcdmon.Inc("msg.sent.tx", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"tx"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(tx.MsgTx(), doneChan)
 
 	return nil
@@ -565,7 +600,13 @@ func (p *peer) pushBlockMsg(sha *wire.ShaHash, doneChan, waitChan chan struct{})
 	if !sendInv {
 		dc = doneChan
 	}
-	btcdmon.Inc("msg.sent.block", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"block"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(blk.MsgBlock(), dc)
 
 	// When the peer requests the final block that was advertised in
@@ -627,7 +668,13 @@ func (p *peer) pushMerkleBlockMsg(sha *wire.ShaHash, doneChan, waitChan chan str
 	if len(matchedTxIndices) == 0 {
 		dc = doneChan
 	}
-	btcdmon.Inc("msg.sent.merkle_block", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"merkle_block"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(merkle, dc)
 
 	// Finally, send any matched transactions.
@@ -640,6 +687,13 @@ func (p *peer) pushMerkleBlockMsg(sha *wire.ShaHash, doneChan, waitChan chan str
 		}
 
 		if txIndex < uint32(len(blkTransactions)) {
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "msg_sent",
+					Columns: []string{"tx", "merkle"},
+					Points:  [][]interface{}{{1}, {true}},
+				},
+			})
 			p.QueueMessage(blkTransactions[txIndex], dc)
 		}
 	}
@@ -676,7 +730,13 @@ func (p *peer) PushGetBlocksMsg(locator blockchain.BlockLocator, stopHash *wire.
 			return err
 		}
 	}
-	btcdmon.Inc("msg.sent.getblock", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"getblock"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(msg, nil)
 
 	// Update the previous getblocks request information for filtering
@@ -715,7 +775,13 @@ func (p *peer) PushGetHeadersMsg(locator blockchain.BlockLocator, stopHash *wire
 			return err
 		}
 	}
-	btcdmon.Inc("msg.sent.getheaders", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"getheaders"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.QueueMessage(msg, nil)
 
 	// Update the previous getheaders request information for filtering
@@ -747,7 +813,13 @@ func (p *peer) PushRejectMsg(command string, code wire.RejectCode, reason string
 		msg.Hash = *hash
 	}
 
-	btcdmon.Inc(fmt.Sprintf("msg.sent.%s", strings.ToLower(reason)), 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"reject", "reason"},
+			Points:  [][]interface{}{{1}, {reason}},
+		},
+	})
 
 	// Send the message without waiting if the caller has not requested it.
 	if !wait {
@@ -771,7 +843,13 @@ func (p *peer) handleMemPoolMsg(msg *wire.MsgMemPool) {
 	// per message.  The the NewMsgInvSizeHint function automatically limits
 	// the passed hint to the maximum allowed, so it's safe to pass it
 	// without double checking it here.
-	btcdmon.Inc("msg.recv.mempool", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"mempool"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	txDescs := p.server.txMemPool.TxDescs()
 	invMsg := wire.NewMsgInvSizeHint(uint(len(txDescs)))
 
@@ -798,6 +876,13 @@ func (p *peer) handleMemPoolMsg(msg *wire.MsgMemPool) {
 	// Send the inventory message if there is anything to send.
 	if len(invMsg.InvList) > 0 {
 		p.QueueMessage(invMsg, nil)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "msg_sent",
+				Columns: []string{"inv"},
+				Points:  [][]interface{}{{1}},
+			},
+		})
 	}
 }
 
@@ -809,7 +894,13 @@ func (p *peer) handleTxMsg(msg *wire.MsgTx) {
 	// Add the transaction to the known inventory for the peer.
 	// Convert the raw MsgTx to a btcutil.Tx which provides some convenience
 	// methods and things such as hash caching.
-	btcdmon.Inc("msg.recv.tx", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"tx"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	tx := btcutil.NewTx(msg)
 	iv := wire.NewInvVect(wire.InvTypeTx, tx.Sha())
 	p.AddKnownInventory(iv)
@@ -828,7 +919,13 @@ func (p *peer) handleTxMsg(msg *wire.MsgTx) {
 func (p *peer) handleBlockMsg(msg *wire.MsgBlock, buf []byte) {
 	// Convert the raw MsgBlock to a btcutil.Block which provides some
 	// convenience methods and things such as hash caching.
-	btcdmon.Inc("msg.recv.block", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"block"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	block := btcutil.NewBlockFromBlockAndBytes(msg, buf)
 
 	// Add the block to the known inventory for the peer.
@@ -855,21 +952,39 @@ func (p *peer) handleBlockMsg(msg *wire.MsgBlock, buf []byte) {
 // accordingly.  We pass the message down to blockmanager which will call
 // QueueMessage with any appropriate responses.
 func (p *peer) handleInvMsg(msg *wire.MsgInv) {
-	btcdmon.Inc("msg.recv.inv", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"inv"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.server.blockManager.QueueInv(msg, p)
 }
 
 // handleHeadersMsg is invoked when a peer receives a headers bitcoin message.
 // The message is passed down to the block manager.
 func (p *peer) handleHeadersMsg(msg *wire.MsgHeaders) {
-	btcdmon.Inc("msg.recv.headers", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"headers"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.server.blockManager.QueueHeaders(msg, p)
 }
 
 // handleGetData is invoked when a peer receives a getdata bitcoin message and
 // is used to deliver block and transaction information.
 func (p *peer) handleGetDataMsg(msg *wire.MsgGetData) {
-	btcdmon.Inc("msg.recv.getdata", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"getdata"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	numAdded := 0
 	notFound := wire.NewMsgNotFound()
 
@@ -938,8 +1053,13 @@ func (p *peer) handleGetBlocksMsg(msg *wire.MsgGetBlocks) {
 	// Attempt to find the ending index of the stop hash if specified.
 	endIdx := database.AllShas
 
-	btcdmon.Inc("msg.recv.getblock", 1, 1)
-
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"getblocks"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	if !msg.HashStop.IsEqual(&zeroHash) {
 		height, err := p.server.db.FetchBlockHeightBySha(&msg.HashStop)
 		if err == nil {
@@ -1025,7 +1145,13 @@ func (p *peer) handleGetHeadersMsg(msg *wire.MsgGetHeaders) {
 	// Attempt to look up the height of the provided stop hash.
 	endIdx := database.AllShas
 	height, err := p.server.db.FetchBlockHeightBySha(&msg.HashStop)
-	btcdmon.Inc("msg.recv.getheaders", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"getheaders"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	if err == nil {
 		endIdx = height + 1
 	}
@@ -1118,7 +1244,13 @@ func (p *peer) handleGetHeadersMsg(msg *wire.MsgGetHeaders) {
 // filter.  The peer will be disconnected if a filter is not loaded when this
 // message is received.
 func (p *peer) handleFilterAddMsg(msg *wire.MsgFilterAdd) {
-	btcdmon.Inc("msg.recv.filteradd", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"filteradd"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	if !p.filter.IsLoaded() {
 		peerLog.Debugf("%s sent a filteradd request with no filter "+
 			"loaded -- disconnecting", p)
@@ -1135,6 +1267,14 @@ func (p *peer) handleFilterAddMsg(msg *wire.MsgFilterAdd) {
 // received.
 func (p *peer) handleFilterClearMsg(msg *wire.MsgFilterClear) {
 	btcdmon.Inc("msg.recv.filterclear", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"filterclear"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
+
 	if !p.filter.IsLoaded() {
 		peerLog.Debugf("%s sent a filterclear request with no "+
 			"filter loaded -- disconnecting", p)
@@ -1150,9 +1290,23 @@ func (p *peer) handleFilterClearMsg(msg *wire.MsgFilterClear) {
 func (p *peer) handleFilterLoadMsg(msg *wire.MsgFilterLoad) {
 	// Transaction relay is no longer disabled once a filterload message is
 	// received regardless of its original state.
-	btcdmon.Inc("msg.recv.filterload", 1, 1)
-	btcdmon.Inc("peers.spv", 1, 1)
-	btcdmon.Dec("peers.fullnode", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"filterload"},
+			Points:  [][]interface{}{{1}},
+		},
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"spv"},
+			Points:  [][]interface{}{{1}},
+		},
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"fullnode"},
+			Points:  [][]interface{}{{-1}},
+		},
+	})
 	p.relayMtx.Lock()
 	p.disableRelayTx = false
 	p.relayMtx.Unlock()
@@ -1168,8 +1322,20 @@ func (p *peer) handleGetAddrMsg(msg *wire.MsgGetAddr) {
 	// network.  This helps prevent the network from becoming another
 	// public test network since it will not be able to learn about other
 	// peers that have not specifically been provided.
-	btcdmon.Inc("msg.recv.getaddr", 1, 1)
-	btcdmon.Gauge("peers.num_addrs", int64(p.server.addrManager.NumAddresses()), 0.5)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"getaddr"},
+			Points:  [][]interface{}{{1}},
+		},
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"num_addrs"},
+			Points: [][]interface{}{
+				{p.server.addrManager.NumAddresses()},
+			},
+		},
+	})
 	if cfg.SimNet {
 		return
 	}
@@ -1202,8 +1368,15 @@ func (p *peer) pushAddrMsg(addresses []*wire.NetAddress) error {
 
 	r := prand.New(prand.NewSource(time.Now().UnixNano()))
 
-	btcdmon.Inc("msg.sent.addr", 1, 1)
-	btcdmon.Gauge("peers.num_addrs", int64(p.server.addrManager.NumAddresses()), 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"num_addrs"},
+			Points: [][]interface{}{
+				{p.server.addrManager.NumAddresses()},
+			},
+		},
+	})
 
 	numAdded := 0
 	msg := wire.NewMsgAddr()
@@ -1234,6 +1407,13 @@ func (p *peer) pushAddrMsg(addresses []*wire.NetAddress) error {
 		}
 
 		p.QueueMessage(msg, nil)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "msg_sent",
+				Columns: []string{"addr"},
+				Points:  [][]interface{}{{1}},
+			},
+		})
 	}
 	return nil
 }
@@ -1245,7 +1425,13 @@ func (p *peer) handleAddrMsg(msg *wire.MsgAddr) {
 	// helps prevent the network from becoming another public test network
 	// since it will not be able to learn about other peers that have not
 	// specifically been provided.
-	btcdmon.Inc("msg.recv.addr", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"addr"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	if cfg.SimNet {
 		return
 	}
@@ -1298,7 +1484,20 @@ func (p *peer) handlePingMsg(msg *wire.MsgPing) {
 	if p.ProtocolVersion() > wire.BIP0031Version {
 		// Include nonce from ping so pong can be identified.
 		p.QueueMessage(wire.NewMsgPong(msg.Nonce), nil)
-		btcdmon.Inc("msg.recv.ping", 1, 1)
+
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "msg_recv",
+				Columns: []string{"ping"},
+				Points:  [][]interface{}{{1}},
+			},
+			&InfluxDB.Series{
+				Name:    "msg_sent",
+				Columns: []string{"pong"},
+				Points:  [][]interface{}{{1}},
+			},
+		})
+		p.QueueMessage(btcwire.NewMsgPong(msg.Nonce), nil)
 	}
 }
 
@@ -1324,7 +1523,13 @@ func (p *peer) handlePongMsg(msg *wire.MsgPong) {
 		p.lastPingMicros /= 1000 // convert to usec.
 		p.lastPingNonce = 0
 	}
-	btcdmon.Inc("msg.recv.pong", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"pong"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 }
 
 // readMessage reads the next bitcoin message from the peer with logging.
@@ -1528,8 +1733,15 @@ out:
 			versionSent := p.versionSent
 			verAckReceived := p.verAckReceived
 			p.StatsMtx.Unlock()
+			// Do nothing.
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "msg_recv",
+					Columns: []string{"verack"},
+					Points:  [][]interface{}{{1}},
+				},
+			})
 
-			btcdmon.Inc("msg.recv.verack", 1, 1)
 			if !versionSent {
 				peerLog.Infof("Received 'verack' from peer %v "+
 					"before version was sent -- disconnecting", p)
@@ -1561,8 +1773,13 @@ out:
 			// is currently unwilling to support other
 			// implementions' alert messages, we will not relay
 			// theirs.
-			btcdmon.Inc("msg.recv.alert", 1, 1)
-
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "msg_recv",
+					Columns: []string{"alert"},
+					Points:  [][]interface{}{{1}},
+				},
+			})
 		case *wire.MsgMemPool:
 			p.handleMemPoolMsg(msg)
 
@@ -1604,6 +1821,13 @@ out:
 
 		case *wire.MsgReject:
 			btcdmon.Inc("msg.recv.reject", 1, 1)
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "msg_recv",
+					Columns: []string{"reject"},
+					Points:  [][]interface{}{{1}},
+				},
+			})
 			// Nothing to do currently.  Logging of the rejected
 			// message is handled already in readMessage.
 
@@ -1804,7 +2028,13 @@ out:
 			case *wire.MsgPing:
 				// expects pong
 				// Also set up statistics.
-				btcdmon.Inc("msg.sent.ping", 1, 1)
+				btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+					&InfluxDB.Series{
+						Name:    "msg_sent",
+						Columns: []string{"ping"},
+						Points:  [][]interface{}{{1}},
+					},
+				})
 				p.StatsMtx.Lock()
 				if p.protocolVersion > wire.BIP0031Version {
 					p.lastPingNonce = m.Nonce
@@ -1813,8 +2043,21 @@ out:
 				p.StatsMtx.Unlock()
 			case *wire.MsgMemPool:
 				// Should return an inv.
-				btcdmon.Inc("msg.sent.mempool", 1, 1)
+				btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+					&InfluxDB.Series{
+						Name:    "msg_sent",
+						Columns: []string{"mempool"},
+						Points:  [][]interface{}{{1}},
+					},
+				})
 			case *wire.MsgGetData:
+				btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+					&InfluxDB.Series{
+						Name:    "msg_sent",
+						Columns: []string{"getdata"},
+						Points:  [][]interface{}{{1}},
+					},
+				})
 				// Should get us block, tx, or not found.
 				btcdmon.Inc("msg.sent.getdata", 1, 1)
 			case *wire.MsgGetHeaders:
@@ -1894,7 +2137,13 @@ func (p *peer) QueueInventory(invVect *wire.InvVect) {
 	// Don't add the inventory to the send queue if the peer is
 	// already known to have it.
 	if p.isKnownInventory(invVect) {
-		btcdmon.Inc("msg.sent.inv.known", 1, 1)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "msg_sent",
+				Columns: []string{"inv_known"},
+				Points:  [][]interface{}{{1}},
+			},
+		})
 		return
 	}
 
@@ -1905,7 +2154,13 @@ func (p *peer) QueueInventory(invVect *wire.InvVect) {
 		return
 	}
 
-	btcdmon.Inc("msg.sent.inv", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_sent",
+			Columns: []string{"inv"},
+			Points:  [][]interface{}{{1}},
+		},
+	})
 	p.outputInvChan <- invVect
 }
 
@@ -1937,17 +2192,23 @@ func (p *peer) Disconnect() {
 		p.conn.Close()
 	}
 
+	peerSeries := &InfluxDB.Series{Name: "peers"}
 	if p.filter.IsLoaded() {
-		btcdmon.Dec("peers.spv", 1, 1)
+		peerSeries.Columns = append(peerSeries.Columns, "spv")
+		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
 	} else {
-		btcdmon.Dec("peers.fullnode", 1, 1)
+		peerSeries.Columns = append(peerSeries.Columns, "fullnode")
+		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
 	}
 
 	if p.inbound {
-		btcdmon.Dec("peers.inbound", 1, 1)
+		peerSeries.Columns = append(peerSeries.Columns, "inbound")
+		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
 	} else {
-		btcdmon.Dec("peers.outbound", 1, 1)
+		peerSeries.Columns = append(peerSeries.Columns, "outbound")
+		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
 	}
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{peerSeries})
 }
 
 // Start begins processing input and output messages.  It also sends the initial
@@ -2016,8 +2277,13 @@ func newPeerBase(s *server, inbound bool) *peer {
 // newInboundPeer returns a new inbound bitcoin peer for the provided server and
 // connection.  Use Start to begin processing incoming and outgoing messages.
 func newInboundPeer(s *server, conn net.Conn) *peer {
-	btcdmon.Inc("peers.inbound", 1, 1)
-	btcdmon.Inc("peers.fullnode", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"inbound", "fullnode"},
+			Points:  [][]interface{}{{1}, {1}},
+		},
+	})
 	p := newPeerBase(s, true)
 	p.conn = conn
 	p.addr = conn.RemoteAddr().String()
@@ -2030,8 +2296,13 @@ func newInboundPeer(s *server, conn net.Conn) *peer {
 // address and connects to it asynchronously. If the connection is successful
 // then the peer will also be started.
 func newOutboundPeer(s *server, addr string, persistent bool, retryCount int64) *peer {
-	btcdmon.Inc("peers.outbound", 1, 1)
-	btcdmon.Inc("peers.fullnode", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"outbound", "fullnode"},
+			Points:  [][]interface{}{{1}, {1}},
+		},
+	})
 	p := newPeerBase(s, false)
 	p.addr = addr
 	p.persistent = persistent

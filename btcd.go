@@ -14,12 +14,12 @@ import (
 	"runtime/pprof"
 
 	"github.com/btcsuite/btcd/limits"
-	"github.com/cactus/go-statsd-client/statsd"
+	InfluxDB "github.com/influxdb/influxdb/client"
 )
 
 var (
 	cfg             *config
-	btcdmon         *statsd.Client
+	btcdmon         *InfluxDB.Client
 	shutdownChannel = make(chan struct{})
 )
 
@@ -44,9 +44,16 @@ func btcdMain(serverChan chan<- *server) error {
 
 	// Show version at startup.
 	btcdLog.Infof("Version %s", version())
-	// TODO(roasbeef): Do something about the error...
-	btcdmon, _ = statsd.Dial(cfg.BtcdmonHost, "btcd")
-	btcdLog.Infof("Exporting monitoring metrics...")
+
+	influxdbConfig := &InfluxDB.ClientConfig{
+		Host:     cfg.BtcdmonHost,
+		Username: cfg.BtcdmonUser,
+		Password: cfg.BtcdmonPass,
+		Database: "btcd",
+		IsUDP:    true,
+	}
+	btcdmon, err = InfluxDB.NewClient(influxdbConfig)
+	btcdLog.Infof("Exporting monitoring metrics...%v", err)
 
 	// Enable http profiling server if requested.
 	if cfg.Profile != "" {

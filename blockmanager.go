@@ -18,6 +18,7 @@ import (
 	"github.com/btcsuite/btcd/database"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	InfluxDB "github.com/influxdb/influxdb/client"
 )
 
 const (
@@ -229,11 +230,16 @@ func (b *blockManager) updateChainState(newestHash *wire.ShaHash, newestHeight i
 	b.chainState.Lock()
 	defer b.chainState.Unlock()
 
-	btcdmon.Gauge("blocks.current_height", newestHeight, 1.0)
-
 	b.chainState.newestHash = newestHash
 	b.chainState.newestHeight = newestHeight
 	medianTime, err := b.blockChain.CalcPastMedianTime()
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "blocks",
+			Columns: []string{"median_time", "best_height"},
+			Points:  [][]interface{}{{medianTime, newestHeight}},
+		},
+	})
 	if err != nil {
 		b.chainState.pastMedianTimeErr = err
 	} else {
@@ -537,6 +543,18 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	// If we didn't ask for this block then the peer is misbehaving.
 	blockSha := bmsg.block.Sha()
 	if _, ok := bmsg.peer.requestedBlocks[*blockSha]; !ok {
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "blocks",
+				Columns: []string{"status", "size", "num_tx", "sha"},
+				Points: [][]interface{}{
+					{"unrequested"},
+					{len(blockSha)},
+					{len(bmsg.block.Transactions())},
+					{blockSha},
+				},
+			},
+		})
 		// The regression test intentionally sends some blocks twice
 		// to test duplicate block insertion fails.  Don't disconnect
 		// the peer or ignore the block when we're in regression test
@@ -548,7 +566,6 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			bmsg.peer.Disconnect()
 			return
 		}
-		btcdmon.Inc("msg.recv.block.unrequested", 1, 1)
 	}
 
 	// When in headers-first mode, if the block matches the hash of the
@@ -600,7 +617,18 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 
 		// Convert the error into an appropriate reject message and
 		// send it.
-		btcdmon.Inc("blocks.rejects", 1, 1)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "blocks",
+				Columns: []string{"status", "size", "num_tx", "sha"},
+				Points: [][]interface{}{
+					{"rejected"},
+					{len(blockSha)},
+					{len(bmsg.block.Transactions())},
+					{blockSha},
+				},
+			},
+		})
 		code, reason := errToRejectErr(err)
 		bmsg.peer.PushRejectMsg(wire.CmdBlock, code, reason,
 			blockSha, false)
@@ -641,7 +669,20 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			}
 		}
 
-		btcdmon.Inc("blocks.orphans", 1, 1)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "blocks",
+				Columns: []string{"status", "size", "num_tx", "sha", "is_orphan"},
+				Points: [][]interface{}{
+					{"accepted"},
+					{len(blockSha)},
+					{len(bmsg.block.Transactions())},
+					{blockSha},
+					{true},
+				},
+			},
+		})
+
 		orphanRoot := b.blockChain.GetOrphanRoot(blockSha)
 		locator, err := b.blockChain.LatestBlockLocator()
 		if err != nil {
@@ -660,6 +701,24 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		// a reorg.
 		newestSha, newestHeight, _ := b.server.db.NewestSha()
 		b.updateChainState(newestSha, newestHeight)
+		// TODO(roasbeef): Log height before this to detect forks?
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name: "blocks",
+				Columns: []string{
+					"status", "size", "num_tx",
+					"sha", "is_orphan", "height",
+				},
+				Points: [][]interface{}{
+					{"accepted"},
+					{len(newestSha)},
+					{len(bmsg.block.Transactions())},
+					{newestSha},
+					{true},
+					{newestHeight},
+				},
+			},
+		})
 
 		// Update this peer's latest block height, for future
 		// potential sync node candidancy.

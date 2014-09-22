@@ -1,7 +1,7 @@
 FROM roasbeef/btcd
 
-# Install our statsd client.
-RUN go get github.com/cactus/go-statsd-client/statsd
+# Install the InfluxDB client.
+RUN go get github.com/influxdb/influxdb/client
 
 # Make a temporary directory for our manual build.
 RUN mkdir -p /root/btcdmon/

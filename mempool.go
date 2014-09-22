@@ -18,6 +18,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	InfluxDB "github.com/influxdb/influxdb/client"
 )
 
 const (
@@ -183,7 +184,6 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		if err != nil {
 			str := fmt.Sprintf("multi-signature script parse "+
 				"failure: %v", err)
-			btcdmon.Inc("tx.script_standard.no.invalid_script", 1, 1)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 
@@ -191,7 +191,6 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		// from 1 to maxStandardMultiSigKeys public keys.
 		if numPubKeys < 1 {
 			str := "multi-signature script with no pubkeys"
-			btcdmon.Inc("tx.script_standard.no.multisig_no_pub_keys", 1, 1)
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 		if numPubKeys > maxStandardMultiSigKeys {
@@ -206,12 +205,10 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		// least 1 signature and no more signatures than available
 		// public keys.
 		if numSigs < 1 {
-			btcdmon.Inc("tx.script_standard.no.multisig_no_keys", 1, 1)
 			return txRuleError(wire.RejectNonstandard,
 				"multi-signature script with no signatures")
 		}
 		if numSigs > numPubKeys {
-			btcdmon.Inc("tx.script_standard.no.too_many_sigs", 1, 1)
 			str := fmt.Sprintf("multi-signature script with %d "+
 				"signatures which is more than the available "+
 				"%d public keys", numSigs, numPubKeys)
@@ -224,7 +221,6 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 			"non-standard script form")
 	}
 
-	btcdmon.Inc("tx.script_standard.yes", 1, 1)
 	return nil
 }
 
@@ -237,13 +233,20 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 // so small it costs more to process them than they are worth).
 func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) error {
 	msgTx := tx.MsgTx()
+	txSeries := &InfluxDB.Series{Name: "tx"}
+	defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{txSeries})
 
 	// The transaction must be a currently supported version.
-	btcdmon.Gauge("tx.seen.version_num", int64(msgTx.Version), 1)
+	txSeries.Columns = append(txSeries.Columns, "version_num")
+	txSeries.Points = append(txSeries.Points, []interface{}{msgTx.Version})
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
 		str := fmt.Sprintf("transaction version %d is not in the "+
 			"valid range of %d-%d", msgTx.Version, 1,
 			wire.TxVersion)
+		txSeries.Columns = append(txSeries.Columns, "is_standard")
+		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
+		txSeries.Points = append(txSeries.Points, []interface{}{"version"})
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 
@@ -251,38 +254,60 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// considered for inclusion in a block.
 	adjustedTime := mp.server.timeSource.AdjustedTime()
 	if !blockchain.IsFinalizedTransaction(tx, height, adjustedTime) {
-		btcdmon.Inc("tx.seen.final.no", 1, 1)
+		txSeries.Columns = append(txSeries.Columns, "is_standard")
+		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
+		txSeries.Points = append(txSeries.Points, []interface{}{"non_final"})
 		return txRuleError(wire.RejectNonstandard,
 			"transaction is not finalized")
 	}
-	btcdmon.Inc("tx.seen.final.yes", 1, 1)
 
 	// Since extremely large transactions with a lot of inputs can cost
 	// almost as much to process as the sender fees, limit the maximum
 	// size of a transaction.  This also helps mitigate CPU exhaustion
 	// attacks.
 	serializedLen := msgTx.SerializeSize()
-	btcdmon.Gauge("tx.seen.serialize_size", int64(serializedLen), 1)
+	txSeries.Columns = append(txSeries.Columns, "tx_size")
+	txSeries.Points = append(txSeries.Points, []interface{}{serializedLen})
 	if serializedLen > maxStandardTxSize {
 		str := fmt.Sprintf("transaction size of %v is larger than max "+
 			"allowed size of %v", serializedLen, maxStandardTxSize)
-		return txRuleError(wire.RejectNonstandard, str)
+		txSeries.Columns = append(txSeries.Columns, "is_standard")
+		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
+		txSeries.Points = append(txSeries.Points, []interface{}{"size_too_large"})
+		return txRuleError(btcwire.RejectNonstandard, str)
 	}
 
-	btcdmon.Gauge("tx.seen.inputs.num", int64(len(msgTx.TxIn)), 1)
+	txSeries.Columns = append(txSeries.Columns, "num_inputs")
+	txSeries.Points = append(txSeries.Points, []interface{}{len(msgTx.TxIn)})
 	for i, txIn := range msgTx.TxIn {
+		scriptSeries := &InfluxDB.Series{
+			Name: "tx_inputs",
+			Columns: []string{
+				"sequence_num", "sig_script_len",
+			},
+			Points: [][]interface{}{
+				{txIn.Sequence}, {len(txIn.SignatureScript)},
+			},
+		}
+		defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{scriptSeries})
+
 		// Each transaction input signature script must not exceed the
 		// maximum size allowed for a standard transaction.  See
 		// the comment on maxStandardSigScriptSize for more details.
 		sigScriptLen := len(txIn.SignatureScript)
-		btcdmon.Gauge("tx.seen.inputs.sig_script_len", int64(sigScriptLen), 1)
-		btcdmon.Gauge("tx.seen.inputs.sequence_num", int64(txIn.Sequence), 1)
 		if sigScriptLen > maxStandardSigScriptSize {
 			str := fmt.Sprintf("transaction input %d: signature "+
 				"script size of %d bytes is large than max "+
 				"allowed size of %d bytes", i, sigScriptLen,
 				maxStandardSigScriptSize)
-			return txRuleError(wire.RejectNonstandard, str)
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
+			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+			scriptSeries.Columns = append(scriptSeries.Columns, "non_standard_reason")
+			scriptSeries.Points = append(scriptSeries.Points,
+				[]interface{}{"script_sig_too_large"})
+			return txRuleError(btcwire.RejectNonstandard, str)
 		}
 
 		// Each transaction input signature script must only contain
@@ -290,6 +315,11 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		if !txscript.IsPushOnlyScript(txIn.SignatureScript) {
 			str := fmt.Sprintf("transaction input %d: signature "+
 				"script is not push only", i)
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
+			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+			scriptSeries.Columns = append(scriptSeries.Columns, "non_standard_reason")
+			scriptSeries.Points = append(scriptSeries.Points,
+				[]interface{}{"script_not_push_only"})
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 	}
@@ -297,23 +327,30 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// None of the output public key scripts can be a non-standard script or
 	// be "dust" (except when the script is a null data script).
 	numNullDataOutputs := 0
-	btcdmon.Gauge("tx.seen.outputs.num", int64(len(msgTx.TxOut)), 1)
+	txSeries.Columns = append(txSeries.Columns, "num_outputs")
+	txSeries.Points = append(txSeries.Points, []interface{}{len(msgTx.TxOut)})
 	for i, txOut := range msgTx.TxOut {
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
+		scriptType := scriptClass.String()
+		scriptSeries := &InfluxDB.Series{
+			Name: "tx_outputs",
+			Columns: []string{
+				"script_type", "size", "value",
+			},
+			Points: [][]interface{}{
+				{scriptType}, {len(txOut.PkScript)},
+				{txOut.Value},
+			},
+		}
+		defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{scriptSeries})
 
-		switch scriptClass {
-		case txscript.PubKeyTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.p2pk", 1, 1)
-		case txscript.PubKeyHashTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.p2pkh", 1, 1)
-		case txscript.ScriptHashTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.p2sh", 1, 1)
-		case txscript.MultiSigTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.bare_multisig", 1, 1)
-		case txscript.NullDataTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.op_return", 1, 1)
-		case txscript.NonStandardTy:
-			btcdmon.Inc("tx.seen.outputs.script_type.non_standard", 1, 1)
+		if scriptType == "multisig" {
+			numPubKeys, numSigs, _ := btcscript.CalcMultiSigStats(
+				txOut.PkScript)
+			scriptSeries.Columns = append(scriptSeries.Columns,
+				"num_pubkeys", "num_keys")
+			scriptSeries.Points = append(scriptSeries.Points,
+				[]interface{}{numPubKeys}, []interface{}{numSigs})
 		}
 
 		err := checkPkScriptStandard(txOut.PkScript, scriptClass)
@@ -326,7 +363,14 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				rejectCode = wire.RejectNonstandard
 			}
 			str := fmt.Sprintf("transaction output %d: %v", i, err)
+
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
+			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+
 			return txRuleError(rejectCode, str)
+		} else {
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
+			scriptSeries.Points = append(scriptSeries.Points, []interface{}{true})
 		}
 
 		// Accumulate the number of outputs which only carry data.  For
@@ -335,18 +379,18 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		if scriptClass == txscript.NullDataTy {
 			numNullDataOutputs++
 		} else if isDust(txOut) {
-			btcdmon.Inc("tx.seen.outputs.num.dust", 1, 1)
-			btcdmon.Gauge("tx.seen.outputs.dust_value", txOut.Value, 1)
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_dust")
+			scriptSeries.Points = append(scriptSeries.Points, []interface{}{true})
 			str := fmt.Sprintf("transaction output %d: payment "+
 				"of %d is dust", i, txOut.Value)
 			return txRuleError(wire.RejectDust, str)
 		}
-		btcdmon.Gauge("tx.seen.outputs.value", txOut.Value, 1)
+		scriptSeries.Columns = append(scriptSeries.Columns, "is_dust")
+		scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
 	}
 
 	// A standard transaction must not have more than one output script that
 	// only carries data.
-	btcdmon.Gauge("tx.seen.num_op_returns", int64(numNullDataOutputs), 1)
 	if numNullDataOutputs > 1 {
 		str := "more than one transaction output in a nulldata script"
 		return txRuleError(wire.RejectNonstandard, str)
@@ -458,8 +502,14 @@ func (mp *txMemPool) removeOrphan(txHash *wire.ShaHash) {
 	}
 
 	// Remove the transaction from the orphan pool.
-	btcdmon.Dec("mempool.orphans", 1, 1)
 	delete(mp.orphans, *txHash)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "mempool",
+			Columns: []string{"num_orphans"},
+			Points:  [][]interface{}{{len(mp.orphans)}},
+		},
+	})
 }
 
 // RemoveOrphan removes the passed orphan transaction from the orphan pool and
@@ -518,7 +568,6 @@ func (mp *txMemPool) addOrphan(tx *btcutil.Tx) {
 	mp.limitNumOrphans()
 
 	mp.orphans[*tx.Sha()] = tx
-	btcdmon.Inc("mempool.orphans", 1, 1)
 	for _, txIn := range tx.MsgTx().TxIn {
 		originTxHash := txIn.PreviousOutPoint.Hash
 		if mp.orphansByPrev[originTxHash] == nil {
@@ -529,6 +578,13 @@ func (mp *txMemPool) addOrphan(tx *btcutil.Tx) {
 
 	txmpLog.Debugf("Stored orphan transaction %v (total: %d)", tx.Sha(),
 		len(mp.orphans))
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "mempool",
+			Columns: []string{"num_orphans"},
+			Points:  [][]interface{}{{len(mp.orphans)}},
+		},
+	})
 }
 
 // maybeAddOrphan potentially adds an orphan to the orphan pool.
@@ -627,6 +683,22 @@ func (mp *txMemPool) HaveTransaction(hash *wire.ShaHash) bool {
 	return mp.haveTransaction(hash)
 }
 
+// RawSize returns the raw total size in bytes of all the transaction in the mempool.
+// The total size calculated includes orphan transactions.
+func (mp *txMemPool) RawSize() (totalSize uint64) {
+	totalSize = uint64(0)
+
+	for _, txDesc := range mp.pool {
+		totalSize += uint64(txDesc.Tx.MsgTx().SerializeSize())
+	}
+
+	for _, orphanTx := range mp.orphans {
+		totalSize += uint64(orphanTx.MsgTx().SerializeSize())
+	}
+
+	return
+}
+
 // removeTransaction is the internal function which implements the public
 // RemoveTransaction.  See the comment for RemoveTransaction for more details.
 //
@@ -651,8 +723,19 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx) {
 		for _, txIn := range txDesc.Tx.MsgTx().TxIn {
 			delete(mp.outpoints, txIn.PreviousOutPoint)
 		}
-		btcdmon.Dec("mempool.tx", 1, 1)
 		delete(mp.pool, *txHash)
+		// TODO(roasbeef): Extract all this fluff into some nice
+		// helper funcs.
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "mempool",
+				Columns: []string{"num_tx", "size"},
+				Points: [][]interface{}{
+					{len(mp.pool)},
+					{mp.RawSize()},
+				},
+			},
+		})
 		mp.lastUpdated = time.Now()
 	}
 
@@ -747,7 +830,16 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 		Height: height,
 		Fee:    fee,
 	}
-	btcdmon.Inc("mempool.tx", 1, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "mempool",
+			Columns: []string{"num_tx", "size"},
+			Points: [][]interface{}{
+				{len(mp.pool)},
+				{mp.RawSize()},
+			},
+		},
+	})
 	for _, txIn := range tx.MsgTx().TxIn {
 		mp.outpoints[txIn.PreviousOutPoint] = tx
 	}
@@ -1101,7 +1193,13 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// which examines the actual spend data and prevents double spends.
 	err = mp.checkPoolDoubleSpend(tx)
 	if err != nil {
-		btcdmon.Inc("mempool.double_spends", 1, 1)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "mempool",
+				Columns: []string{"double_spend"},
+				Points:  [][]interface{}{{1}},
+			},
+		})
 		return nil, err
 	}
 
@@ -1209,9 +1307,16 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// high-priority transactions, don't require a fee for it.
 	serializedSize := int64(tx.MsgTx().SerializeSize())
 	minFee := calcMinRequiredTxRelayFee(serializedSize)
-	btcdmon.Gauge("tx.seen.tx_fee", txFee, 1)
-	btcdmon.Gauge("tx.seen.fee_ratio", txFee/minFee, 1)
-	btcdmon.Gauge("tx.seen.min_fee", minFee, 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name: "tx_fees",
+			Columns: []string{"tx_fee", "tx_size", "fee_ratio",
+				"min_fee"},
+			Points: [][]interface{}{
+				{txFee}, {serializedSize}, {txFee / minFee}, {minFee},
+			},
+		},
+	})
 	if serializedSize >= (defaultBlockPrioritySize-1000) && txFee < minFee {
 		str := fmt.Sprintf("transaction %v has %d fees which is under "+
 			"the required amount of %d", txHash, txFee,
@@ -1253,6 +1358,13 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		if mp.pennyTotal >= cfg.FreeTxRelayLimit*10*1000 {
 			str := fmt.Sprintf("transaction %v has been rejected "+
 				"by the rate limiter due to low fees", txHash)
+			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+				&InfluxDB.Series{
+					Name:    "mem_pool",
+					Columns: []string{"tx_rate_limit"},
+					Points:  [][]interface{}{{1}},
+				},
+			})
 			btcdmon.Inc("mempool.rate_limit", 1, 1)
 			return nil, txRuleError(wire.RejectInsufficientFee, str)
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/btcsuite/btcd/database"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	InfluxDB "github.com/influxdb/influxdb/client"
 )
 
 const (
@@ -332,7 +333,13 @@ func (s *server) handleBanPeerMsg(state *peerState, p *peer) {
 	direction := directionString(p.inbound)
 	srvrLog.Infof("Banned peer %s (%s) for %v", host, direction,
 		cfg.BanDuration)
-	btcdmon.Gauge("peers.banned", int64(len(state.banned)), 1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"num_banned"},
+			Points:  [][]interface{}{{len(state.banned)}},
+		},
+	})
 	state.banned[host] = time.Now().Add(cfg.BanDuration)
 
 }
@@ -687,7 +694,13 @@ func (s *server) peerHandler() {
 				nconnected++
 			}
 		})
-		btcdmon.Gauge("peers.total_connected", nconnected, 1)
+		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+			&InfluxDB.Series{
+				Name:    "peers",
+				Columns: []string{"total_connected"},
+				Points:  [][]interface{}{{nconnected}},
+			},
+		})
 	}
 
 out:
@@ -940,7 +953,13 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesSent += bytesSent
-	btcdmon.Gauge("bandwidth.bytes_sent", int64(s.bytesSent), 0.1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "bandwidth",
+			Columns: []string{"bytes_sent"},
+			Points:  [][]interface{}{{s.bytesSent}},
+		},
+	})
 }
 
 // AddBytesReceived adds the passed number of bytes to the total bytes received
@@ -950,7 +969,13 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesReceived += bytesReceived
-	btcdmon.Gauge("bandwidth.bytes_recv", int64(s.bytesReceived), 0.1)
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "bandwidth",
+			Columns: []string{"bytes_recv"},
+			Points:  [][]interface{}{{s.bytesReceived}},
+		},
+	})
 }
 
 // NetTotals returns the sum of all bytes received and sent across the network
