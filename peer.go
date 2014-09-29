@@ -414,20 +414,19 @@ func (p *peer) handleVersionMsg(msg *wire.MsgVersion) {
 
 	// Notify and disconnect clients that have a protocol version that is
 	// too old.
-	if msg.ProtocolVersion < int32(wire.MultipleAddressVersion) {
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name:    "msg_recv",
-				Columns: []string{"version"},
-				Points:  [][]interface{}{{1}},
-			},
-			&InfluxDB.Series{
-				Name:    "peers",
-				Columns: []string{"version", "user_agent"},
-				Points: [][]interface{}{{msg.ProtocolVersion},
-					{msg.UserAgent}},
-			},
-		})
+	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+		&InfluxDB.Series{
+			Name:    "msg_recv",
+			Columns: []string{"version"},
+			Points:  [][]interface{}{{1}}},
+		&InfluxDB.Series{
+			Name:    "peers",
+			Columns: []string{"version", "user_agent"},
+			Points: [][]interface{}{{msg.ProtocolVersion,
+				msg.UserAgent}},
+		},
+	})
+	if msg.ProtocolVersion < int32(btcwire.MultipleAddressVersion) {
 		// Send a reject message indicating the protocol version is
 		// obsolete and wait for the message to be sent before
 		// disconnecting.
@@ -691,7 +690,7 @@ func (p *peer) pushMerkleBlockMsg(sha *wire.ShaHash, doneChan, waitChan chan str
 				&InfluxDB.Series{
 					Name:    "msg_sent",
 					Columns: []string{"tx", "merkle"},
-					Points:  [][]interface{}{{1}, {true}},
+					Points:  [][]interface{}{{1, true}},
 				},
 			})
 			p.QueueMessage(blkTransactions[txIndex], dc)
@@ -2203,10 +2202,10 @@ func (p *peer) Disconnect() {
 
 	if p.inbound {
 		peerSeries.Columns = append(peerSeries.Columns, "inbound")
-		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
+		peerSeries.Points[0] = append(peerSeries.Points[0], -1)
 	} else {
 		peerSeries.Columns = append(peerSeries.Columns, "outbound")
-		peerSeries.Points = append(peerSeries.Points, []interface{}{-1})
+		peerSeries.Points[0] = append(peerSeries.Points[0], -1)
 	}
 	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{peerSeries})
 }
@@ -2281,7 +2280,7 @@ func newInboundPeer(s *server, conn net.Conn) *peer {
 		&InfluxDB.Series{
 			Name:    "peers",
 			Columns: []string{"inbound", "fullnode"},
-			Points:  [][]interface{}{{1}, {1}},
+			Points:  [][]interface{}{{1, 1}},
 		},
 	})
 	p := newPeerBase(s, true)
@@ -2300,7 +2299,7 @@ func newOutboundPeer(s *server, addr string, persistent bool, retryCount int64) 
 		&InfluxDB.Series{
 			Name:    "peers",
 			Columns: []string{"outbound", "fullnode"},
-			Points:  [][]interface{}{{1}, {1}},
+			Points:  [][]interface{}{{1, 1}},
 		},
 	})
 	p := newPeerBase(s, false)

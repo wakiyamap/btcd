@@ -548,10 +548,12 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Name:    "blocks",
 				Columns: []string{"status", "size", "num_tx", "sha"},
 				Points: [][]interface{}{
-					{"unrequested"},
-					{len(blockSha)},
-					{len(bmsg.block.Transactions())},
-					{blockSha},
+					{
+						"unrequested",
+						len(blockSha),
+						len(bmsg.block.Transactions()),
+						blockSha,
+					},
 				},
 			},
 		})
@@ -622,10 +624,12 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Name:    "blocks",
 				Columns: []string{"status", "size", "num_tx", "sha"},
 				Points: [][]interface{}{
-					{"rejected"},
-					{len(blockSha)},
-					{len(bmsg.block.Transactions())},
-					{blockSha},
+					{
+						"rejected",
+						len(blockSha),
+						len(bmsg.block.Transactions()),
+						blockSha,
+					},
 				},
 			},
 		})
@@ -674,11 +678,13 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Name:    "blocks",
 				Columns: []string{"status", "size", "num_tx", "sha", "is_orphan"},
 				Points: [][]interface{}{
-					{"accepted"},
-					{len(blockSha)},
-					{len(bmsg.block.Transactions())},
-					{blockSha},
-					{true},
+					{
+						"accepted",
+						len(blockSha),
+						len(bmsg.block.Transactions()),
+						blockSha,
+						true,
+					},
 				},
 			},
 		})
@@ -710,12 +716,14 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 					"sha", "is_orphan", "height",
 				},
 				Points: [][]interface{}{
-					{"accepted"},
-					{len(newestSha)},
-					{len(bmsg.block.Transactions())},
-					{newestSha},
-					{true},
-					{newestHeight},
+					{
+						"accepted",
+						len(newestSha),
+						len(bmsg.block.Transactions()),
+						newestSha,
+						true,
+						newestHeight,
+					},
 				},
 			},
 		})

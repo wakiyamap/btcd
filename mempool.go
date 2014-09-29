@@ -244,9 +244,9 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 			"valid range of %d-%d", msgTx.Version, 1,
 			wire.TxVersion)
 		txSeries.Columns = append(txSeries.Columns, "is_standard")
-		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Points[0] = append(txSeries.Points[0], false)
 		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
-		txSeries.Points = append(txSeries.Points, []interface{}{"version"})
+		txSeries.Points[0] = append(txSeries.Points[0], "version")
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 
@@ -255,9 +255,9 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	adjustedTime := mp.server.timeSource.AdjustedTime()
 	if !blockchain.IsFinalizedTransaction(tx, height, adjustedTime) {
 		txSeries.Columns = append(txSeries.Columns, "is_standard")
-		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Points[0] = append(txSeries.Points[0], false)
 		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
-		txSeries.Points = append(txSeries.Points, []interface{}{"non_final"})
+		txSeries.Points[0] = append(txSeries.Points[0], "non_final")
 		return txRuleError(wire.RejectNonstandard,
 			"transaction is not finalized")
 	}
@@ -268,19 +268,19 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// attacks.
 	serializedLen := msgTx.SerializeSize()
 	txSeries.Columns = append(txSeries.Columns, "tx_size")
-	txSeries.Points = append(txSeries.Points, []interface{}{serializedLen})
+	txSeries.Points[0] = append(txSeries.Points[0], serializedLen)
 	if serializedLen > maxStandardTxSize {
 		str := fmt.Sprintf("transaction size of %v is larger than max "+
 			"allowed size of %v", serializedLen, maxStandardTxSize)
 		txSeries.Columns = append(txSeries.Columns, "is_standard")
-		txSeries.Points = append(txSeries.Points, []interface{}{false})
+		txSeries.Points[0] = append(txSeries.Points[0], false)
 		txSeries.Columns = append(txSeries.Columns, "non_standard_reason")
-		txSeries.Points = append(txSeries.Points, []interface{}{"size_too_large"})
+		txSeries.Points[0] = append(txSeries.Points[0], "size_too_large")
 		return txRuleError(btcwire.RejectNonstandard, str)
 	}
 
 	txSeries.Columns = append(txSeries.Columns, "num_inputs")
-	txSeries.Points = append(txSeries.Points, []interface{}{len(msgTx.TxIn)})
+	txSeries.Points[0] = append(txSeries.Points[0], len(msgTx.TxIn))
 	for i, txIn := range msgTx.TxIn {
 		scriptSeries := &InfluxDB.Series{
 			Name: "tx_inputs",
@@ -288,7 +288,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				"sequence_num", "sig_script_len",
 			},
 			Points: [][]interface{}{
-				{txIn.Sequence}, {len(txIn.SignatureScript)},
+				{txIn.Sequence, len(txIn.SignatureScript)},
 			},
 		}
 		defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{scriptSeries})
@@ -303,10 +303,10 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				"allowed size of %d bytes", i, sigScriptLen,
 				maxStandardSigScriptSize)
 			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
-			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], false)
 			scriptSeries.Columns = append(scriptSeries.Columns, "non_standard_reason")
-			scriptSeries.Points = append(scriptSeries.Points,
-				[]interface{}{"script_sig_too_large"})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0],
+				"script_sig_too_large")
 			return txRuleError(btcwire.RejectNonstandard, str)
 		}
 
@@ -316,10 +316,10 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 			str := fmt.Sprintf("transaction input %d: signature "+
 				"script is not push only", i)
 			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
-			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], false)
 			scriptSeries.Columns = append(scriptSeries.Columns, "non_standard_reason")
-			scriptSeries.Points = append(scriptSeries.Points,
-				[]interface{}{"script_not_push_only"})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0],
+				"non_canonical_data_push")
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 	}
@@ -328,7 +328,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	// be "dust" (except when the script is a null data script).
 	numNullDataOutputs := 0
 	txSeries.Columns = append(txSeries.Columns, "num_outputs")
-	txSeries.Points = append(txSeries.Points, []interface{}{len(msgTx.TxOut)})
+	txSeries.Points[0] = append(txSeries.Points[0], len(msgTx.TxOut))
 	for i, txOut := range msgTx.TxOut {
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
 		scriptType := scriptClass.String()
@@ -338,8 +338,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				"script_type", "size", "value",
 			},
 			Points: [][]interface{}{
-				{scriptType}, {len(txOut.PkScript)},
-				{txOut.Value},
+				{scriptType, len(txOut.PkScript), txOut.Value},
 			},
 		}
 		defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{scriptSeries})
@@ -349,8 +348,8 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				txOut.PkScript)
 			scriptSeries.Columns = append(scriptSeries.Columns,
 				"num_pubkeys", "num_keys")
-			scriptSeries.Points = append(scriptSeries.Points,
-				[]interface{}{numPubKeys}, []interface{}{numSigs})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0],
+				numPubKeys, numSigs)
 		}
 
 		err := checkPkScriptStandard(txOut.PkScript, scriptClass)
@@ -365,12 +364,12 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 			str := fmt.Sprintf("transaction output %d: %v", i, err)
 
 			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
-			scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], false)
 
 			return txRuleError(rejectCode, str)
 		} else {
 			scriptSeries.Columns = append(scriptSeries.Columns, "is_standard")
-			scriptSeries.Points = append(scriptSeries.Points, []interface{}{true})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], true)
 		}
 
 		// Accumulate the number of outputs which only carry data.  For
@@ -380,13 +379,14 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 			numNullDataOutputs++
 		} else if isDust(txOut) {
 			scriptSeries.Columns = append(scriptSeries.Columns, "is_dust")
-			scriptSeries.Points = append(scriptSeries.Points, []interface{}{true})
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], true)
 			str := fmt.Sprintf("transaction output %d: payment "+
 				"of %d is dust", i, txOut.Value)
 			return txRuleError(wire.RejectDust, str)
+		} else {
+			scriptSeries.Columns = append(scriptSeries.Columns, "is_dust")
+			scriptSeries.Points[0] = append(scriptSeries.Points[0], false)
 		}
-		scriptSeries.Columns = append(scriptSeries.Columns, "is_dust")
-		scriptSeries.Points = append(scriptSeries.Points, []interface{}{false})
 	}
 
 	// A standard transaction must not have more than one output script that
@@ -731,8 +731,7 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx) {
 				Name:    "mempool",
 				Columns: []string{"num_tx", "size"},
 				Points: [][]interface{}{
-					{len(mp.pool)},
-					{mp.RawSize()},
+					{len(mp.pool), mp.RawSize()},
 				},
 			},
 		})
@@ -835,8 +834,7 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 			Name:    "mempool",
 			Columns: []string{"num_tx", "size"},
 			Points: [][]interface{}{
-				{len(mp.pool)},
-				{mp.RawSize()},
+				{len(mp.pool), mp.RawSize()},
 			},
 		},
 	})
@@ -1313,7 +1311,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 			Columns: []string{"tx_fee", "tx_size", "fee_ratio",
 				"min_fee"},
 			Points: [][]interface{}{
-				{txFee}, {serializedSize}, {txFee / minFee}, {minFee},
+				{txFee, serializedSize, txFee / minFee, minFee},
 			},
 		},
 	})
@@ -1360,7 +1358,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 				"by the rate limiter due to low fees", txHash)
 			btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 				&InfluxDB.Series{
-					Name:    "mem_pool",
+					Name:    "mempool",
 					Columns: []string{"tx_rate_limit"},
 					Points:  [][]interface{}{{1}},
 				},
