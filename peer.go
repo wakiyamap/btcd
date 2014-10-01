@@ -414,6 +414,7 @@ func (p *peer) handleVersionMsg(msg *wire.MsgVersion) {
 
 	// Notify and disconnect clients that have a protocol version that is
 	// too old.
+	// TODO(roasbeef): revamp tracking number of peers, not relative.
 	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 		&InfluxDB.Series{
 			Name:    "msg_recv",
@@ -816,7 +817,7 @@ func (p *peer) PushRejectMsg(command string, code wire.RejectCode, reason string
 		&InfluxDB.Series{
 			Name:    "msg_sent",
 			Columns: []string{"reject", "reason"},
-			Points:  [][]interface{}{{1}, {reason}},
+			Points:  [][]interface{}{{1, reason}},
 		},
 	})
 
