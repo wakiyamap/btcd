@@ -338,7 +338,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 				"script_type", "size", "value",
 			},
 			Points: [][]interface{}{
-				{scriptType, len(txOut.PkScript), txOut.Value},
+				{scriptType, len(txOut.PkScript), btcutil.Amount(txOut.Value).ToUnit(btcutil.AmountBTC)},
 			},
 		}
 		defer btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{scriptSeries})
