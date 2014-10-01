@@ -545,14 +545,16 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	if _, ok := bmsg.peer.requestedBlocks[*blockSha]; !ok {
 		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 			&InfluxDB.Series{
-				Name:    "blocks",
-				Columns: []string{"status", "size", "num_tx", "sha"},
+				Name: "processed_blocks",
+				Columns: []string{"status", "size", "num_tx",
+					"sha", "process_time"},
 				Points: [][]interface{}{
 					{
 						"unrequested",
 						len(blockSha),
 						len(bmsg.block.Transactions()),
 						blockSha,
+						time.Now().Unix(),
 					},
 				},
 			},
@@ -675,8 +677,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 
 		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 			&InfluxDB.Series{
-				Name:    "blocks",
-				Columns: []string{"status", "size", "num_tx", "sha", "is_orphan"},
+				Name: "processed_blocks",
+				Columns: []string{"status", "size", "num_tx",
+					"sha", "is_orphan", "process_time"},
 				Points: [][]interface{}{
 					{
 						"accepted",
@@ -684,6 +687,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 						len(bmsg.block.Transactions()),
 						blockSha,
 						true,
+						time.Now().Unix(),
 					},
 				},
 			},
@@ -710,10 +714,11 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		// TODO(roasbeef): Log height before this to detect forks?
 		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 			&InfluxDB.Series{
-				Name: "blocks",
+				Name: "processed_blocks",
 				Columns: []string{
 					"status", "size", "num_tx",
 					"sha", "is_orphan", "height",
+					"process_time",
 				},
 				Points: [][]interface{}{
 					{
@@ -721,8 +726,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 						len(newestSha),
 						len(bmsg.block.Transactions()),
 						newestSha,
-						true,
+						false,
 						newestHeight,
+						time.Now().Unix(),
 					},
 				},
 			},
