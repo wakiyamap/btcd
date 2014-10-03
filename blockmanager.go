@@ -551,7 +551,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Points: [][]interface{}{
 					{
 						"unrequested",
-						len(blockSha),
+						bmsg.block.MsgBlock().SerializeSize(),
 						len(bmsg.block.Transactions()),
 						blockSha.String(),
 						time.Now().Unix(),
@@ -628,7 +628,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Points: [][]interface{}{
 					{
 						"rejected",
-						len(blockSha),
+						bmsg.block.MsgBlock().SerializeSize(),
 						len(bmsg.block.Transactions()),
 						blockSha.String(),
 					},
@@ -683,7 +683,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Points: [][]interface{}{
 					{
 						"accepted",
-						len(blockSha),
+						bmsg.block.MsgBlock().SerializeSize(),
 						len(bmsg.block.Transactions()),
 						blockSha.String(),
 						true,
@@ -723,7 +723,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				Points: [][]interface{}{
 					{
 						"accepted",
-						len(newestSha),
+						bmsg.block.MsgBlock().SerializeSize(),
 						len(bmsg.block.Transactions()),
 						newestSha.String(),
 						false,
