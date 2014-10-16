@@ -711,13 +711,20 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		// a reorg.
 		newestSha, newestHeight, _ := b.server.db.NewestSha()
 		b.updateChainState(newestSha, newestHeight)
-		// TODO(roasbeef): Log height before this to detect forks?
+
+		coinbaseTx := bmsg.block.MsgBlock().Transactions[0].TxOut[0]
+		blockSubsidy := btcchain.CalcBlockSubsidy(newestHeight,
+			activeNetParams.Params)
+		txFees := btcutil.Amount(coinbaseTx.Value).ToUnit(btcutil.AmountBTC) -
+			btcutil.Amount(blockSubsidy).ToUnit(btcutil.AmountBTC)
+
 		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
 			&InfluxDB.Series{
 				Name: "processed_blocks",
 				Columns: []string{
 					"status", "size", "num_tx",
 					"sha", "is_orphan", "height",
+					"total_tx_fees",
 					"process_time",
 				},
 				Points: [][]interface{}{
@@ -728,6 +735,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 						newestSha.String(),
 						false,
 						newestHeight,
+						txFees,
 						time.Now().Unix(),
 					},
 				},
