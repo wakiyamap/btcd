@@ -712,10 +712,16 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		newestSha, newestHeight, _ := b.server.db.NewestSha()
 		b.updateChainState(newestSha, newestHeight)
 
-		coinbaseTx := bmsg.block.MsgBlock().Transactions[0].TxOut[0]
+		coinbaseTx := bmsg.block.MsgBlock().Transactions[0].TxOut
 		blockSubsidy := btcchain.CalcBlockSubsidy(newestHeight,
 			activeNetParams.Params)
-		txFees := btcutil.Amount(coinbaseTx.Value).ToUnit(btcutil.AmountBTC) -
+
+		var totalCoinbaseOutput int64
+		for _, output := range coinbaseTx {
+			totalCoinbaseOutput += output.Value
+		}
+
+		txFees := btcutil.Amount(totalCoinbaseOutput).ToUnit(btcutil.AmountBTC) -
 			btcutil.Amount(blockSubsidy).ToUnit(btcutil.AmountBTC)
 
 		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
