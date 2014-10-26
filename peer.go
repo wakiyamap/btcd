@@ -1943,6 +1943,13 @@ out:
 
 				invMsg.AddInvVect(iv)
 				if len(invMsg.InvList) >= maxInvTrickleSize {
+					btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+						&InfluxDB.Series{
+							Name:    "msg_sent",
+							Columns: []string{"inv"},
+							Points:  [][]interface{}{{1}},
+						},
+					})
 					waiting = queuePacket(
 						outMsg{msg: invMsg},
 						pendingMsgs, waiting)
@@ -1954,6 +1961,13 @@ out:
 				p.AddKnownInventory(iv)
 			}
 			if len(invMsg.InvList) > 0 {
+				btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
+					&InfluxDB.Series{
+						Name:    "msg_sent",
+						Columns: []string{"inv"},
+						Points:  [][]interface{}{{1}},
+					},
+				})
 				waiting = queuePacket(outMsg{msg: invMsg},
 					pendingMsgs, waiting)
 			}
@@ -2154,13 +2168,6 @@ func (p *peer) QueueInventory(invVect *wire.InvVect) {
 		return
 	}
 
-	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-		&InfluxDB.Series{
-			Name:    "msg_sent",
-			Columns: []string{"inv"},
-			Points:  [][]interface{}{{1}},
-		},
-	})
 	p.outputInvChan <- invVect
 }
 
