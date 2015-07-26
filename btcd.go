@@ -22,6 +22,7 @@ import (
 var (
 	cfg             *config
 	btcdmon         *InfluxDB.Client
+	influxDBName    = "btcdmon"
 	shutdownChannel = make(chan struct{})
 )
 
@@ -53,10 +54,10 @@ func btcdMain(serverChan chan<- *server) error {
 		log.Fatal(err)
 	}
 
-	influxdbConfig := client.Config{
+	influxdbConfig := InfluxDB.Config{
 		URL:      *u,
 		Username: cfg.BtcdmonUser,
-		Password: cfg.Btcdmonpass,
+		Password: cfg.BtcdmonPass,
 	}
 
 	btcdmon, err = InfluxDB.NewClient(influxdbConfig)
