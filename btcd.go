@@ -6,9 +6,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -45,14 +47,22 @@ func btcdMain(serverChan chan<- *server) error {
 	// Show version at startup.
 	btcdLog.Infof("Version %s", version())
 
-	influxdbConfig := &InfluxDB.ClientConfig{
-		Host:     cfg.BtcdmonHost,
-		Username: cfg.BtcdmonUser,
-		Password: cfg.BtcdmonPass,
-		Database: "btcd",
-		IsUDP:    true,
+	// Initialize the InfluxDB client for exporting metrics.
+	u, err := url.Parse(cfg.BtcdmonHost)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	influxdbConfig := client.Config{
+		URL:      *u,
+		Username: cfg.BtcdmonUser,
+		Password: cfg.Btcdmonpass,
+	}
+
 	btcdmon, err = InfluxDB.NewClient(influxdbConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 	btcdLog.Infof("Exporting monitoring metrics...%v", err)
 
 	// Enable http profiling server if requested.
