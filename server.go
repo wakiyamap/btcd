@@ -292,7 +292,19 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 // invoked from the peerHandler goroutine.
 func (s *server) handleDonePeerMsg(state *peerState, p *peer) {
 	var list map[*peer]struct{}
-	btcdmon.Gauge("peers.total_connected", int64(s.ConnectedCount()), 1)
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points: []InfluxDB.Point{
+				InfluxDB.Point{
+					Measurement: "peers",
+					Fields: map[string]interface{}{
+						"total_connected": 1,
+					},
+				},
+			},
+			Database: influxDBName,
+		},
+	)
 	if p.persistent {
 		list = state.persistentPeers
 	} else if p.inbound {
@@ -333,13 +345,19 @@ func (s *server) handleBanPeerMsg(state *peerState, p *peer) {
 	direction := directionString(p.inbound)
 	srvrLog.Infof("Banned peer %s (%s) for %v", host, direction,
 		cfg.BanDuration)
-	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-		&InfluxDB.Series{
-			Name:    "peers",
-			Columns: []string{"num_banned"},
-			Points:  [][]interface{}{{len(state.banned)}},
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points: []InfluxDB.Point{
+				InfluxDB.Point{
+					Measurement: "peers",
+					Fields: map[string]interface{}{
+						"num_banned": len(state.banned),
+					},
+				},
+			},
+			Database: influxDBName,
 		},
-	})
+	)
 	state.banned[host] = time.Now().Add(cfg.BanDuration)
 
 }
@@ -694,13 +712,20 @@ func (s *server) peerHandler() {
 				nconnected++
 			}
 		})
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name:    "peers",
-				Columns: []string{"total_connected"},
-				Points:  [][]interface{}{{nconnected}},
+		// TODO(roasbeef): track peer types here instead of doing deltas
+		btcdmon.Write(
+			InfluxDB.BatchPoints{
+				Points: []InfluxDB.Point{
+					InfluxDB.Point{
+						Measurement: "peers",
+						Fields: map[string]interface{}{
+							"total_connected": nconnected,
+						},
+					},
+				},
+				Database: influxDBName,
 			},
-		})
+		)
 	}
 
 out:
@@ -953,13 +978,18 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesSent += bytesSent
-	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-		&InfluxDB.Series{
-			Name:    "bandwidth",
-			Columns: []string{"bytes_sent"},
-			Points:  [][]interface{}{{s.bytesSent}},
-		},
-	})
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points: []InfluxDB.Point{
+				InfluxDB.Point{
+					Measurement: "bandwidth",
+					Fields: map[string]interface{}{
+						"bytes_set": s.bytesSent,
+					},
+				},
+			},
+			Database: influxDBName},
+	)
 }
 
 // AddBytesReceived adds the passed number of bytes to the total bytes received
@@ -969,13 +999,18 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesReceived += bytesReceived
-	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-		&InfluxDB.Series{
-			Name:    "bandwidth",
-			Columns: []string{"bytes_recv"},
-			Points:  [][]interface{}{{s.bytesReceived}},
-		},
-	})
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points: []InfluxDB.Point{
+				InfluxDB.Point{
+					Measurement: "bandwidth",
+					Fields: map[string]interface{}{
+						"bytes_recv": s.bytesReceived,
+					},
+				},
+			},
+			Database: influxDBName},
+	)
 }
 
 // NetTotals returns the sum of all bytes received and sent across the network

@@ -233,13 +233,21 @@ func (b *blockManager) updateChainState(newestHash *wire.ShaHash, newestHeight i
 	b.chainState.newestHash = newestHash
 	b.chainState.newestHeight = newestHeight
 	medianTime, err := b.blockChain.CalcPastMedianTime()
-	btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-		&InfluxDB.Series{
-			Name:    "blocks",
-			Columns: []string{"median_time", "best_height"},
-			Points:  [][]interface{}{{medianTime, newestHeight}},
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points: []InfluxDB.Point{
+				InfluxDB.Point{
+					Measurement: "blocks",
+					Fields: map[string]interface{}{
+						"median_time": medianTime,
+						"best_height": newestHeight,
+					},
+				},
+			},
+			Database: influxDBName,
 		},
-	})
+	)
+
 	if err != nil {
 		b.chainState.pastMedianTimeErr = err
 	} else {
@@ -543,22 +551,22 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	// If we didn't ask for this block then the peer is misbehaving.
 	blockSha := bmsg.block.Sha()
 	if _, ok := bmsg.peer.requestedBlocks[*blockSha]; !ok {
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name: "processed_blocks",
-				Columns: []string{"status", "size", "num_tx",
-					"sha", "process_time"},
-				Points: [][]interface{}{
-					{
-						"unrequested",
-						bmsg.block.MsgBlock().SerializeSize(),
-						len(bmsg.block.Transactions()),
-						blockSha.String(),
-						time.Now().Unix(),
+		btcdmon.Write(
+			InfluxDB.BatchPoints{
+				Points: []InfluxDB.Point{
+					InfluxDB.Point{
+						Measurement: "processed_blocks",
+						Fields: map[string]interface{}{
+							"status": "unrequested",
+							"size":   bmsg.block.MsgBlock().SerializeSize(),
+							"num_tx": len(bmsg.block.Transactions()),
+							"sha":    blockSha.String(),
+						},
 					},
 				},
+				Database: influxDBName,
 			},
-		})
+		)
 		// The regression test intentionally sends some blocks twice
 		// to test duplicate block insertion fails.  Don't disconnect
 		// the peer or ignore the block when we're in regression test
@@ -621,23 +629,27 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 
 		// Convert the error into an appropriate reject message and
 		// send it.
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name:    "blocks",
-				Columns: []string{"status", "size", "num_tx", "sha"},
-				Points: [][]interface{}{
-					{
-						"rejected",
-						bmsg.block.MsgBlock().SerializeSize(),
-						len(bmsg.block.Transactions()),
-						blockSha.String(),
-					},
-				},
-			},
-		})
 		code, reason := errToRejectErr(err)
 		bmsg.peer.PushRejectMsg(wire.CmdBlock, code, reason,
 			blockSha, false)
+		btcdmon.Write(
+			InfluxDB.BatchPoints{
+				Points: []InfluxDB.Point{
+					InfluxDB.Point{
+						Measurement: "processed_blocks",
+						Fields: map[string]interface{}{
+							"status":        "rejected",
+							"size":          bmsg.block.MsgBlock().SerializeSize(),
+							"num_tx":        len(bmsg.block.Transactions()),
+							"sha":           blockSha.String(),
+							"reject_code":   code,
+							"reject_reason": reason,
+						},
+					},
+				},
+				Database: influxDBName,
+			},
+		)
 		return
 	}
 
@@ -675,23 +687,23 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			}
 		}
 
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name: "processed_blocks",
-				Columns: []string{"status", "size", "num_tx",
-					"sha", "is_orphan", "process_time"},
-				Points: [][]interface{}{
-					{
-						"accepted",
-						bmsg.block.MsgBlock().SerializeSize(),
-						len(bmsg.block.Transactions()),
-						blockSha.String(),
-						true,
-						time.Now().Unix(),
+		btcdmon.Write(
+			InfluxDB.BatchPoints{
+				Points: []InfluxDB.Point{
+					InfluxDB.Point{
+						Measurement: "processed_blocks",
+						Fields: map[string]interface{}{
+							"status":    "accepted",
+							"size":      bmsg.block.MsgBlock().SerializeSize(),
+							"num_tx":    len(bmsg.block.Transactions()),
+							"sha":       blockSha.String(),
+							"is_orphan": true,
+						},
 					},
 				},
+				Database: influxDBName,
 			},
-		})
+		)
 
 		orphanRoot := b.blockChain.GetOrphanRoot(blockSha)
 		locator, err := b.blockChain.LatestBlockLocator()
@@ -713,7 +725,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		b.updateChainState(newestSha, newestHeight)
 
 		coinbaseTx := bmsg.block.MsgBlock().Transactions[0].TxOut
-		blockSubsidy := btcchain.CalcBlockSubsidy(newestHeight,
+		blockSubsidy := blockchain.CalcBlockSubsidy(newestHeight,
 			activeNetParams.Params)
 
 		var totalCoinbaseOutput int64
@@ -724,30 +736,25 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		txFees := btcutil.Amount(totalCoinbaseOutput).ToUnit(btcutil.AmountBTC) -
 			btcutil.Amount(blockSubsidy).ToUnit(btcutil.AmountBTC)
 
-		btcdmon.WriteSeriesOverUDP([]*InfluxDB.Series{
-			&InfluxDB.Series{
-				Name: "processed_blocks",
-				Columns: []string{
-					"status", "size", "num_tx",
-					"sha", "is_orphan", "height",
-					"total_tx_fees",
-					"process_time",
-				},
-				Points: [][]interface{}{
-					{
-						"accepted",
-						bmsg.block.MsgBlock().SerializeSize(),
-						len(bmsg.block.Transactions()),
-						newestSha.String(),
-						false,
-						newestHeight,
-						txFees,
-						time.Now().Unix(),
+		btcdmon.Write(
+			InfluxDB.BatchPoints{
+				Points: []InfluxDB.Point{
+					InfluxDB.Point{
+						Measurement: "processed_blocks",
+						Fields: map[string]interface{}{
+							"status":        "accepted",
+							"size":          bmsg.block.MsgBlock().SerializeSize(),
+							"num_tx":        len(bmsg.block.Transactions()),
+							"sha":           newestSha.String(),
+							"is_orphan":     false,
+							"height":        newestHeight,
+							"total_tx_fess": txFees,
+						},
 					},
 				},
+				Database: influxDBName,
 			},
-		})
-
+		)
 		// Update this peer's latest block height, for future
 		// potential sync node candidancy.
 		heightUpdate = int32(newestHeight)
