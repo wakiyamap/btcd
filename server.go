@@ -988,7 +988,8 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 					},
 				},
 			},
-			Database: influxDBName},
+			Database: influxDBName,
+		},
 	)
 }
 
@@ -1009,7 +1010,8 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 					},
 				},
 			},
-			Database: influxDBName},
+			Database: influxDBName,
+		},
 	)
 }
 

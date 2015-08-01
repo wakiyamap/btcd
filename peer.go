@@ -2440,7 +2440,12 @@ func (p *peer) Disconnect() {
 	} else {
 		peerPoint.Fields["outbound"] = -1
 	}
-	btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{peerPoint}, Database: influxDBName})
+	btcdmon.Write(
+		InfluxDB.BatchPoints{
+			Points:   []InfluxDB.Point{peerPoint},
+			Database: influxDBName,
+		},
+	)
 }
 
 // Start begins processing input and output messages.  It also sends the initial
