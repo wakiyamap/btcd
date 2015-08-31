@@ -984,7 +984,7 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 				InfluxDB.Point{
 					Measurement: "bandwidth",
 					Fields: map[string]interface{}{
-						"bytes_set": s.bytesSent,
+						"bytes_sent": s.bytesSent,
 					},
 				},
 			},
