@@ -306,6 +306,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		// TODO(roasbeef): Log P2SH stuffs
 		txInPoint := InfluxDB.Point{Measurement: "tx_inputs"}
 		txInPoint.Fields = make(map[string]interface{})
+		defer btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txInPoint}, Database: influxDBName})
 		txInPoint.Fields["sequence_num"] = txIn.Sequence
 		txInPoint.Fields["num_sig_script_bytes"] = len(txIn.SignatureScript)
 
@@ -857,7 +858,7 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 					Measurement: "mempool",
 					Fields: map[string]interface{}{
 						"num_tx": len(mp.pool),
-						"size":   mp.RawSize(),
+						"size":   int64(mp.RawSize()),
 					},
 				},
 			},
