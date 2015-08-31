@@ -262,6 +262,7 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) error {
 	msgTx := tx.MsgTx()
 	txPoint := InfluxDB.Point{Measurement: "tx"}
+	txPoint.Fields = make(map[string]interface{})
 	defer btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txPoint}, Database: influxDBName})
 
 	// The transaction must be a currently supported version.
@@ -304,6 +305,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	for i, txIn := range msgTx.TxIn {
 		// TODO(roasbeef): Log P2SH stuffs
 		txInPoint := InfluxDB.Point{Measurement: "tx_inputs"}
+		txInPoint.Fields = make(map[string]interface{})
 		txInPoint.Fields["sequence_num"] = txIn.Sequence
 		txInPoint.Fields["num_sig_script_bytes"] = len(txIn.SignatureScript)
 
@@ -341,6 +343,7 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		scriptClass := txscript.GetScriptClass(txOut.PkScript)
 		scriptType := scriptClass.String()
 		txOutsPoint := InfluxDB.Point{Measurement: "tx_outputs"}
+		txOutsPoint.Fields = make(map[string]interface{})
 		txOutsPoint.Fields["script_type"] = scriptType
 		txOutsPoint.Fields["size"] = len(txOut.PkScript)
 		// TODO(laolu): Just output satoshis every where? And mess with

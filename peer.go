@@ -2429,6 +2429,7 @@ func (p *peer) Disconnect() {
 	}
 
 	peerPoint := InfluxDB.Point{Measurement: "peers"}
+	peerPoint.Fields = make(map[string]interface{})
 	if p.filter.IsLoaded() {
 		peerPoint.Fields["spv"] = -1
 	} else {
