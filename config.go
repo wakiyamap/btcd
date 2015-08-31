@@ -88,7 +88,7 @@ type config struct {
 	DisableTLS         bool          `long:"notls" description:"Disable TLS for the RPC server -- NOTE: This is only allowed if the RPC server is bound to localhost"`
 	DisableDNSSeed     bool          `long:"nodnsseed" description:"Disable DNS seeding for peers"`
 	ExternalIPs        []string      `long:"externalip" description:"Add an ip to the list of local addresses we claim to listen on to peers"`
-	BtcdmonHost        string        `long:"btcdmonhost" description:"Hostname and port of monitoring server (eg. btcdmon.com:8125)`
+	BtcdmonHost        string        `long:"btcdmonhost" description:"Hostname and port of monitoring server (eg. btcdmon.com:8125)"`
 	BtcdmonUser        string        `long:"btcdmonuser" description:"User name for the btcd database for the selected InfluxDB host"`
 	BtcdmonPass        string        `long:"btcdmonpass" description:"Password for the btcd databse for the selected InfluxDB host"`
 	Proxy              string        `long:"proxy" description:"Connect via SOCKS5 proxy (eg. 127.0.0.1:9050)"`
