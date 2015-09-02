@@ -197,7 +197,7 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 			str := fmt.Sprintf("multi-signature script with %d "+
 				"public keys which is more than the allowed "+
 				"max of %d", numPubKeys, maxStandardMultiSigKeys)
-			btcdmon.Write(
+			if resp, err := btcdmon.Write(
 				InfluxDB.BatchPoints{
 					Points: []InfluxDB.Point{
 						InfluxDB.Point{
@@ -212,7 +212,9 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 					},
 					Database: influxDBName,
 				},
-			)
+			); err != nil {
+				txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+			}
 			return txRuleError(wire.RejectNonstandard, str)
 		}
 
@@ -231,7 +233,7 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 		}
 
 	case txscript.NonStandardTy:
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -244,7 +246,9 @@ func checkPkScriptStandard(pkScript []byte, scriptClass txscript.ScriptClass) er
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 		return txRuleError(wire.RejectNonstandard,
 			"non-standard script form")
 	}
@@ -263,7 +267,11 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 	msgTx := tx.MsgTx()
 	txPoint := InfluxDB.Point{Measurement: "tx"}
 	txPoint.Fields = make(map[string]interface{})
-	defer btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txPoint}, Database: influxDBName})
+	defer func() {
+		if resp, err := btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txPoint}, Database: influxDBName}); err != nil {
+			txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
+	}()
 
 	// The transaction must be a currently supported version.
 	txPoint.Fields["version_num"] = msgTx.Version
@@ -306,7 +314,11 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		// TODO(roasbeef): Log P2SH stuffs
 		txInPoint := InfluxDB.Point{Measurement: "tx_inputs"}
 		txInPoint.Fields = make(map[string]interface{})
-		defer btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txInPoint}, Database: influxDBName})
+		defer func() {
+			if resp, err := btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txInPoint}, Database: influxDBName}); err != nil {
+				txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+			}
+		}()
 		txInPoint.Fields["sequence_num"] = txIn.Sequence
 		txInPoint.Fields["num_sig_script_bytes"] = len(txIn.SignatureScript)
 
@@ -350,7 +362,11 @@ func (mp *txMemPool) checkTransactionStandard(tx *btcutil.Tx, height int32) erro
 		// TODO(laolu): Just output satoshis every where? And mess with
 		// denominations in query outputs?
 		txOutsPoint.Fields["value"] = btcutil.Amount(txOut.Value).ToUnit(btcutil.AmountBTC)
-		defer btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txOutsPoint}, Database: influxDBName})
+		defer func() {
+			if resp, err := btcdmon.Write(InfluxDB.BatchPoints{Points: []InfluxDB.Point{txOutsPoint}, Database: influxDBName}); err != nil {
+				txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+			}
+		}()
 
 		if scriptType == "multisig" {
 			numPubKeys, numSigs, _ := txscript.CalcMultiSigStats(
@@ -508,7 +524,7 @@ func (mp *txMemPool) removeOrphan(txHash *wire.ShaHash) {
 
 	// Remove the transaction from the orphan pool.
 	delete(mp.orphans, *txHash)
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -520,7 +536,9 @@ func (mp *txMemPool) removeOrphan(txHash *wire.ShaHash) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 }
 
 // RemoveOrphan removes the passed orphan transaction from the orphan pool and
@@ -589,7 +607,7 @@ func (mp *txMemPool) addOrphan(tx *btcutil.Tx) {
 
 	txmpLog.Debugf("Stored orphan transaction %v (total: %d)", tx.Sha(),
 		len(mp.orphans))
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -601,7 +619,9 @@ func (mp *txMemPool) addOrphan(tx *btcutil.Tx) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 }
 
 // maybeAddOrphan potentially adds an orphan to the orphan pool.
@@ -743,7 +763,7 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx) {
 		delete(mp.pool, *txHash)
 		// TODO(roasbeef): Extract all this fluff into some nice
 		// helper funcs.
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -756,7 +776,9 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx) {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 		mp.lastUpdated = time.Now()
 	}
 
@@ -851,7 +873,7 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 		Height: height,
 		Fee:    fee,
 	}
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -864,7 +886,9 @@ func (mp *txMemPool) addTransaction(tx *btcutil.Tx, height int32, fee int64) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 	for _, txIn := range tx.MsgTx().TxIn {
 		mp.outpoints[txIn.PreviousOutPoint] = tx
 	}
@@ -1061,7 +1085,7 @@ func (mp *txMemPool) checkPoolDoubleSpend(tx *btcutil.Tx) error {
 	for _, txIn := range tx.MsgTx().TxIn {
 		if txR, exists := mp.outpoints[txIn.PreviousOutPoint]; exists {
 			prevOut := txIn.PreviousOutPoint
-			btcdmon.Write(
+			if resp, err := btcdmon.Write(
 				InfluxDB.BatchPoints{
 					Points: []InfluxDB.Point{
 						InfluxDB.Point{
@@ -1075,7 +1099,9 @@ func (mp *txMemPool) checkPoolDoubleSpend(tx *btcutil.Tx) error {
 					},
 					Database: influxDBName,
 				},
-			)
+			); err != nil {
+				txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+			}
 			str := fmt.Sprintf("output %v already spent by "+
 				"transaction %v in the memory pool",
 				txIn.PreviousOutPoint, txR.Sha())
@@ -1341,7 +1367,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// high-priority transactions, don't require a fee for it.
 	serializedSize := int64(tx.MsgTx().SerializeSize())
 	minFee := calcMinRequiredTxRelayFee(serializedSize)
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -1356,7 +1382,9 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 	if serializedSize >= (defaultBlockPrioritySize-1000) && txFee < minFee {
 		str := fmt.Sprintf("transaction %v has %d fees which is under "+
 			"the required amount of %d", txHash, txFee,
@@ -1398,7 +1426,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		if mp.pennyTotal >= cfg.FreeTxRelayLimit*10*1000 {
 			str := fmt.Sprintf("transaction %v has been rejected "+
 				"by the rate limiter due to low fees", txHash)
-			btcdmon.Write(
+			if resp, err := btcdmon.Write(
 				InfluxDB.BatchPoints{
 					Points: []InfluxDB.Point{
 						InfluxDB.Point{
@@ -1410,7 +1438,9 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 					},
 					Database: influxDBName,
 				},
-			)
+			); err != nil {
+				txmpLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+			}
 			return nil, txRuleError(wire.RejectInsufficientFee, str)
 		}
 		oldTotal := mp.pennyTotal

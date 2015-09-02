@@ -233,7 +233,7 @@ func (b *blockManager) updateChainState(newestHash *wire.ShaHash, newestHeight i
 	b.chainState.newestHash = newestHash
 	b.chainState.newestHeight = newestHeight
 	medianTime, err := b.blockChain.CalcPastMedianTime()
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -246,7 +246,9 @@ func (b *blockManager) updateChainState(newestHash *wire.ShaHash, newestHeight i
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		bmgrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 
 	if err != nil {
 		b.chainState.pastMedianTimeErr = err
@@ -551,7 +553,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	// If we didn't ask for this block then the peer is misbehaving.
 	blockSha := bmsg.block.Sha()
 	if _, ok := bmsg.peer.requestedBlocks[*blockSha]; !ok {
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -566,7 +568,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			bmgrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 		// The regression test intentionally sends some blocks twice
 		// to test duplicate block insertion fails.  Don't disconnect
 		// the peer or ignore the block when we're in regression test
@@ -632,7 +636,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		code, reason := errToRejectErr(err)
 		bmsg.peer.PushRejectMsg(wire.CmdBlock, code, reason,
 			blockSha, false)
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -649,7 +653,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			bmgrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 		return
 	}
 
@@ -687,7 +693,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 			}
 		}
 
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -703,7 +709,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			bmgrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 
 		orphanRoot := b.blockChain.GetOrphanRoot(blockSha)
 		locator, err := b.blockChain.LatestBlockLocator()
@@ -736,7 +744,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 		txFees := btcutil.Amount(totalCoinbaseOutput).ToUnit(btcutil.AmountBTC) -
 			btcutil.Amount(blockSubsidy).ToUnit(btcutil.AmountBTC)
 
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -754,7 +762,9 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			bmgrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 		// Update this peer's latest block height, for future
 		// potential sync node candidancy.
 		heightUpdate = int32(newestHeight)

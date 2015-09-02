@@ -292,7 +292,7 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 // invoked from the peerHandler goroutine.
 func (s *server) handleDonePeerMsg(state *peerState, p *peer) {
 	var list map[*peer]struct{}
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -304,7 +304,9 @@ func (s *server) handleDonePeerMsg(state *peerState, p *peer) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 	if p.persistent {
 		list = state.persistentPeers
 	} else if p.inbound {
@@ -345,7 +347,7 @@ func (s *server) handleBanPeerMsg(state *peerState, p *peer) {
 	direction := directionString(p.inbound)
 	srvrLog.Infof("Banned peer %s (%s) for %v", host, direction,
 		cfg.BanDuration)
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -357,7 +359,9 @@ func (s *server) handleBanPeerMsg(state *peerState, p *peer) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 	state.banned[host] = time.Now().Add(cfg.BanDuration)
 
 }
@@ -713,7 +717,7 @@ func (s *server) peerHandler() {
 			}
 		})
 		// TODO(roasbeef): track peer types here instead of doing deltas
-		btcdmon.Write(
+		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
 					InfluxDB.Point{
@@ -725,7 +729,9 @@ func (s *server) peerHandler() {
 				},
 				Database: influxDBName,
 			},
-		)
+		); err != nil {
+			srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+		}
 	}
 
 out:
@@ -978,7 +984,7 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesSent += bytesSent
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -990,7 +996,9 @@ func (s *server) AddBytesSent(bytesSent uint64) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 }
 
 // AddBytesReceived adds the passed number of bytes to the total bytes received
@@ -1000,7 +1008,7 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 	defer s.bytesMutex.Unlock()
 
 	s.bytesReceived += bytesReceived
-	btcdmon.Write(
+	if resp, err := btcdmon.Write(
 		InfluxDB.BatchPoints{
 			Points: []InfluxDB.Point{
 				InfluxDB.Point{
@@ -1012,7 +1020,9 @@ func (s *server) AddBytesReceived(bytesReceived uint64) {
 			},
 			Database: influxDBName,
 		},
-	)
+	); err != nil {
+		srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
+	}
 }
 
 // NetTotals returns the sum of all bytes received and sent across the network
