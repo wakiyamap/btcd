@@ -292,21 +292,6 @@ func (s *server) handleAddPeerMsg(state *peerState, p *peer) bool {
 // invoked from the peerHandler goroutine.
 func (s *server) handleDonePeerMsg(state *peerState, p *peer) {
 	var list map[*peer]struct{}
-	if resp, err := btcdmon.Write(
-		InfluxDB.BatchPoints{
-			Points: []InfluxDB.Point{
-				InfluxDB.Point{
-					Measurement: "peers",
-					Fields: map[string]interface{}{
-						"total_connected": 1,
-					},
-				},
-			},
-			Database: influxDBName,
-		},
-	); err != nil {
-		srvrLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
-	}
 	if p.persistent {
 		list = state.persistentPeers
 	} else if p.inbound {
@@ -744,10 +729,10 @@ out:
 		// Disconnected peers.
 		case p := <-s.donePeers:
 			s.handleDonePeerMsg(state, p)
+			exportNumConnected()
 		// Block accepted in mainchain or orphan, update peer height.
 		case umsg := <-s.peerHeightsUpdate:
 			s.handleUpdatePeerHeights(state, umsg)
-			exportNumConnected()
 		// Peer to ban.
 		case p := <-s.banPeers:
 			s.handleBanPeerMsg(state, p)
