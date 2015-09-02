@@ -1702,7 +1702,6 @@ func (p *peer) handlePingMsg(msg *wire.MsgPing) {
 	if p.ProtocolVersion() > wire.BIP0031Version {
 		// Include nonce from ping so pong can be identified.
 		p.QueueMessage(wire.NewMsgPong(msg.Nonce), nil)
-
 		if resp, err := btcdmon.Write(
 			InfluxDB.BatchPoints{
 				Points: []InfluxDB.Point{
@@ -1724,7 +1723,6 @@ func (p *peer) handlePingMsg(msg *wire.MsgPing) {
 		); err != nil {
 			peerLog.Errorf("Couldn't send metric, resp %v, error: %v", resp, err)
 		}
-		p.QueueMessage(wire.NewMsgPong(msg.Nonce), nil)
 	}
 }
 
