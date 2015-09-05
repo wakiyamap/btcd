@@ -756,7 +756,7 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 							"sha":           newestSha.String(),
 							"is_orphan":     false,
 							"height":        newestHeight,
-							"total_tx_fess": txFees,
+							"total_tx_fees": txFees,
 						},
 					},
 				},
