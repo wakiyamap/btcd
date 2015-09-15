@@ -192,6 +192,7 @@ type peer struct {
 	txProcessed        chan struct{}
 	blockProcessed     chan struct{}
 	quit               chan struct{}
+	blockStallTimer    *time.Timer
 	StatsMtx           sync.Mutex // protects all statistics below here.
 	versionKnown       bool
 	protocolVersion    uint32
@@ -227,6 +228,34 @@ func (p *peer) isKnownInventory(invVect *wire.InvVect) bool {
 
 	if p.knownInventory.Exists(invVect) {
 		return true
+	}
+	return false
+}
+
+// StartBlockStallTimer starts/resets a timer which will disconnect this peer
+// after 'timeout' seconds for stalling block download.
+func (p *peer) StartBlockStallTimer(timeout time.Duration) {
+	peerLog.Debugf("Starting block stall timer for: %v", p)
+	if p.blockStallTimer != nil {
+		p.blockStallTimer.Reset(timeout)
+	} else {
+		p.blockStallTimer = time.AfterFunc(timeout, func() {
+			peerLog.Warnf("Peer %s is stalling initial "+
+				"block download, no block response for %d "+
+				"seconds disconnecting", p, timeout.Seconds())
+			p.Disconnect()
+		})
+	}
+}
+
+// StopBlockStallTimer stops the timer which would have disconnected this peer
+// after the previously specified timeout duration. This function returns
+// 'true' if the timer was successfully stopped, and false if the timer was
+// already stopped or never initialized in the first place.
+func (p *peer) StopBlockStallTimer() bool {
+	if p.blockStallTimer != nil {
+		peerLog.Debugf("Stopping block stall timer for: %v", p)
+		return p.blockStallTimer.Stop()
 	}
 	return false
 }
