@@ -35,6 +35,17 @@ func (msg *MsgGetData) AddInvVect(iv *InvVect) error {
 	return nil
 }
 
+// RequestsBlock returns true if this GetData message contains a request for a
+// block. Otherwise, it returns false.
+func (msg *MsgGetData) RequestsBlock() bool {
+	for _, inv := range msg.InvList {
+		if inv.Type == InvTypeBlock {
+			return true
+		}
+	}
+	return false
+}
+
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgGetData) BtcDecode(r io.Reader, pver uint32) error {

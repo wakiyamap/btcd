@@ -64,6 +64,11 @@ const (
 	// retry logic uses a backoff mechanism which increases the interval
 	// base done the number of retries that have been done.
 	maxConnectionRetryInterval = time.Minute * 5
+
+	// blockStallTimeout is the number of seconds we will wait for a
+	// "block" response after we send out a "getdata" for an announced
+	// block before we deem the peer inactive, and disconnect it.
+	blockStallTimeout = 5 * time.Second
 )
 
 var (
@@ -188,6 +193,8 @@ type peer struct {
 	sendDoneQueue      chan struct{}
 	queueWg            sync.WaitGroup // TODO(oga) wg -> single use channel?
 	outputInvChan      chan *wire.InvVect
+	blockStallTimer    <-chan time.Time
+	blockStallCancel   chan struct{}
 	txProcessed        chan struct{}
 	blockProcessed     chan struct{}
 	quit               chan struct{}
@@ -1531,6 +1538,9 @@ out:
 			p.handleTxMsg(msg)
 
 		case *wire.MsgBlock:
+			if p.blockStallCancel != nil {
+				close(p.blockStallCancel)
+			}
 			p.handleBlockMsg(msg, buf)
 
 		case *wire.MsgInv:
@@ -1774,6 +1784,19 @@ out:
 				// Should return an inv.
 			case *wire.MsgGetData:
 				// Should get us block, tx, or not found.
+
+				// If the blockStallTimer has not already been
+				// started, then initialize the timer to fire
+				// off a read in blockStallTimeout seconds.
+				// Additionally, create a cancellation channel
+				// so the inHandler can signal us if a MsgBlock
+				// comes in time.
+				gdmsg := msg.msg.(*wire.MsgGetData)
+				if p.blockStallTimer == nil && gdmsg.RequestsBlock() {
+					peerLog.Debugf("Starting block stall timer for: %v", p)
+					p.blockStallTimer = time.After(blockStallTimeout)
+					p.blockStallCancel = make(chan struct{})
+				}
 			case *wire.MsgGetHeaders:
 				// Should get us headers back.
 			default:
@@ -1796,6 +1819,22 @@ out:
 			p.sendDoneQueue <- struct{}{}
 			peerLog.Tracef("%s: acked queuehandler", p)
 
+		case <-p.blockStallCancel:
+			// The inHandler received a MsgBlock before
+			// blockStallTimeout seconds had elapsed. So we set the
+			// blockStallTimer to nil so the select loop won't block
+			// on that case in the future.
+			peerLog.Debugf("Stopping block stall timer for: %v", p)
+			p.blockStallTimer = nil
+			p.blockStallCancel = nil
+		case <-p.blockStallTimer:
+			// The inHandler didn't receive a MsgBlock before
+			// blockStallTimeout seconds had elapsed. So we
+			// disconnect the peer for stalling block download.
+			peerLog.Warnf("Peer %s is stalling initial "+
+				"block download, no block response for %v "+
+				"seconds disconnecting", p, blockStallTimeout)
+			p.Disconnect()
 		case <-p.quit:
 			break out
 		}
