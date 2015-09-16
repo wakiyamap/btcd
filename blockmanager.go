@@ -32,6 +32,11 @@ const (
 	// database type is appended to this value to form the full block
 	// database name.
 	blockDbNamePrefix = "blocks"
+
+	// blockStallTimeout is the number of seconds we will wait for a
+	// "block" response after we send out a "getdata" for an announced
+	// block before we deem the peer inactive, and disconnect it.
+	blockStallTimeout = 5 * time.Second
 )
 
 // newPeerMsg signifies a newly connected peer to the block handler.
@@ -1032,6 +1037,7 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 	numRequested := 0
 	gdmsg := wire.NewMsgGetData()
 	requestQueue := imsg.peer.requestQueue
+	blocksRequested := false
 	for len(requestQueue) != 0 {
 		iv := requestQueue[0]
 		requestQueue[0] = nil
@@ -1046,6 +1052,10 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 				imsg.peer.requestedBlocks[iv.Hash] = struct{}{}
 				gdmsg.AddInvVect(iv)
 				numRequested++
+			}
+
+			if !blocksRequested {
+				blocksRequested = true
 			}
 
 		case wire.InvTypeTx:
@@ -1065,6 +1075,13 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 	}
 	imsg.peer.requestQueue = requestQueue
 	if len(gdmsg.InvList) > 0 {
+		if blocksRequested {
+			// In order to avoid unnecessarily stalling initial block
+			// download due to an unresponsive peer, we initialize a
+			// timer which will disconnect this peer after
+			// blockStallTimeout seconds.
+			imsg.peer.SetBlockStallTimer(blockStallTimeout)
+		}
 		imsg.peer.QueueMessage(gdmsg, nil)
 	}
 }
