@@ -843,6 +843,38 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// Add to transaction pool.
 	mp.addTransaction(txStore, tx, curHeight, txFee)
 
+	mp.server.txFeeScraper.txAdd <- time.Now()
+	var mempoolSize int
+	for _, txDesc := range mp.TxDescs() {
+		mempoolSize += txDesc.Tx.MsgTx().SerializeSize()
+	}
+	var totalSatoshiOut int64
+	for _, txOut := range tx.MsgTx().TxOut {
+		totalSatoshiOut += txOut.Value
+	}
+
+	txFeature := &TxFeeFeature{
+		Size:               serializedSize,
+		TxFee:              btcutil.Amount(txFee),
+		NumChildren:        0,
+		NumParents:         0,
+		MempoolSize:        len(mp.pool),
+		MempoolSizeBytes:   mempoolSize,
+		TimeSinceLastBlock: 0,
+		BlockDiscovered:    curHeight,
+		NumBlocksToConfirm: 0, // To be set when tx enters block.
+		BlockDifficulty:    0, // To be set when tx enters block.
+		AverageBlockTime:   0,
+		IncomingTxRate:     mp.server.txFeeScraper.currentTxRate(),
+		TxID:               tx.Sha(),
+		RawTx:              tx.MsgTx(),
+		TotalInputValue:    btcutil.Amount(totalSatoshiOut + txFee),
+		TotalOutputValue:   btcutil.Amount(totalSatoshiOut),
+		LockTime:           tx.MsgTx().LockTime,
+		TimeStamp:          time.Now(),
+	}
+	mp.server.txFeeScraper.initFeatures <- &featureInitMsg{feature: txFeature}
+
 	txmpLog.Debugf("Accepted transaction %v (pool size: %v)", txHash,
 		len(mp.pool))
 

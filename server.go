@@ -183,6 +183,7 @@ type server struct {
 	txMemPool            *txMemPool
 	cpuMiner             *CPUMiner
 	relayNtfnChan        chan *btcutil.Tx
+	txFeeScraper         *txFeatureCollector
 	modifyRebroadcastInv chan interface{}
 	pendingPeers         chan *serverPeer
 	newPeers             chan *serverPeer
@@ -2019,6 +2020,8 @@ func (s *server) Start() {
 	if cfg.AddrIndex {
 		s.addrIndexer.Start()
 	}
+
+	s.txFeeScraper.Start()
 }
 
 // Stop gracefully shuts down the server by stopping and disconnecting all
@@ -2048,6 +2051,8 @@ func (s *server) Stop() error {
 	if !cfg.DisableRPC {
 		s.rpcServer.Stop()
 	}
+
+	s.txFeeScraper.Stop()
 
 	// Signal the remaining goroutines to quit.
 	close(s.quit)
@@ -2356,6 +2361,7 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		peerHeightsUpdate:    make(chan updatePeerHeightsMsg),
 		nat:                  nat,
 		db:                   db,
+		txFeeScraper:         newTxFeatureCollector(),
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
