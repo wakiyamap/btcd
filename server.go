@@ -2343,6 +2343,10 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		}
 	}
 
+	txFeeScraper, err := newTxFeatureCollector()
+	if err != nil {
+		return nil, err
+	}
 	s := server{
 		listeners:            listeners,
 		chainParams:          chainParams,
@@ -2361,7 +2365,7 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		peerHeightsUpdate:    make(chan updatePeerHeightsMsg),
 		nat:                  nat,
 		db:                   db,
-		txFeeScraper:         newTxFeatureCollector(),
+		txFeeScraper:         txFeeScraper,
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),

@@ -6,6 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/net/context"
+
+	"google.golang.org/cloud/bigtable"
+
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 )
@@ -59,6 +63,8 @@ type txFeatureCollector struct {
 
 	boundedTimeBuffer *list.List
 
+	bigTable *bigtable.Client
+
 	initFeatures     chan *featureInitMsg
 	completeFeatures chan *featureCompleteMsg
 	txAdd            chan time.Time
@@ -73,15 +79,22 @@ type txFeatureCollector struct {
 
 // newTxFeatureCollector...
 // TODO(all): better name...
-func newTxFeatureCollector() *txFeatureCollector {
+func newTxFeatureCollector() (*txFeatureCollector, error) {
+	bigTable, err := bigtable.NewClient(context.Background(), "TransactionFeeFeatures",
+		"us-central1-b", "transactionfeefeatures")
+	if err != nil {
+		return nil, err
+	}
+
 	return &txFeatureCollector{
+		bigTable:          bigTable,
 		txIDToFeature:     make(map[wire.ShaHash]*TxFeeFeature),
 		initFeatures:      make(chan *featureInitMsg, featureBufferSize),
 		txAdd:             make(chan time.Time),
 		completeFeatures:  make(chan *featureCompleteMsg, featureBufferSize),
 		quit:              make(chan struct{}),
 		boundedTimeBuffer: list.New(),
-	}
+	}, nil
 }
 
 // collectionHandler...
