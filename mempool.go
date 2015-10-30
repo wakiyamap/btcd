@@ -335,6 +335,68 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx, removeRedeemers bool) {
 
 }
 
+// retrieveDependantTxs...
+// TODO(roasbeef): version that traces to all ancestors...
+func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*btcutil.Tx {
+	var txns []*btcutil.Tx
+	addedTxns := make(map[wire.ShaHash]struct{})
+
+	// Iterate through all refereneced transaction outputs.
+	for _, txin := range tx.MsgTx().TxIn {
+		// Skip this txin if we've already added the refereneced
+		// transactions to our return slice.
+		prevTxHash := txin.PreviousOutPoint.Hash
+		if _, exists := addedTxns[prevTxHash]; !exists {
+			// If we find this tx has in the mempool, then it's part
+			// of an unconfirmed chain with this tx as its children.
+			if dependantTx, ok := mp.pool[prevTxHash]; ok {
+				// Mark the tx as visited, add to to the dependant
+				// slice, and continue our recursive DFS.
+				addedTxns[*dependantTx.Tx.Sha()] = struct{}{}
+				txns = append(txns, dependantTx.Tx)
+
+				ancestors := mp.retrieveDependantTxs(dependantTx.Tx)
+				if len(ancestors) != 0 {
+					txns = append(txns, ancestors...)
+				}
+			}
+		}
+	}
+	return txns
+}
+
+// calculateNumDependants...
+func (mp *txMemPool) countNumDependants(tx *btcutil.Tx) int {
+	return len(mp.retrieveDependantTxs(tx))
+}
+
+// retrieveDependantTxs...
+func (mp *txMemPool) retrieveDescendantTxs(tx *btcutil.Tx) []*btcutil.Tx {
+	var txns []*btcutil.Tx
+
+	txHash := tx.Sha()
+	for i := uint32(0); i < uint32(len(tx.MsgTx().TxOut)); i++ {
+		// Iterate and create an outpoint in order to locate
+		// transactions within the mempool that redeeem this output.
+		outpoint := wire.NewOutPoint(txHash, i)
+		if descendantTx, ok := mp.outpoints[*outpoint]; ok {
+			// If we find one, then add it to our slice, and process
+			// its outputs in a recursive manner.
+			txns = append(txns, descendantTx)
+			descendants := mp.retrieveDescendantTxs(descendantTx)
+			if len(descendants) != 0 {
+				txns = append(txns, descendants...)
+			}
+		}
+	}
+	return txns
+}
+
+// calculateNumDescendants...
+func (mp *txMemPool) countNumDescendants(tx *btcutil.Tx) int {
+	return len(mp.retrieveDescendantTxs(tx))
+}
+
 // removeTransactionFromAddrIndex removes the passed transaction from our
 // address based index.
 //
@@ -856,8 +918,8 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	txFeature := &TxFeeFeature{
 		Size:               serializedSize,
 		TxFee:              btcutil.Amount(txFee),
-		NumChildren:        0,
-		NumParents:         0,
+		NumChildren:        mp.countNumDescendants(tx),
+		NumParents:         mp.countNumDependants(tx),
 		MempoolSize:        len(mp.pool),
 		MempoolSizeBytes:   mempoolSize,
 		TimeSinceLastBlock: 0,
