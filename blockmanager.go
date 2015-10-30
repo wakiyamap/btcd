@@ -1211,6 +1211,14 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 			break
 		}
 
+		// Signal the feature collector that a new block has been accepted.
+		confirmedTxids := make([]wire.ShaHash, len(block.Transactions()[1:]))
+		for i, tx := range block.Transactions()[1:] {
+			confirmedTxids[i] = *tx.Sha()
+		}
+		featureMsg := &featureCompleteMsg{txIds: confirmedTxids, blockHeight: block.Height()}
+		b.server.txFeeScraper.completeFeatures <- featureMsg
+
 		// Remove all of the transactions (except the coinbase) in the
 		// connected block from the transaction pool.  Secondly, remove any
 		// transactions which are now double spends as a result of these
