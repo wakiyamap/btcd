@@ -219,6 +219,7 @@ out:
 					mut := bigtable.NewMutation()
 
 					txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
+					peerLog.Infof("writing feature %+v: ", txFeature)
 					txFeature.WriteToBigTable(mut)
 					if err := featureTable.Apply(context.Background(), txid.String(), mut); err != nil {
 						peerLog.Warnf("unable to write to bigtable: %v", err)
