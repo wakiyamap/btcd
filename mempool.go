@@ -394,6 +394,7 @@ func (mp *txMemPool) retrieveDescendantTxs(tx *btcutil.Tx) []*btcutil.Tx {
 
 // calculateNumDescendants...
 func (mp *txMemPool) countNumDescendants(tx *btcutil.Tx) int {
+	// TODO(roasbeef): look in orphans?
 	return len(mp.retrieveDescendantTxs(tx))
 }
 
@@ -905,9 +906,12 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// Add to transaction pool.
 	mp.addTransaction(txStore, tx, curHeight, txFee)
 
+	peerLog.Infof("sending tx add")
 	mp.server.txFeeScraper.txAdd <- time.Now()
+	peerLog.Infof("sent tx add")
+
 	var mempoolSize int
-	for _, txDesc := range mp.TxDescs() {
+	for _, txDesc := range mp.pool {
 		mempoolSize += txDesc.Tx.MsgTx().SerializeSize()
 	}
 	var totalSatoshiOut int64
@@ -915,9 +919,18 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		totalSatoshiOut += txOut.Value
 	}
 
+	txD := &TxDesc{
+		Tx:     tx,
+		Added:  time.Now(),
+		Height: curHeight,
+		Fee:    txFee,
+	}
+	currentPriority := txD.CurrentPriority(txStore, nextBlockHeight)
+
 	txFeature := &TxFeeFeature{
 		Size:               serializedSize,
 		TxFee:              btcutil.Amount(txFee),
+		Priority:           currentPriority,
 		NumChildren:        mp.countNumDescendants(tx),
 		NumParents:         mp.countNumDependants(tx),
 		MempoolSize:        len(mp.pool),
@@ -935,7 +948,9 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		LockTime:           tx.MsgTx().LockTime,
 		TimeStamp:          time.Now(),
 	}
+	peerLog.Infof("sending feature")
 	mp.server.txFeeScraper.initFeatures <- &featureInitMsg{feature: txFeature}
+	peerLog.Infof("sent feature")
 
 	txmpLog.Debugf("Accepted transaction %v (pool size: %v)", txHash,
 		len(mp.pool))

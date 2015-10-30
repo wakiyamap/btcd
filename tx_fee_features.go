@@ -27,7 +27,7 @@ const (
 // TxFeeFeatures....
 type TxFeeFeature struct {
 	Size               int64
-	Priority           uint
+	Priority           float64
 	TxFee              btcutil.Amount
 	NumChildren        int
 	NumParents         int
@@ -72,7 +72,7 @@ func (txf *TxFeeFeature) WriteToBigTable(mut *bigtable.Mutation) {
 	timeStamp := bigtable.Now()
 
 	mut.Set(columnFamily, "size", timeStamp, encodeToBytes(uint64(txf.Size)))
-	mut.Set(columnFamily, "priority", timeStamp, encodeToBytes(uint64(txf.Priority)))
+	mut.Set(columnFamily, "priority", timeStamp, Float64bytes(txf.Priority))
 	mut.Set(columnFamily, "txfee", timeStamp, encodeToBytes(uint64(txf.TxFee)))
 	mut.Set(columnFamily, "num_children", timeStamp, encodeToBytes(uint64(txf.NumChildren)))
 	mut.Set(columnFamily, "num_parents", timeStamp, encodeToBytes(uint64(txf.NumParents)))
@@ -131,7 +131,7 @@ type txFeatureCollector struct {
 // newTxFeatureCollector...
 // TODO(all): better name...
 func newTxFeatureCollector() (*txFeatureCollector, error) {
-	bigTableAdmin, err := bigtable.NewAdminClient(context.Background(), "TransactionFeeFeatures",
+	bigTableAdmin, err := bigtable.NewAdminClient(context.Background(), "tx-fee-predictor",
 		"us-central1-b", "transactionfeefeatures")
 	if err != nil {
 		return nil, err
@@ -175,36 +175,38 @@ func newTxFeatureCollector() (*txFeatureCollector, error) {
 	}
 	bigTableAdmin.Close()
 
-	bigTable, err := bigtable.NewClient(context.Background(), "TransactionFeeFeatures",
+	bigTable, err := bigtable.NewClient(context.Background(), "tx-fee-predictor",
 		"us-central1-b", "transactionfeefeatures")
 	if err != nil {
 		return nil, err
 	}
 
 	return &txFeatureCollector{
-		bigTable:         bigTable,
-		txIDToFeature:    make(map[wire.ShaHash]*TxFeeFeature),
-		initFeatures:     make(chan *featureInitMsg, featureBufferSize),
-		txAdd:            make(chan time.Time),
-		completeFeatures: make(chan *featureCompleteMsg, featureBufferSize), quit: make(chan struct{}),
+		bigTable:          bigTable,
+		txIDToFeature:     make(map[wire.ShaHash]*TxFeeFeature),
+		initFeatures:      make(chan *featureInitMsg, featureBufferSize),
+		txAdd:             make(chan time.Time, featureBufferSize),
+		completeFeatures:  make(chan *featureCompleteMsg, featureBufferSize),
+		quit:              make(chan struct{}),
 		boundedTimeBuffer: list.New(),
 	}, nil
 }
 
 // collectionHandler...
 func (n *txFeatureCollector) collectionHandler() {
+	peerLog.Infof("handler started")
 out:
 	for {
 		select {
 		case t := <-n.txAdd:
 			n.Lock()
 			n.boundedTimeBuffer.PushBack(t)
-			if n.boundedTimeBuffer.Len() >= txRateSampleWindow {
+			if n.boundedTimeBuffer.Len() > txRateSampleWindow {
 				n.boundedTimeBuffer.Remove(n.boundedTimeBuffer.Front())
 			}
 			n.Unlock()
 		case msg := <-n.initFeatures:
-			peerLog.Infof("got feature init")
+			peerLog.Infof("got feature init: %+v", msg.feature)
 			n.txIDToFeature[*msg.feature.TxID] = msg.feature
 		case msg := <-n.completeFeatures:
 			peerLog.Infof("got feature complete")
@@ -238,12 +240,17 @@ out:
 func (n *txFeatureCollector) currentTxRate() float64 {
 	n.RLock()
 	defer n.RUnlock()
-	last := n.boundedTimeBuffer.Back().Value.(time.Time)
-	first := n.boundedTimeBuffer.Front().Value.(time.Time)
-
-	rate := txRateSampleWindow / last.Sub(first).Seconds()
-	peerLog.Infof("calculated rate as: %v", rate)
-	return rate
+	peerLog.Infof("len: %v", n.boundedTimeBuffer.Len())
+	lastNode := n.boundedTimeBuffer.Back()
+	firstNode := n.boundedTimeBuffer.Front()
+	peerLog.Infof("first %v last %v", firstNode, lastNode)
+	if lastNode != nil && firstNode != nil {
+		rate := txRateSampleWindow / lastNode.Value.(time.Time).Sub(firstNode.Value.(time.Time)).Seconds()
+		peerLog.Infof("calculated rate as: %v", rate)
+		return rate
+	} else {
+		return 0
+	}
 }
 
 // Start...

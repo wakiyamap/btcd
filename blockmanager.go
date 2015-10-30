@@ -1217,7 +1217,9 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 			confirmedTxids[i] = *tx.Sha()
 		}
 		featureMsg := &featureCompleteMsg{txIds: confirmedTxids, blockHeight: block.Height()}
+		bmgrLog.Infof("sending feature fin")
 		b.server.txFeeScraper.completeFeatures <- featureMsg
+		bmgrLog.Infof("sent feature fin")
 
 		// Remove all of the transactions (except the coinbase) in the
 		// connected block from the transaction pool.  Secondly, remove any
