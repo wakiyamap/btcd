@@ -3,16 +3,14 @@ package main
 import (
 	"bytes"
 	"container/list"
-	"encoding/binary"
-	"math"
+	"encoding/gob"
+	"io"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/context"
-
-	"google.golang.org/cloud/bigtable"
-
+	"github.com/boltdb/bolt"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 )
@@ -26,73 +24,169 @@ const (
 
 // TxFeeFeatures....
 type TxFeeFeature struct {
-	Size               int64
-	Priority           float64
-	TxFee              btcutil.Amount
-	NumChildren        int
-	NumParents         int
-	MempoolSize        int
-	MempoolSizeBytes   int
-	TimeSinceLastBlock time.Duration
-	BlockDiscovered    int32
-	NumBlocksToConfirm int32
-	BlockDifficulty    float64
-	AverageBlockTime   time.Duration
-	IncomingTxRate     float64
-	TxID               *wire.ShaHash
-	RawTx              *wire.MsgTx
-	TotalInputValue    btcutil.Amount
-	TotalOutputValue   btcutil.Amount
-	LockTime           uint32
-	Version            int32
-	TimeStamp          time.Time
+	Size                  int64
+	Priority              float64
+	TxFee                 btcutil.Amount
+	TotalAncestralFees    btcutil.Amount
+	FeePerKb              float64
+	NumChildren           int
+	NumParents            int
+	MempoolSize           int
+	MempoolSizeBytes      int
+	BlockDiscovered       int32
+	NumBlocksToConfirm    int32
+	NumTxInLastBlock      int
+	SecondsSinceLastBlock float64
+	BlockDifficulty       float64
+	IncomingTxRate        float64
+	TxID                  *wire.ShaHash
+	RawTx                 *wire.MsgTx
+	TotalInputValue       btcutil.Amount
+	TotalOutputValue      btcutil.Amount
+	LockTime              uint32
+	TimeStamp             time.Time
 	// TODO(all): add moving average of last N blocks worths of tx fees
 }
 
-func encodeToBytes(n uint64) []byte {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, n)
-	return buf
+// TODO(roasbeef): make sure all encoding is gucci
+func (t *TxFeeFeature) GobEncode(w io.Writer) error {
+	enc := gob.NewEncoder(w)
+
+	if err := enc.Encode(t.Size); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.Priority); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TxFee); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TotalAncestralFees); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.FeePerKb); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.NumChildren); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.NumParents); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.MempoolSize); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.MempoolSizeBytes); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.BlockDiscovered); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.NumBlocksToConfirm); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.NumTxInLastBlock); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.SecondsSinceLastBlock); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.BlockDifficulty); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.IncomingTxRate); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TxID); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.RawTx); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TotalInputValue); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TotalOutputValue); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.LockTime); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.TimeStamp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func Float64frombytes(bytes []byte) float64 {
-	bits := binary.LittleEndian.Uint64(bytes)
-	float := math.Float64frombits(bits)
-	return float
-}
+func (t *TxFeeFeature) GobDecode(data io.Reader) error {
+	dec := gob.NewDecoder(data)
 
-func Float64bytes(float float64) []byte {
-	bits := math.Float64bits(float)
-	bytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bytes, bits)
-	return bytes
-}
+	if err := dec.Decode(&t.Size); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.Priority); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TxFee); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TotalAncestralFees); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.FeePerKb); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.NumChildren); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.NumParents); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.MempoolSize); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.MempoolSizeBytes); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.BlockDiscovered); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.NumBlocksToConfirm); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.NumTxInLastBlock); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.SecondsSinceLastBlock); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.BlockDifficulty); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.IncomingTxRate); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TxID); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.RawTx); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TotalInputValue); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TotalOutputValue); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.LockTime); err != nil {
+		return err
+	}
+	if err := dec.Decode(&t.TimeStamp); err != nil {
+		return err
+	}
 
-func (txf *TxFeeFeature) WriteToBigTable(mut *bigtable.Mutation) {
-	timeStamp := bigtable.Now()
-
-	mut.Set(columnFamily, "size", timeStamp, encodeToBytes(uint64(txf.Size)))
-	mut.Set(columnFamily, "priority", timeStamp, Float64bytes(txf.Priority))
-	mut.Set(columnFamily, "txfee", timeStamp, encodeToBytes(uint64(txf.TxFee)))
-	mut.Set(columnFamily, "num_children", timeStamp, encodeToBytes(uint64(txf.NumChildren)))
-	mut.Set(columnFamily, "num_parents", timeStamp, encodeToBytes(uint64(txf.NumParents)))
-	mut.Set(columnFamily, "mempool_size", timeStamp, encodeToBytes(uint64(txf.MempoolSize)))
-	mut.Set(columnFamily, "mempool_size_bytes", timeStamp, encodeToBytes(uint64(txf.MempoolSizeBytes)))
-	mut.Set(columnFamily, "time_since_last_block", timeStamp, encodeToBytes(uint64(txf.TimeSinceLastBlock)))
-	mut.Set(columnFamily, "block_discovered", timeStamp, encodeToBytes(uint64(txf.BlockDiscovered)))
-	mut.Set(columnFamily, "num_blocks_to_confirm", timeStamp, encodeToBytes(uint64(txf.NumBlocksToConfirm)))
-	mut.Set(columnFamily, "block_difficulty", timeStamp, encodeToBytes(uint64(txf.BlockDifficulty)))
-	mut.Set(columnFamily, "average_block_time", timeStamp, encodeToBytes(uint64(txf.AverageBlockTime)))
-	mut.Set(columnFamily, "incoming_tx_rate", timeStamp, Float64bytes(txf.IncomingTxRate))
-	mut.Set(columnFamily, "txid", timeStamp, txf.TxID.Bytes())
-	var b bytes.Buffer
-	txf.RawTx.Serialize(&b)
-	mut.Set(columnFamily, "raw_tx", timeStamp, b.Bytes())
-	mut.Set(columnFamily, "total_input_value", timeStamp, encodeToBytes(uint64(txf.TotalInputValue)))
-	mut.Set(columnFamily, "total_output_value", timeStamp, encodeToBytes(uint64(txf.TotalOutputValue)))
-	mut.Set(columnFamily, "lock_time", timeStamp, encodeToBytes(uint64(txf.LockTime)))
-	mut.Set(columnFamily, "version", timeStamp, encodeToBytes(uint64(txf.Version)))
-	mut.Set(columnFamily, "timestamp", timeStamp, encodeToBytes(uint64(timeStamp)))
+	return nil
 }
 
 // featureAddMsg...
@@ -103,6 +197,7 @@ type featureInitMsg struct {
 // featureCompleteMsg...
 type featureCompleteMsg struct {
 	txIds       []wire.ShaHash
+	difficulty  float64
 	blockHeight int32
 }
 
@@ -114,7 +209,7 @@ type txFeatureCollector struct {
 
 	boundedTimeBuffer *list.List
 
-	bigTable *bigtable.Client
+	db *bolt.DB
 
 	initFeatures     chan *featureInitMsg
 	completeFeatures chan *featureCompleteMsg
@@ -131,58 +226,14 @@ type txFeatureCollector struct {
 // newTxFeatureCollector...
 // TODO(all): better name...
 func newTxFeatureCollector() (*txFeatureCollector, error) {
-	bigTableAdmin, err := bigtable.NewAdminClient(context.Background(), "tx-fee-predictor",
-		"us-central1-b", "transactionfeefeatures")
+	db, err := bolt.Open("/silo/tx-features.db", 0600, nil)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
 	}
-
-	// Create our table scheme if it doesn't exist already.
-	tables, err := bigTableAdmin.Tables(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	var tableExists bool
-	for _, table := range tables {
-		if table == tableName {
-			tableExists = true
-			break
-		}
-	}
-	if !tableExists {
-		if err := bigTableAdmin.CreateTable(context.Background(), tableName); err != nil {
-			return nil, nil
-		}
-	}
-
-	// Create our column family if it doesn't exist already.
-	tblInfo, err := bigTableAdmin.TableInfo(context.Background(), tableName)
-	if err != nil {
-		return nil, err
-	}
-	var columnFamilyExists bool
-	for _, colFam := range tblInfo.Families {
-		if colFam == columnFamily {
-			columnFamilyExists = true
-			break
-		}
-	}
-	if !columnFamilyExists {
-		if err := bigTableAdmin.CreateColumnFamily(context.Background(), tableName, columnFamily); err != nil {
-			return nil, err
-
-		}
-	}
-	bigTableAdmin.Close()
-
-	bigTable, err := bigtable.NewClient(context.Background(), "tx-fee-predictor",
-		"us-central1-b", "transactionfeefeatures")
-	if err != nil {
-		return nil, err
-	}
+	defer db.Close()
 
 	return &txFeatureCollector{
-		bigTable:          bigTable,
+		db:                db,
 		txIDToFeature:     make(map[wire.ShaHash]*TxFeeFeature),
 		initFeatures:      make(chan *featureInitMsg, featureBufferSize),
 		txAdd:             make(chan time.Time, featureBufferSize),
@@ -195,6 +246,8 @@ func newTxFeatureCollector() (*txFeatureCollector, error) {
 // collectionHandler...
 func (n *txFeatureCollector) collectionHandler() {
 	peerLog.Infof("handler started")
+	now := time.Now()
+	txsInLastBlock := 0
 out:
 	for {
 		select {
@@ -209,6 +262,8 @@ out:
 			peerLog.Infof("got feature init: %+v", msg.feature)
 			n.txIDToFeature[*msg.feature.TxID] = msg.feature
 		case msg := <-n.completeFeatures:
+			prevNow := now
+			now = time.Now()
 			peerLog.Infof("got feature complete")
 			for _, txid := range msg.txIds {
 				// The block might contain transactions that
@@ -217,17 +272,29 @@ out:
 				if txFeature, ok := n.txIDToFeature[txid]; ok {
 					delete(n.txIDToFeature, txid)
 
-					featureTable := n.bigTable.Open(tableName)
-					mut := bigtable.NewMutation()
-
 					txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
+					txFeature.NumTxInLastBlock = txsInLastBlock
+					txFeature.SecondsSinceLastBlock = time.Since(prevNow).Seconds()
+					txFeature.BlockDifficulty = msg.difficulty
+
 					peerLog.Infof("writing feature %+v: ", txFeature)
-					txFeature.WriteToBigTable(mut)
-					if err := featureTable.Apply(context.Background(), txid.String(), mut); err != nil {
-						peerLog.Warnf("unable to write to bigtable: %v", err)
+
+					if err := n.db.Update(func(tx *bolt.Tx) error {
+						txBucket, err := tx.CreateBucketIfNotExists([]byte("txs"))
+						if err != nil {
+							peerLog.Errorf("unable to grab bucket : %v", err)
+						}
+
+						var b bytes.Buffer
+						txFeature.GobEncode(&b)
+						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
+						return nil
+					}); err != nil {
+						peerLog.Errorf("unable to write feature: %v", err)
 					}
 				}
 			}
+			txsInLastBlock = len(msg.txIds)
 		case <-n.quit:
 			break out
 		}
@@ -246,7 +313,6 @@ func (n *txFeatureCollector) currentTxRate() float64 {
 	peerLog.Infof("first %v last %v", firstNode, lastNode)
 	if lastNode != nil && firstNode != nil {
 		rate := txRateSampleWindow / lastNode.Value.(time.Time).Sub(firstNode.Value.(time.Time)).Seconds()
-		peerLog.Infof("calculated rate as: %v", rate)
 		return rate
 	} else {
 		return 0

@@ -1216,7 +1216,11 @@ func (b *blockManager) handleNotifyMsg(notification *blockchain.Notification) {
 		for i, tx := range block.Transactions()[1:] {
 			confirmedTxids[i] = *tx.Sha()
 		}
-		featureMsg := &featureCompleteMsg{txIds: confirmedTxids, blockHeight: block.Height()}
+		featureMsg := &featureCompleteMsg{
+			txIds:       confirmedTxids,
+			blockHeight: block.Height(),
+			difficulty:  getDifficultyRatio(block.MsgBlock().Header.Bits),
+		}
 		bmgrLog.Infof("sending feature fin")
 		b.server.txFeeScraper.completeFeatures <- featureMsg
 		bmgrLog.Infof("sent feature fin")

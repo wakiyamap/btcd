@@ -337,8 +337,8 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx, removeRedeemers bool) {
 
 // retrieveDependantTxs...
 // TODO(roasbeef): version that traces to all ancestors...
-func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*btcutil.Tx {
-	var txns []*btcutil.Tx
+func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*TxDesc {
+	var txns []*TxDesc
 	addedTxns := make(map[wire.ShaHash]struct{})
 
 	// Iterate through all refereneced transaction outputs.
@@ -353,7 +353,7 @@ func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*btcutil.Tx {
 				// Mark the tx as visited, add to to the dependant
 				// slice, and continue our recursive DFS.
 				addedTxns[*dependantTx.Tx.Sha()] = struct{}{}
-				txns = append(txns, dependantTx.Tx)
+				txns = append(txns, dependantTx)
 
 				ancestors := mp.retrieveDependantTxs(dependantTx.Tx)
 				if len(ancestors) != 0 {
@@ -927,19 +927,23 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	}
 	currentPriority := txD.CurrentPriority(txStore, nextBlockHeight)
 
+	totalAncestralFees := int64(0)
+	for _, txD := range mp.retrieveDependantTxs(tx) {
+		totalAncestralFees += txD.Fee
+
+	}
+
 	txFeature := &TxFeeFeature{
 		Size:               serializedSize,
-		TxFee:              btcutil.Amount(txFee),
 		Priority:           currentPriority,
+		TxFee:              btcutil.Amount(txFee),
+		TotalAncestralFees: btcutil.Amount(totalAncestralFees),
+		FeePerKb:           (1 + float64(serializedSize)/float64(1000)) / float64(txFee),
 		NumChildren:        mp.countNumDescendants(tx),
 		NumParents:         mp.countNumDependants(tx),
 		MempoolSize:        len(mp.pool),
 		MempoolSizeBytes:   mempoolSize,
-		TimeSinceLastBlock: 0,
 		BlockDiscovered:    curHeight,
-		NumBlocksToConfirm: 0, // To be set when tx enters block.
-		BlockDifficulty:    0, // To be set when tx enters block.
-		AverageBlockTime:   0,
 		IncomingTxRate:     mp.server.txFeeScraper.currentTxRate(),
 		TxID:               tx.Sha(),
 		RawTx:              tx.MsgTx(),
