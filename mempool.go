@@ -938,7 +938,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		Priority:           currentPriority,
 		TxFee:              btcutil.Amount(txFee),
 		TotalAncestralFees: btcutil.Amount(totalAncestralFees),
-		FeePerKb:           (1 + float64(serializedSize)/float64(1000)) / float64(txFee),
+		FeePerKb:           txFee / (1 + (serializedSize / 1000)),
 		NumChildren:        mp.countNumDescendants(tx),
 		NumParents:         mp.countNumDependants(tx),
 		MempoolSize:        len(mp.pool),

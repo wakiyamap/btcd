@@ -5,7 +5,6 @@ import (
 	"container/list"
 	"encoding/gob"
 	"io"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,7 +27,7 @@ type TxFeeFeature struct {
 	Priority              float64
 	TxFee                 btcutil.Amount
 	TotalAncestralFees    btcutil.Amount
-	FeePerKb              float64
+	FeePerKb              int64
 	NumChildren           int
 	NumParents            int
 	MempoolSize           int
@@ -226,11 +225,10 @@ type txFeatureCollector struct {
 // newTxFeatureCollector...
 // TODO(all): better name...
 func newTxFeatureCollector() (*txFeatureCollector, error) {
-	db, err := bolt.Open("/silo/tx-features.db", 0600, nil)
+	db, err := bolt.Open("tx-features.db", 0600, nil)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	defer db.Close()
 
 	return &txFeatureCollector{
 		db:                db,
@@ -264,35 +262,35 @@ out:
 		case msg := <-n.completeFeatures:
 			prevNow := now
 			now = time.Now()
-			peerLog.Infof("got feature complete")
-			for _, txid := range msg.txIds {
-				// The block might contain transactions that
-				// have never entered out memepool.
-				// TODO(roasbeef): Mutated transactions...
-				if txFeature, ok := n.txIDToFeature[txid]; ok {
-					delete(n.txIDToFeature, txid)
+			// TODO(roasbeef): only if we're at the final main chain block
+			peerLog.Infof("got feature complete, block %v", msg.blockHeight)
+			if err := n.db.Update(func(tx *bolt.Tx) error {
+				txBucket, err := tx.CreateBucketIfNotExists([]byte("txs"))
+				if err != nil {
+					peerLog.Errorf("unable to grab bucket : %v", err)
+				}
+				for _, txid := range msg.txIds {
+					// The block might contain transactions that
+					// have never entered out memepool.
+					// TODO(roasbeef): Mutated transactions...
+					if txFeature, ok := n.txIDToFeature[txid]; ok {
+						delete(n.txIDToFeature, txid)
 
-					txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
-					txFeature.NumTxInLastBlock = txsInLastBlock
-					txFeature.SecondsSinceLastBlock = time.Since(prevNow).Seconds()
-					txFeature.BlockDifficulty = msg.difficulty
+						txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
+						txFeature.NumTxInLastBlock = txsInLastBlock
+						txFeature.SecondsSinceLastBlock = time.Since(prevNow).Seconds()
+						txFeature.BlockDifficulty = msg.difficulty
 
-					peerLog.Infof("writing feature %+v: ", txFeature)
-
-					if err := n.db.Update(func(tx *bolt.Tx) error {
-						txBucket, err := tx.CreateBucketIfNotExists([]byte("txs"))
-						if err != nil {
-							peerLog.Errorf("unable to grab bucket : %v", err)
-						}
+						peerLog.Infof("writing feature %+v: ", txFeature)
 
 						var b bytes.Buffer
 						txFeature.GobEncode(&b)
 						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
-						return nil
-					}); err != nil {
-						peerLog.Errorf("unable to write feature: %v", err)
 					}
 				}
+				return nil
+			}); err != nil {
+				peerLog.Errorf("unable to write feature: %v", err)
 			}
 			txsInLastBlock = len(msg.txIds)
 		case <-n.quit:
