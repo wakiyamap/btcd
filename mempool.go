@@ -946,7 +946,6 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		BlockDiscovered:    curHeight,
 		IncomingTxRate:     mp.server.txFeeScraper.currentTxRate(),
 		TxID:               tx.Sha(),
-		RawTx:              tx.MsgTx(),
 		TotalInputValue:    btcutil.Amount(totalSatoshiOut + txFee),
 		TotalOutputValue:   btcutil.Amount(totalSatoshiOut),
 		LockTime:           tx.MsgTx().LockTime,
