@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"container/list"
 	"encoding/gob"
+	"fmt"
 	"io"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,7 +17,9 @@ import (
 )
 
 const (
-	featureBufferSize  = 100
+	featureBufferSize = 100
+	// Generous estimate for number of txns in ablock.
+	streamBufferSize   = 3000
 	txRateSampleWindow = 10
 	tableName          = "fee-features"
 	columnFamily       = "tx-features"
@@ -39,7 +43,6 @@ type TxFeeFeature struct {
 	BlockDifficulty       float64
 	IncomingTxRate        float64
 	TxID                  *wire.ShaHash
-	RawTx                 *wire.MsgTx
 	TotalInputValue       btcutil.Amount
 	TotalOutputValue      btcutil.Amount
 	LockTime              uint32
@@ -97,9 +100,6 @@ func (t *TxFeeFeature) GobEncode(w io.Writer) error {
 		return err
 	}
 	if err := enc.Encode(t.TxID); err != nil {
-		return err
-	}
-	if err := enc.Encode(t.RawTx); err != nil {
 		return err
 	}
 	if err := enc.Encode(t.TotalInputValue); err != nil {
@@ -169,9 +169,6 @@ func (t *TxFeeFeature) GobDecode(data io.Reader) error {
 	if err := dec.Decode(&t.TxID); err != nil {
 		return err
 	}
-	if err := dec.Decode(&t.RawTx); err != nil {
-		return err
-	}
 	if err := dec.Decode(&t.TotalInputValue); err != nil {
 		return err
 	}
@@ -214,6 +211,9 @@ type txFeatureCollector struct {
 	completeFeatures chan *featureCompleteMsg
 	txAdd            chan time.Time
 
+	sparkStreamChan   chan *TxFeeFeature
+	streamingListener *net.TCPListener
+
 	started  int32
 	shutdown int32
 
@@ -224,10 +224,21 @@ type txFeatureCollector struct {
 
 // newTxFeatureCollector...
 // TODO(all): better name...
-func newTxFeatureCollector() (*txFeatureCollector, error) {
+func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 	db, err := bolt.Open("tx-features.db", 0600, nil)
 	if err != nil {
 		panic(err)
+	}
+
+	ip := net.ParseIP("0.0.0.0")
+	if ip == nil {
+		return nil, fmt.Errorf("Unable to parse ip!")
+	}
+
+	streamListener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: ip, Port: streamingPort})
+	if err != nil {
+		return nil, err
+
 	}
 
 	return &txFeatureCollector{
@@ -236,9 +247,43 @@ func newTxFeatureCollector() (*txFeatureCollector, error) {
 		initFeatures:      make(chan *featureInitMsg, featureBufferSize),
 		txAdd:             make(chan time.Time, featureBufferSize),
 		completeFeatures:  make(chan *featureCompleteMsg, featureBufferSize),
+		sparkStreamChan:   make(chan *TxFeeFeature, streamBufferSize),
+		streamingListener: streamListener,
 		quit:              make(chan struct{}),
 		boundedTimeBuffer: list.New(),
 	}, nil
+}
+
+func (n *txFeatureCollector) sparkConnectionHandler() {
+out:
+	for {
+		conn, err := n.streamingListener.AcceptTCP()
+		if err != nil {
+			peerLog.Errorf("FAILED TO GET SPARK CONN: %v", err)
+			continue
+		}
+
+		go n.sparkStreamer(conn)
+	}
+	n.wg.Done()
+}
+
+func (n *txFeatureCollector) sparkStreamer(streamingConn *net.TCPConn) {
+out:
+	peerLog.Infof("Got spark connection: %v", streamingConn)
+	for {
+		select {
+		case txFeature := <-n.sparkStreamChan:
+			// Write the new collected feature out to our running
+			// spark instance.
+			// socketTextStream expects datum to be delimited by a new line.
+			featureStr := txFeature.String() + "\n"
+			streamingConn.Write([]byte(featureStr))
+		case <-n.quit:
+			break out
+		}
+	}
+	n.wg.Done()
 }
 
 // collectionHandler...
@@ -286,6 +331,8 @@ out:
 						var b bytes.Buffer
 						txFeature.GobEncode(&b)
 						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
+
+						n.sparkStreamChan <- txFeature
 					}
 				}
 				return nil
@@ -299,6 +346,16 @@ out:
 	}
 
 	n.wg.Done()
+}
+
+func (tx *TxFeeFeature) String() string {
+	return fmt.Sprintf("%v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v",
+		tx.Size, tx.Priority, int64(tx.TxFee), int64(tx.TotalAncestralFees),
+		int64(tx.FeePerKb), tx.NumChildren, tx.NumParents, tx.MempoolSize, tx.MempoolSizeBytes,
+		tx.BlockDiscovered, tx.NumBlocksToConfirm, tx.NumTxInLastBlock, tx.SecondsSinceLastBlock,
+		tx.BlockDifficulty, tx.IncomingTxRate,
+		int64(tx.TotalInputValue), int64(tx.TotalOutputValue), tx.LockTime,
+		tx.TimeStamp.Unix())
 }
 
 // currentTxRate...
@@ -324,8 +381,9 @@ func (n *txFeatureCollector) Start() error {
 		return nil
 	}
 
-	n.wg.Add(1)
+	n.wg.Add(2)
 	go n.collectionHandler()
+	go n.sparkConnectionHandler()
 
 	return nil
 }
