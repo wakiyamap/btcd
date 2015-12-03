@@ -255,7 +255,6 @@ func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 }
 
 func (n *txFeatureCollector) sparkConnectionHandler() {
-out:
 	for {
 		conn, err := n.streamingListener.AcceptTCP()
 		if err != nil {
@@ -269,8 +268,8 @@ out:
 }
 
 func (n *txFeatureCollector) sparkStreamer(streamingConn *net.TCPConn) {
-out:
 	peerLog.Infof("Got spark connection: %v", streamingConn)
+out:
 	for {
 		select {
 		case txFeature := <-n.sparkStreamChan:
@@ -306,6 +305,7 @@ out:
 			n.txIDToFeature[*msg.feature.TxID] = msg.feature
 		case msg := <-n.completeFeatures:
 			prevNow := now
+			timeDelta := time.Since(prevNow).Seconds()
 			now = time.Now()
 			// TODO(roasbeef): only if we're at the final main chain block
 			peerLog.Infof("got feature complete, block %v", msg.blockHeight)
@@ -323,7 +323,7 @@ out:
 
 						txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
 						txFeature.NumTxInLastBlock = txsInLastBlock
-						txFeature.SecondsSinceLastBlock = time.Since(prevNow).Seconds()
+						txFeature.SecondsSinceLastBlock = timeDelta
 						txFeature.BlockDifficulty = msg.difficulty
 
 						peerLog.Infof("writing feature %+v: ", txFeature)
@@ -332,7 +332,14 @@ out:
 						txFeature.GobEncode(&b)
 						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
 
-						n.sparkStreamChan <- txFeature
+						// Only send if the queue isn't currently
+						// full.
+						select {
+						case n.sparkStreamChan <- txFeature:
+							fmt.Println("spark chan full")
+						default:
+							fmt.Println("spark chan not full")
+						}
 					}
 				}
 				return nil

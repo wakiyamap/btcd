@@ -2343,7 +2343,9 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		}
 	}
 
-	txFeeScraper, err := newTxFeatureCollector()
+	// TODO(roasbeef): when shutting down, write mempool to flat file?
+	streamigPort := 6540
+	txFeeScraper, err := newTxFeatureCollector(streamigPort)
 	if err != nil {
 		return nil, err
 	}
