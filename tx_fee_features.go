@@ -17,9 +17,8 @@ import (
 )
 
 const (
-	featureBufferSize = 100
-	// Generous estimate for number of txns in ablock.
-	streamBufferSize   = 3000
+	featureBufferSize  = 100
+	streamBufferSize   = 30
 	txRateSampleWindow = 10
 	tableName          = "fee-features"
 	columnFamily       = "tx-features"
@@ -197,6 +196,11 @@ type featureCompleteMsg struct {
 	blockHeight int32
 }
 
+type streamingFeatureMsg struct {
+	features []*TxFeeFeature
+	blockNum int32
+}
+
 // txFeatureCollector...
 type txFeatureCollector struct {
 	sync.RWMutex
@@ -211,7 +215,7 @@ type txFeatureCollector struct {
 	completeFeatures chan *featureCompleteMsg
 	txAdd            chan time.Time
 
-	sparkStreamChan   chan *TxFeeFeature
+	featureStreaming  chan *streamingFeatureMsg
 	streamingListener *net.TCPListener
 
 	started  int32
@@ -247,7 +251,7 @@ func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 		initFeatures:      make(chan *featureInitMsg, featureBufferSize),
 		txAdd:             make(chan time.Time, featureBufferSize),
 		completeFeatures:  make(chan *featureCompleteMsg, featureBufferSize),
-		sparkStreamChan:   make(chan *TxFeeFeature, streamBufferSize),
+		featureStreaming:  make(chan *streamingFeatureMsg, streamBufferSize),
 		streamingListener: streamListener,
 		quit:              make(chan struct{}),
 		boundedTimeBuffer: list.New(),
@@ -272,12 +276,20 @@ func (n *txFeatureCollector) sparkStreamer(streamingConn *net.TCPConn) {
 out:
 	for {
 		select {
-		case txFeature := <-n.sparkStreamChan:
+		case streamMsg := <-n.featureStreaming:
 			// Write the new collected feature out to our running
 			// spark instance.
 			// socketTextStream expects datum to be delimited by a new line.
-			featureStr := txFeature.String() + "\n"
-			streamingConn.Write([]byte(featureStr))
+			var featureBuf bytes.Buffer
+			for _, feature := range streamMsg.features {
+				featureBuf.WriteString(feature.String() + "\n")
+			}
+
+			// Write the sentinel string.
+			zeroFeature := &TxFeeFeature{Size: 0}
+			featureBuf.WriteString(zeroFeature.String() + "\n")
+
+			streamingConn.Write(featureBuf.Bytes())
 		case <-n.quit:
 			break out
 		}
@@ -309,6 +321,10 @@ out:
 			now = time.Now()
 			// TODO(roasbeef): only if we're at the final main chain block
 			peerLog.Infof("got feature complete, block %v", msg.blockHeight)
+			streamMsg := &streamingFeatureMsg{
+				blockNum: msg.blockHeight,
+				features: make([]*TxFeeFeature, 0, len(msg.txIds)),
+			}
 			if err := n.db.Update(func(tx *bolt.Tx) error {
 				txBucket, err := tx.CreateBucketIfNotExists([]byte("txs"))
 				if err != nil {
@@ -332,21 +348,24 @@ out:
 						txFeature.GobEncode(&b)
 						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
 
-						// Only send if the queue isn't currently
-						// full.
-						select {
-						case n.sparkStreamChan <- txFeature:
-							fmt.Println("spark chan full")
-						default:
-							fmt.Println("spark chan not full")
-						}
+						streamMsg.features = append(streamMsg.features, txFeature)
 					}
 				}
 				return nil
 			}); err != nil {
 				peerLog.Errorf("unable to write feature: %v", err)
 			}
+
 			txsInLastBlock = len(msg.txIds)
+
+			// Only send if the queue isn't currently
+			// full.
+			select {
+			case n.featureStreaming <- streamMsg:
+				fmt.Println("spark chan full")
+			default:
+				fmt.Println("spark chan not full")
+			}
 		case <-n.quit:
 			break out
 		}
