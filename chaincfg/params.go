@@ -141,6 +141,7 @@ var MainNetParams = Params{
 		{343185, newShaHashFromStr("0000000000000000072b8bf361d01a6ba7d445dd024203fafc78768ed4368554")},
 		{352940, newShaHashFromStr("000000000000000010755df42dba556bb72be6a32f3ce0b6941ce4430152c9ff")},
 		{382320, newShaHashFromStr("00000000000000000a8dc6ed5b133d0eb2fd6af56203e4159789b092defd8ab2")},
+		{387286, newShaHashFromStr("00000000000000000da09293926540d7026697103bcd439ae96959d7f706d758")},
 	},
 
 	// Enforce current block version once majority of the network has

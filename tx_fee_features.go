@@ -260,6 +260,7 @@ func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 
 func (n *txFeatureCollector) sparkConnectionHandler() {
 	for {
+		peerLog.Infof("waiting for connection")
 		conn, err := n.streamingListener.AcceptTCP()
 		if err != nil {
 			peerLog.Errorf("FAILED TO GET SPARK CONN: %v", err)
