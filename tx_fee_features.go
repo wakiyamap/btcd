@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	featureBufferSize  = 100
+	featureBufferSize  = 300
 	streamBufferSize   = 30
 	txRateSampleWindow = 10
 	tableName          = "fee-features"
@@ -46,6 +46,7 @@ type TxFeeFeature struct {
 	TotalOutputValue      btcutil.Amount
 	LockTime              uint32
 	TimeStamp             time.Time
+	BlockConfirmed        int32
 	// TODO(all): add moving average of last N blocks worths of tx fees
 }
 
@@ -111,6 +112,9 @@ func (t *TxFeeFeature) GobEncode(w io.Writer) error {
 		return err
 	}
 	if err := enc.Encode(t.TimeStamp); err != nil {
+		return err
+	}
+	if err := enc.Encode(t.BlockConfirmed); err != nil {
 		return err
 	}
 
@@ -180,6 +184,9 @@ func (t *TxFeeFeature) GobDecode(data io.Reader) error {
 	if err := dec.Decode(&t.TimeStamp); err != nil {
 		return err
 	}
+	if err := dec.Decode(t.BlockConfirmed); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -218,6 +225,8 @@ type txFeatureCollector struct {
 	featureStreaming  chan *streamingFeatureMsg
 	streamingListener *net.TCPListener
 
+	activeConns map[*net.TCPConn]struct{}
+
 	started  int32
 	shutdown int32
 
@@ -229,7 +238,7 @@ type txFeatureCollector struct {
 // newTxFeatureCollector...
 // TODO(all): better name...
 func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
-	db, err := bolt.Open("tx-features.db", 0600, nil)
+	db, err := bolt.Open("tx-features-new.db", 0600, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -252,6 +261,7 @@ func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 		txAdd:             make(chan time.Time, featureBufferSize),
 		completeFeatures:  make(chan *featureCompleteMsg, featureBufferSize),
 		featureStreaming:  make(chan *streamingFeatureMsg, streamBufferSize),
+		activeConns:       make(map[*net.TCPConn]struct{}),
 		streamingListener: streamListener,
 		quit:              make(chan struct{}),
 		boundedTimeBuffer: list.New(),
@@ -259,18 +269,39 @@ func newTxFeatureCollector(streamingPort int) (*txFeatureCollector, error) {
 }
 
 func (n *txFeatureCollector) sparkConnectionHandler() {
+out:
 	for {
-		peerLog.Infof("waiting for connection")
-		conn, err := n.streamingListener.AcceptTCP()
-		if err != nil {
-			peerLog.Errorf("FAILED TO GET SPARK CONN: %v", err)
-			continue
-		}
+		select {
+		case <-n.quit:
+			break out
+		default:
+			peerLog.Infof("waiting for connection")
+			conn, err := n.streamingListener.AcceptTCP()
+			if err != nil {
+				peerLog.Errorf("FAILED TO GET SPARK CONN: %v", err)
+				continue
+			}
 
-		go n.sparkStreamer(conn)
+			n.wg.Add(1)
+			go n.sparkStreamer(conn)
+		}
 	}
 	n.wg.Done()
 }
+
+/*func (n *txFeatureCollector) streamBroadcaster() {
+out:
+	for {
+		select {
+		case streamMsg := <-n.featureStreaming:
+			for {
+			}
+		case <-n.quit:
+			break out
+		}
+	}
+	n.wg.Done()
+}*/
 
 func (n *txFeatureCollector) sparkStreamer(streamingConn *net.TCPConn) {
 	peerLog.Infof("Got spark connection: %v", streamingConn)
@@ -278,19 +309,27 @@ out:
 	for {
 		select {
 		case streamMsg := <-n.featureStreaming:
-			// Write the new collected feature out to our running
-			// spark instance.
-			// socketTextStream expects datum to be delimited by a new line.
-			var featureBuf bytes.Buffer
-			for _, feature := range streamMsg.features {
-				featureBuf.WriteString(feature.String() + "\n")
+			if len(streamMsg.features) != 0 {
+				peerLog.Infof("got feature sending on socket")
+				// Write the new collected feature out to our running
+				// spark instance.
+				// socketTextStream expects datum to be delimited by a new line.
+				var featureBuf bytes.Buffer
+				for _, feature := range streamMsg.features {
+					peerLog.Infof("writing record")
+					featureBuf.WriteString(feature.String() + "\n")
+				}
+
+				// Write the sentinel string.
+				zeroFeature := &TxFeeFeature{Size: 0}
+				featureBuf.WriteString(zeroFeature.String() + "\n")
+
+				_, err := streamingConn.Write(featureBuf.Bytes())
+				if err != nil {
+					peerLog.Errorf("unable to write stream: %v", err)
+					return
+				}
 			}
-
-			// Write the sentinel string.
-			zeroFeature := &TxFeeFeature{Size: 0}
-			featureBuf.WriteString(zeroFeature.String() + "\n")
-
-			streamingConn.Write(featureBuf.Bytes())
 		case <-n.quit:
 			break out
 		}
@@ -314,7 +353,7 @@ out:
 			}
 			n.Unlock()
 		case msg := <-n.initFeatures:
-			peerLog.Infof("got feature init: %+v", msg.feature)
+			peerLog.Infof("got feature init: %#v", msg.feature)
 			n.txIDToFeature[*msg.feature.TxID] = msg.feature
 		case msg := <-n.completeFeatures:
 			prevNow := now
@@ -326,6 +365,7 @@ out:
 				blockNum: msg.blockHeight,
 				features: make([]*TxFeeFeature, 0, len(msg.txIds)),
 			}
+			isStream := false
 			if err := n.db.Update(func(tx *bolt.Tx) error {
 				txBucket, err := tx.CreateBucketIfNotExists([]byte("txs"))
 				if err != nil {
@@ -338,18 +378,22 @@ out:
 					if txFeature, ok := n.txIDToFeature[txid]; ok {
 						delete(n.txIDToFeature, txid)
 
+						isStream = true
+
 						txFeature.NumBlocksToConfirm = msg.blockHeight - txFeature.BlockDiscovered
 						txFeature.NumTxInLastBlock = txsInLastBlock
 						txFeature.SecondsSinceLastBlock = timeDelta
+						txFeature.BlockConfirmed = msg.blockHeight
 						txFeature.BlockDifficulty = msg.difficulty
 
-						peerLog.Infof("writing feature %+v: ", txFeature)
+						peerLog.Infof("writing feature %#v: ", txFeature)
 
 						var b bytes.Buffer
 						txFeature.GobEncode(&b)
 						txBucket.Put(txFeature.TxID.Bytes(), b.Bytes())
 
 						streamMsg.features = append(streamMsg.features, txFeature)
+						peerLog.Infof("new size: ", len(streamMsg.features))
 					}
 				}
 				return nil
@@ -361,11 +405,13 @@ out:
 
 			// Only send if the queue isn't currently
 			// full.
-			select {
-			case n.featureStreaming <- streamMsg:
-				fmt.Println("spark chan full")
-			default:
-				fmt.Println("spark chan not full")
+			if isStream {
+				select {
+				case n.featureStreaming <- streamMsg:
+					peerLog.Infof("spark chan not full")
+				default:
+					peerLog.Infof("spark chan full")
+				}
 			}
 		case <-n.quit:
 			break out
@@ -376,19 +422,20 @@ out:
 }
 
 func (tx *TxFeeFeature) String() string {
-	return fmt.Sprintf("%v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v",
+	return fmt.Sprintf("%v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v %v",
 		tx.Size, tx.Priority, int64(tx.TxFee), int64(tx.TotalAncestralFees),
 		int64(tx.FeePerKb), tx.NumChildren, tx.NumParents, tx.MempoolSize, tx.MempoolSizeBytes,
 		tx.BlockDiscovered, tx.NumBlocksToConfirm, tx.NumTxInLastBlock, tx.SecondsSinceLastBlock,
 		tx.BlockDifficulty, tx.IncomingTxRate,
 		int64(tx.TotalInputValue), int64(tx.TotalOutputValue), tx.LockTime,
-		tx.TimeStamp.Unix())
+		tx.TimeStamp.Unix(), tx.BlockConfirmed)
 }
 
 // currentTxRate...
 func (n *txFeatureCollector) currentTxRate() float64 {
-	n.RLock()
-	defer n.RUnlock()
+	n.Lock()
+	defer n.Unlock()
+
 	peerLog.Infof("len: %v", n.boundedTimeBuffer.Len())
 	lastNode := n.boundedTimeBuffer.Back()
 	firstNode := n.boundedTimeBuffer.Front()
@@ -420,8 +467,7 @@ func (n *txFeatureCollector) Stop() error {
 	if atomic.AddInt32(&n.shutdown, 1) != 1 {
 		return nil
 	}
-
 	close(n.quit)
-	n.wg.Wait()
+	//n.wg.Wait()
 	return nil
 }
