@@ -37,6 +37,8 @@ func BenchmarkSigCacheOldExists(b *testing.B) {
 	sigcache := NewOldSigCache(10)
 
 	sigcache.Add(sighash, sig, pubKey)
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = sigcache.Exists(sighash, sig, pubKey)
 	}
@@ -46,6 +48,8 @@ func BenchmarkSigCacheOldStringExists(b *testing.B) {
 	sigcache := NewOldSigCacheString(10)
 
 	sigcache.Add(sighash, sig, pubKey)
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = sigcache.Exists(sighash, sig, pubKey)
 	}
@@ -58,6 +62,8 @@ func BenchmarkSigCacheNewExists(b *testing.B) {
 	}
 
 	sigcache.Add(sighash, sig, pubKey)
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = sigcache.Exists(sighash, sig, pubKey)
 	}
@@ -70,6 +76,8 @@ func BenchmarkSigCacheNewStringExists(b *testing.B) {
 	}
 
 	sigcache.Add(sighash, sig, pubKey)
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = sigcache.Exists(sighash, sig, pubKey)
 	}
@@ -78,6 +86,7 @@ func BenchmarkSigCacheNewStringExists(b *testing.B) {
 func BenchmarkSigCacheOldAdd(b *testing.B) {
 	sigcache := NewOldSigCache(10)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sigcache.Add(sighash, sig, pubKey)
 	}
@@ -86,6 +95,7 @@ func BenchmarkSigCacheOldAdd(b *testing.B) {
 func BenchmarkSigCacheOldStringAdd(b *testing.B) {
 	sigcache := NewOldSigCacheString(10)
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sigcache.Add(sighash, sig, pubKey)
 	}
@@ -97,6 +107,7 @@ func BenchmarkSigCacheNewAdd(b *testing.B) {
 		b.Fatalf("unable to create sigcache: %v", err)
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sigcache.Add(sighash, sig, pubKey)
 	}
@@ -108,6 +119,7 @@ func BenchmarkSigCacheNewStringAdd(b *testing.B) {
 		b.Fatalf("unable to create sigcache: %v", err)
 	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		sigcache.Add(sighash, sig, pubKey)
 	}
