@@ -18,6 +18,17 @@ var sighash = wire.ShaHash([32]byte{
 	0x7f, 0xcd, 0x37, 0x04,
 })
 
+var sighash2 = wire.ShaHash([32]byte{
+	0xfa, 0x20, 0x9c, 0x6a,
+	0x85, 0x2d, 0xd9, 0x06,
+	0x60, 0xa2, 0x0b, 0x2d,
+	0xc9, 0x97, 0xa5, 0xe5,
+	0x6e, 0x10, 0x41, 0x02,
+	0x9c, 0x35, 0x24, 0x23,
+	0xed, 0xce, 0x25, 0x85,
+	0x7f, 0xcd, 0x37, 0x04,
+})
+
 var privKey, pubKey = btcec.PrivKeyFromBytes(
 	btcec.S256(),
 	[]byte{
@@ -118,6 +129,52 @@ func BenchmarkSigCacheNewStringAdd(b *testing.B) {
 	if err != nil {
 		b.Fatalf("unable to create sigcache: %v", err)
 	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sigcache.Add(sighash, sig, pubKey)
+	}
+}
+
+func BenchmarkSigCacheOldAddEvict(b *testing.B) {
+	sigcache := NewOldSigCache(1)
+	sigcache.Add(sighash2, sig, pubKey)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sigcache.Add(sighash, sig, pubKey)
+	}
+}
+
+func BenchmarkSigCacheOldStringAddEvict(b *testing.B) {
+	sigcache := NewOldSigCacheString(1)
+	sigcache.Add(sighash2, sig, pubKey)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sigcache.Add(sighash, sig, pubKey)
+	}
+}
+
+func BenchmarkSigCacheNewAddEvict(b *testing.B) {
+	sigcache, err := NewSigCache(1)
+	if err != nil {
+		b.Fatalf("unable to create sigcache: %v", err)
+	}
+	sigcache.Add(sighash2, sig, pubKey)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sigcache.Add(sighash, sig, pubKey)
+	}
+}
+
+func BenchmarkSigCacheNewStringAddEvict(b *testing.B) {
+	sigcache, err := NewStringSigCache(1)
+	if err != nil {
+		b.Fatalf("unable to create sigcache: %v", err)
+	}
+	sigcache.Add(sighash2, sig, pubKey)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
