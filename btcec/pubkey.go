@@ -153,10 +153,10 @@ func (p *PublicKey) SerializeHybrid() []byte {
 	return paddedAppend(32, b, p.Y.Bytes())
 }
 
-// Equals compares this PublicKey instance to the one passed, returning true if
+// IsEqual compares this PublicKey instance to the one passed, returning true if
 // both PublicKeys are equivalent. A PublicKey is equivalent to another, if they
 // both have the same X and Y coordinate.
-func (p *PublicKey) Equals(otherPubKey *PublicKey) bool {
+func (p *PublicKey) IsEqual(otherPubKey *PublicKey) bool {
 	return p.X.Cmp(otherPubKey.X) == 0 &&
 		p.Y.Cmp(otherPubKey.Y) == 0
 }

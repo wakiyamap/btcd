@@ -82,10 +82,10 @@ func (sig *Signature) Verify(hash []byte, pubKey *PublicKey) bool {
 	return ecdsa.Verify(pubKey.ToECDSA(), hash, sig.R, sig.S)
 }
 
-// Equals compares this Signature instance to the one passed, returning true
+// IsEqual compares this Signature instance to the one passed, returning true
 // if both Signatures are equivalent. A signature is equivalent to another, if
 // they both have the same scalar value for R and S.
-func (sig *Signature) Equals(otherSig *Signature) bool {
+func (sig *Signature) IsEqual(otherSig *Signature) bool {
 	return sig.R.Cmp(otherSig.R) == 0 &&
 		sig.S.Cmp(otherSig.S) == 0
 }

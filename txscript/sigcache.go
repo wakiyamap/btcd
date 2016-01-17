@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	prand "math/rand"
 	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/lazybeaver/xorshift"
 )
 
 // sigCacheEntry represents an entry in the SigCache. Entries within the
@@ -40,6 +40,8 @@ type SigCache struct {
 	sync.RWMutex
 	validSigs  map[wire.ShaHash]sigCacheEntry
 	maxEntries uint
+
+	xorShift xorshift.XorShift
 }
 
 // NewSigCache creates and initializes a new instance of SigCache. Its sole
@@ -49,7 +51,7 @@ type SigCache struct {
 // cache to exceed the max.
 func NewSigCache(maxEntries uint) (*SigCache, error) {
 	cache := &SigCache{
-		validSigs:  make(map[wire.ShaHash]sigCacheEntry),
+		validSigs:  make(map[wire.ShaHash]sigCacheEntry, maxEntries),
 		maxEntries: maxEntries,
 	}
 
@@ -58,7 +60,8 @@ func NewSigCache(maxEntries uint) (*SigCache, error) {
 		return nil, err
 	}
 
-	prand.Seed(int64(binary.BigEndian.Uint64(seed[:])))
+	randSeed := binary.BigEndian.Uint64(seed[:])
+	cache.xorShift = xorshift.NewXorShift128Plus(randSeed)
 
 	return cache, nil
 }
@@ -73,7 +76,7 @@ func (s *SigCache) Exists(sigHash wire.ShaHash, sig *btcec.Signature, pubKey *bt
 	defer s.RUnlock()
 
 	if entry, ok := s.validSigs[sigHash]; ok {
-		return entry.pubKey.Equals(pubKey) && entry.sig.Equals(sig)
+		return entry.pubKey.IsEqual(pubKey) && entry.sig.IsEqual(sig)
 	}
 
 	return false
@@ -98,7 +101,11 @@ func (s *SigCache) Add(sigHash wire.ShaHash, sig *btcec.Signature, pubKey *btcec
 	// entries, then evict an entry.
 	if uint(len(s.validSigs)+1) > s.maxEntries {
 		// Generate a random hash.
-		randHashBytes := getRandHash()
+		var randHashBytes [wire.HashSize]byte
+		for i := 0; i < 4; i++ {
+			randInt := s.xorShift.Next()
+			binary.BigEndian.PutUint64(randHashBytes[i*8:], randInt)
+		}
 
 		// Try to find the first entry that is greater than the random
 		// hash. Use the first entry (which is already pseudo random due
@@ -111,7 +118,7 @@ func (s *SigCache) Add(sigHash wire.ShaHash, sig *btcec.Signature, pubKey *btcec
 			if foundEntry == zeroEntry {
 				foundEntry = sigEntry
 			}
-			if bytes.Compare(sigEntry[:], randHashBytes) > 0 {
+			if bytes.Compare(sigEntry[:], randHashBytes[:]) > 0 {
 				foundEntry = sigEntry
 				break
 			}
@@ -120,15 +127,4 @@ func (s *SigCache) Add(sigHash wire.ShaHash, sig *btcec.Signature, pubKey *btcec
 	}
 
 	s.validSigs[sigHash] = sigCacheEntry{sig, pubKey}
-}
-
-// getRandHash...
-func getRandHash() []byte {
-	hash := make([]byte, 32)
-	for i := 0; i < 4; i++ {
-		randInt := uint64(prand.Int63())
-		binary.BigEndian.PutUint64(hash[i*8:], randInt)
-	}
-
-	return hash
 }
