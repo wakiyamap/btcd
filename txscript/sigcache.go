@@ -5,7 +5,6 @@
 package txscript
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"sync"
@@ -100,30 +99,11 @@ func (s *SigCache) Add(sigHash wire.ShaHash, sig *btcec.Signature, pubKey *btcec
 	// If adding this new entry will put us over the max number of allowed
 	// entries, then evict an entry.
 	if uint(len(s.validSigs)+1) > s.maxEntries {
-		// Generate a random hash.
-		var randHashBytes [wire.HashSize]byte
-		for i := 0; i < 4; i++ {
-			randInt := s.xorShift.Next()
-			binary.BigEndian.PutUint64(randHashBytes[i*8:], randInt)
+		// Evict the first entry returned by the map iterator which is
+		// already pseudo random due to Go's range statement over maps.
+		for k := range s.validSigs {
+			delete(s.validSigs, k)
 		}
-
-		// Try to find the first entry that is greater than the random
-		// hash. Use the first entry (which is already pseudo random due
-		// to Go's range statement over maps) as a fall back if none of
-		// the hashes in the rejected transactions pool are larger than
-		// the random hash.
-		var foundEntry wire.ShaHash
-		var zeroEntry wire.ShaHash
-		for sigEntry := range s.validSigs {
-			if foundEntry == zeroEntry {
-				foundEntry = sigEntry
-			}
-			if bytes.Compare(sigEntry[:], randHashBytes[:]) > 0 {
-				foundEntry = sigEntry
-				break
-			}
-		}
-		delete(s.validSigs, foundEntry)
 	}
 
 	s.validSigs[sigHash] = sigCacheEntry{sig, pubKey}

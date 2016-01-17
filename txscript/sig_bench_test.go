@@ -112,16 +112,3 @@ func BenchmarkSigCacheNewAddEvict(b *testing.B) {
 		sigcache.Add(sighash, sig, pubKey)
 	}
 }
-
-func BenchmarkSigCacheXorAddEvict(b *testing.B) {
-	sigcache, err := NewSigCacheXor(1)
-	if err != nil {
-		b.Fatalf("unable to create sigcache: %v", err)
-	}
-	sigcache.Add(sighash2, sig, pubKey)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sigcache.Add(sighash, sig, pubKey)
-	}
-}
