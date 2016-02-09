@@ -142,6 +142,34 @@ var testNet3GenesisBlock = wire.MsgBlock{
 	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},
 }
 
+// testNet3GenesisHash is the hash of the first block in the block chain for the
+// test network (version 3).
+var segNetGenesisHash = wire.ShaHash([wire.HashSize]byte{ // Make go vet happy.
+	0xaa, 0x02, 0x2f, 0xd2, 0x64, 0x04, 0xd3, 0xa1,
+	0xf6, 0xac, 0x34, 0x8f, 0xc0, 0x49, 0x99, 0x6a,
+	0x52, 0xf4, 0x0d, 0x83, 0x30, 0x17, 0xc7, 0xca,
+	0x3f, 0x05, 0xdf, 0x8d, 0x51, 0x9c, 0x5b, 0x0d,
+})
+
+// segNetGenesisMerkleRoot is the hash of the first transaction in the genesis
+// block for the segwit test network.  It is the same as the merkle root
+// for the main network (?? is it? that'd be nice)
+var segNetGenesisMerkleRoot = genesisMerkleRoot
+
+// testNet3GenesisBlock defines the genesis block of the block chain which
+// serves as the public transaction ledger for the test network (version 3).
+var segNetGenesisBlock = wire.MsgBlock{
+	Header: wire.BlockHeader{
+		Version:    1,
+		PrevBlock:  wire.ShaHash{},           // 0000000000000000000000000000000000000000000000000000000000000000
+		MerkleRoot: segNetGenesisMerkleRoot,  // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+		Timestamp:  time.Unix(1296688602, 0), // 2011-02-02 23:16:42 +0000 UTC
+		Bits:       0x1d00ffff,               // 486604799 [00000000ffff0000000000000000000000000000000000000000000000000000]
+		Nonce:      0x18aea41a,               // 414098458
+	},
+	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},
+}
+
 // simNetGenesisHash is the hash of the first block in the block chain for the
 // simulation test network.
 var simNetGenesisHash = wire.ShaHash([wire.HashSize]byte{ // Make go vet happy.
