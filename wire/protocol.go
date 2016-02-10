@@ -135,6 +135,7 @@ var bnStrings = map[BitcoinNet]string{
 	TestNet:  "TestNet",
 	TestNet3: "TestNet3",
 	SimNet:   "SimNet",
+	SegNet:   "SegNet",
 }
 
 // String returns the BitcoinNet in human-readable form.

@@ -282,8 +282,8 @@ var SegNetParams = Params{
 	DNSSeeds:    []string{},
 
 	// Chain parameters
-	GenesisBlock:           &SegNetGenesisBlock,
-	GenesisHash:            &SegNetGenesisHash,
+	GenesisBlock:           &segNetGenesisBlock,
+	GenesisHash:            &segNetGenesisHash,
 	PowLimit:               testNet3PowLimit, // same as tn3 / main, right?
 	PowLimitBits:           0x1d00ffff,
 	SubsidyHalvingInterval: 210000,
