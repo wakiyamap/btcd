@@ -142,6 +142,11 @@ func NewTxOut(value int64, pkScript []byte) *TxOut {
 	}
 }
 
+// TxWitness defines the witness for a TxIn, which is a byte slice
+type TxWitness struct {
+	ScriptWitness []byte
+}
+
 // MsgTx implements the Message interface and represents a bitcoin tx message.
 // It is used to deliver transaction information in response to a getdata
 // message (MsgGetData) for a given transaction.
@@ -149,10 +154,12 @@ func NewTxOut(value int64, pkScript []byte) *TxOut {
 // Use the AddTxIn and AddTxOut functions to build up the list of transaction
 // inputs and outputs.
 type MsgTx struct {
-	Version  int32
-	TxIn     []*TxIn
-	TxOut    []*TxOut
-	LockTime uint32
+	Version   int32
+	Flags     byte
+	TxIn      []*TxIn
+	TxOut     []*TxOut
+	TxWitness []*TxWitness
+	LockTime  uint32
 }
 
 // AddTxIn adds a transaction input to the message.
@@ -172,6 +179,19 @@ func (msg *MsgTx) TxSha() ShaHash {
 	// is being out of memory or due to nil pointers, both of which would
 	// cause a run-time panic.
 	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
+	nonWitTx := msg.Copy()
+	nonWitTx.Flags = 0x00
+	_ = nonWitTx.Serialize(buf)
+	return DoubleSha256SH(buf.Bytes())
+}
+
+// TxSha generates the ShaHash name for the transaction.
+func (msg *MsgTx) WTxSha() ShaHash {
+	// Encode the transaction and calculate double sha256 on the result.
+	// Ignore the error returns since the only way the encode could fail
+	// is being out of memory or due to nil pointers, both of which would
+	// cause a run-time panic.
+	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
 	_ = msg.Serialize(buf)
 	return DoubleSha256SH(buf.Bytes())
 }
@@ -182,10 +202,12 @@ func (msg *MsgTx) Copy() *MsgTx {
 	// Create new tx and start by copying primitive values and making space
 	// for the transaction inputs and outputs.
 	newTx := MsgTx{
-		Version:  msg.Version,
-		TxIn:     make([]*TxIn, 0, len(msg.TxIn)),
-		TxOut:    make([]*TxOut, 0, len(msg.TxOut)),
-		LockTime: msg.LockTime,
+		Version:   msg.Version,
+		Flags:     msg.Flags,
+		TxIn:      make([]*TxIn, 0, len(msg.TxIn)),
+		TxOut:     make([]*TxOut, 0, len(msg.TxOut)),
+		TxWitness: make([]*TxWitness, 0, len(msg.TxIn)), // 1 witness per txin
+		LockTime:  msg.LockTime,
 	}
 
 	// Deep copy the old TxIn data.
@@ -235,6 +257,14 @@ func (msg *MsgTx) Copy() *MsgTx {
 		newTx.TxOut = append(newTx.TxOut, &newTxOut)
 	}
 
+	// Deep copy old winess data
+	for _, oldWitness := range msg.TxWitness {
+		var newScriptWitness []byte
+		copy(newScriptWitness, oldWitness.ScriptWitness[:])
+		newTxWitness := TxWitness{ScriptWitness: newScriptWitness}
+		newTx.TxWitness = append(newTx.TxWitness, &newTxWitness)
+	}
+
 	return &newTx
 }
 
@@ -253,6 +283,26 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 	count, err := ReadVarInt(r, pver)
 	if err != nil {
 		return err
+	}
+
+	if count == 0 { // This is a 0 marker indicating witness tx
+		var f [1]byte
+		_, err = r.Read(f[:])
+		if err != nil {
+			return err
+		}
+		msg.Flags = f[0] // read flag byte
+		if msg.Flags == 0 {
+			str := fmt.Sprintf("witness tx but flag byte is %x", f)
+			fmt.Printf("letting error slide! %s\n", str)
+			//			return messageError("MsgTx.BtcDecode", str)
+		}
+		// now get actual txin count
+		count, err = readVarInt(r, pver)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("wit ver %d count %d\n", msg.Version, count)
 	}
 
 	// Prevent more input transactions than could possibly fit into a
@@ -300,6 +350,17 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		msg.TxOut[i] = &to
 	}
 
+	if msg.Flags != 0 { // witness tx, so decode script witnesses
+		for i := 0; i < len(msg.TxIn); i++ {
+			wi := TxWitness{}
+			wi.ScriptWitness, err = readVarBytes(r, pver, MaxMessagePayload,
+				"Script Witness")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	_, err = io.ReadFull(r, buf[:])
 	if err != nil {
 		return err
@@ -338,6 +399,11 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		return err
 	}
 
+	if msg.Flags != 0x00 { // check if this is a witness tx
+		w.Write([]byte{0x00})      // write 0 here to indicate witness tx
+		w.Write([]byte{msg.Flags}) // flag byte
+	}
+
 	count := uint64(len(msg.TxIn))
 	err = WriteVarInt(w, pver, count)
 	if err != nil {
@@ -361,6 +427,13 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		err = writeTxOut(w, pver, msg.Version, to)
 		if err != nil {
 			return err
+		}
+	}
+
+	if msg.Flags != 0 { // check if this is a witness tx
+		for _, wit := range msg.TxWitness {
+			// could make a function here but not really needed
+			w.Write(wit.ScriptWitness)
 		}
 	}
 
@@ -405,6 +478,30 @@ func (msg *MsgTx) SerializeSize() int {
 
 	for _, txOut := range msg.TxOut {
 		n += txOut.SerializeSize()
+	}
+
+	return n
+}
+
+// SerializeSize returns the number of bytes it would take to serialize the
+// the witness transaction.
+func (msg *MsgTx) WitnessSerializeSize() int {
+	// Version 4 bytes + LockTime 4 bytes + 2 bytes marker & flag
+	//	+ Serialized varint size for the number of inputs/witnesses and outputs.
+	n := 10 + VarIntSerializeSize(uint64(len(msg.TxIn)*2)) +
+		VarIntSerializeSize(uint64(len(msg.TxOut)))
+
+	for _, txIn := range msg.TxIn {
+		n += txIn.SerializeSize()
+	}
+
+	for _, txOut := range msg.TxOut {
+		n += txOut.SerializeSize()
+	}
+
+	for _, txWit := range msg.TxWitness {
+		n += len(txWit.ScriptWitness)
+
 	}
 
 	return n
