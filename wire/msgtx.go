@@ -179,9 +179,7 @@ func (msg *MsgTx) TxSha() ShaHash {
 	// is being out of memory or due to nil pointers, both of which would
 	// cause a run-time panic.
 	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
-	nonWitTx := msg.Copy()
-	nonWitTx.Flags = 0x00
-	_ = nonWitTx.Serialize(buf)
+	_ = msg.Serialize(buf)
 	return DoubleSha256SH(buf.Bytes())
 }
 
@@ -191,7 +189,7 @@ func (msg *MsgTx) WTxSha() ShaHash {
 	// Ignore the error returns since the only way the encode could fail
 	// is being out of memory or due to nil pointers, both of which would
 	// cause a run-time panic.
-	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
+	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeWitness()))
 	_ = msg.Serialize(buf)
 	return DoubleSha256SH(buf.Bytes())
 }
@@ -350,6 +348,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		msg.TxOut[i] = &to
 	}
 
+	msg.TxWitness = make([]*TxWitness, len(msg.TxIn))
 	if msg.Flags != 0 { // witness tx, so decode script witnesses
 		for i := 0; i < len(msg.TxIn); i++ {
 			wi := TxWitness{}
@@ -358,6 +357,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 			if err != nil {
 				return err
 			}
+			msg.TxWitness[i] = &wi
 		}
 	}
 
@@ -399,7 +399,7 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		return err
 	}
 
-	if msg.Flags != 0x00 { // check if this is a witness tx
+	if pver == 1 && msg.Flags != 0x00 {
 		w.Write([]byte{0x00})      // write 0 here to indicate witness tx
 		w.Write([]byte{msg.Flags}) // flag byte
 	}
@@ -430,10 +430,12 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		}
 	}
 
-	if msg.Flags != 0 { // check if this is a witness tx
+	if pver == 1 && msg.Flags != 0x00 { // check if this is a witness tx
 		for _, wit := range msg.TxWitness {
-			// could make a function here but not really needed
-			w.Write(wit.ScriptWitness)
+			err = writeTxWitness(w, pver, msg.Version, wit)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -461,7 +463,9 @@ func (msg *MsgTx) Serialize(w io.Writer) error {
 	// at protocol version 0 and the stable long-term storage format.  As
 	// a result, make use of BtcEncode.
 	return msg.BtcEncode(w, 0)
-
+}
+func (msg *MsgTx) SerializeWitness(w io.Writer) error {
+	return msg.BtcEncode(w, 1)
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the
@@ -483,25 +487,18 @@ func (msg *MsgTx) SerializeSize() int {
 	return n
 }
 
-// SerializeSize returns the number of bytes it would take to serialize the
-// the witness transaction.
-func (msg *MsgTx) WitnessSerializeSize() int {
-	// Version 4 bytes + LockTime 4 bytes + 2 bytes marker & flag
-	//	+ Serialized varint size for the number of inputs/witnesses and outputs.
-	n := 10 + VarIntSerializeSize(uint64(len(msg.TxIn)*2)) +
-		VarIntSerializeSize(uint64(len(msg.TxOut)))
+// SerializeSizeWitness returns the number of bytes it would take to serialize
+// the *witness* transaction.
+func (msg *MsgTx) SerializeSizeWitness() int {
+	n := msg.SerializeSize()
 
-	for _, txIn := range msg.TxIn {
-		n += txIn.SerializeSize()
-	}
-
-	for _, txOut := range msg.TxOut {
-		n += txOut.SerializeSize()
-	}
-
-	for _, txWit := range msg.TxWitness {
-		n += len(txWit.ScriptWitness)
-
+	if msg.Flags != 0 {
+		//		 2 bytes marker & flag
+		//	+ Serialized varint size for the number of inputs/witnesses and outputs.
+		n += 2
+		for _, txWit := range msg.TxWitness {
+			n += len(txWit.ScriptWitness)
+		}
 	}
 
 	return n
@@ -685,4 +682,8 @@ func writeTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
 		return err
 	}
 	return nil
+}
+
+func writeTxWitness(w io.Writer, pver uint32, version int32, wit *TxWitness) error {
+	return writeVarBytes(w, pver, wit.ScriptWitness)
 }

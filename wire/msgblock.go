@@ -195,6 +195,10 @@ func (msg *MsgBlock) Serialize(w io.Writer) error {
 	return msg.BtcEncode(w, 0)
 }
 
+func (msg *MsgBlock) SerializeWitness(w io.Writer) error {
+	return msg.BtcEncode(w, 1)
+}
+
 // SerializeSize returns the number of bytes it would take to serialize the
 // the block.
 func (msg *MsgBlock) SerializeSize() int {
