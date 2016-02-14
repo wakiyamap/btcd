@@ -144,7 +144,16 @@ func NewTxOut(value int64, pkScript []byte) *TxOut {
 
 // TxWitness defines the witness for a TxIn, which is a byte slice
 type TxWitness struct {
-	ScriptWitness []byte
+	ScriptWitness [][]byte
+}
+
+func (t *TxWitness) SerializeSize() int {
+	n := VarIntSerializeSize(uint64(len(t.ScriptWitness)))
+	for _, witPush := range t.ScriptWitness {
+		n += VarIntSerializeSize(uint64(len(witPush)))
+		n += len(witPush)
+	}
+	return n
 }
 
 // MsgTx implements the Message interface and represents a bitcoin tx message.
@@ -161,6 +170,8 @@ type MsgTx struct {
 	TxWitness []*TxWitness
 	LockTime  uint32
 }
+
+//TODO : add both txin and associated witness simultaneously
 
 // AddTxIn adds a transaction input to the message.
 func (msg *MsgTx) AddTxIn(ti *TxIn) {
@@ -185,12 +196,8 @@ func (msg *MsgTx) TxSha() ShaHash {
 
 // TxSha generates the ShaHash name for the transaction.
 func (msg *MsgTx) WTxSha() ShaHash {
-	// Encode the transaction and calculate double sha256 on the result.
-	// Ignore the error returns since the only way the encode could fail
-	// is being out of memory or due to nil pointers, both of which would
-	// cause a run-time panic.
 	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeWitness()))
-	_ = msg.Serialize(buf)
+	_ = msg.SerializeWitness(buf)
 	return DoubleSha256SH(buf.Bytes())
 }
 
@@ -257,8 +264,13 @@ func (msg *MsgTx) Copy() *MsgTx {
 
 	// Deep copy old winess data
 	for _, oldWitness := range msg.TxWitness {
-		var newScriptWitness []byte
-		copy(newScriptWitness, oldWitness.ScriptWitness[:])
+
+		var newScriptWitness [][]byte
+		for _, oldItem := range oldWitness.ScriptWitness {
+			var newItem []byte
+			copy(newItem, oldItem)
+			newScriptWitness = append(newScriptWitness, newItem)
+		}
 		newTxWitness := TxWitness{ScriptWitness: newScriptWitness}
 		newTx.TxWitness = append(newTx.TxWitness, &newTxWitness)
 	}
@@ -292,7 +304,8 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		msg.Flags = f[0] // read flag byte
 		if msg.Flags == 0 {
 			str := fmt.Sprintf("witness tx but flag byte is %x", f)
-			fmt.Printf("letting error slide! %s\n", str)
+
+			fmt.Printf("%s letting error slide! %s\n", msg.TxSha().String(), str)
 			//			return messageError("MsgTx.BtcDecode", str)
 		}
 		// now get actual txin count
@@ -300,7 +313,8 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("wit ver %d count %d\n", msg.Version, count)
+		fmt.Printf("%s is wit tx ver %d txin count %d\n",
+			msg.TxSha().String(), msg.Version, count)
 	}
 
 	// Prevent more input transactions than could possibly fit into a
@@ -351,11 +365,21 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 	msg.TxWitness = make([]*TxWitness, len(msg.TxIn))
 	if msg.Flags != 0 { // witness tx, so decode script witnesses
 		for i := 0; i < len(msg.TxIn); i++ {
+			fmt.Printf("tx %s witness %d: ", msg.TxSha().String(), i)
 			wi := TxWitness{}
-			wi.ScriptWitness, err = readVarBytes(r, pver, MaxMessagePayload,
-				"Script Witness")
+			// first read varint of number of "items" in this script_witness
+			witCount, err := readVarInt(r, pver)
 			if err != nil {
 				return err
+			}
+			wi.ScriptWitness = make([][]byte, witCount)
+			for j := uint64(0); j < witCount; j++ {
+				witPush, err := readVarBytes(r, pver, MaxMessagePayload,
+					"Script Witness Item")
+				if err != nil {
+					return err
+				}
+				wi.ScriptWitness[j] = witPush
 			}
 			msg.TxWitness[i] = &wi
 		}
@@ -431,8 +455,8 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 	}
 
 	if pver == 1 && msg.Flags != 0x00 { // check if this is a witness tx
-		for _, wit := range msg.TxWitness {
-			err = writeTxWitness(w, pver, msg.Version, wit)
+		for _, txwit := range msg.TxWitness {
+			err = writeTxWitness(w, pver, msg.Version, txwit)
 			if err != nil {
 				return err
 			}
@@ -487,6 +511,15 @@ func (msg *MsgTx) SerializeSize() int {
 	return n
 }
 
+func (msg *MsgTx) VirtualSize() int {
+	w := msg.SerializeSizeWitness()
+	n := msg.SerializeSize()
+	//TODO make these things conts somewhere?
+	// *3 is to make old txs count the same as before (norm 3 + wit 1 = 4)
+	// the +3 at the end is to always round up
+	return ((n*3 + w) + 3) / 4
+}
+
 // SerializeSizeWitness returns the number of bytes it would take to serialize
 // the *witness* transaction.
 func (msg *MsgTx) SerializeSizeWitness() int {
@@ -496,11 +529,11 @@ func (msg *MsgTx) SerializeSizeWitness() int {
 		//		 2 bytes marker & flag
 		//	+ Serialized varint size for the number of inputs/witnesses and outputs.
 		n += 2
+
 		for _, txWit := range msg.TxWitness {
-			n += len(txWit.ScriptWitness)
+			n += txWit.SerializeSize()
 		}
 	}
-
 	return n
 }
 
@@ -685,5 +718,15 @@ func writeTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
 }
 
 func writeTxWitness(w io.Writer, pver uint32, version int32, wit *TxWitness) error {
-	return writeVarBytes(w, pver, wit.ScriptWitness)
+	err := writeVarInt(w, pver, uint64(len(wit.ScriptWitness)))
+	if err != nil {
+		return err
+	}
+	for _, item := range wit.ScriptWitness {
+		err = writeVarBytes(w, pver, item)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
