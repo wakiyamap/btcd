@@ -2367,7 +2367,6 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		peerHeightsUpdate:    make(chan updatePeerHeightsMsg),
 		nat:                  nat,
 		db:                   db,
-		txFeeScraper:         txFeeScraper,
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
@@ -2389,6 +2388,7 @@ func newServer(listenAddrs []string, db database.Db, chainParams *chaincfg.Param
 		RelayNtfnChan:         s.relayNtfnChan,
 		SigCache:              s.sigCache,
 		TimeSource:            s.timeSource,
+		TxFeeScraper:          txFeeScraper,
 	}
 	s.txMemPool = newTxMemPool(&txC)
 

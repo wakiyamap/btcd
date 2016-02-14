@@ -88,6 +88,10 @@ type mempoolConfig struct {
 
 	// TimeSource defines the timesource to use.
 	TimeSource blockchain.MedianTimeSource
+
+	// TxFeeScraper defines the source to export transaction fee data to be
+	// used for predictions.
+	TxFeeScraper *txFeatureCollector
 }
 
 // txMemPool is used as a source of transactions that need to be mined into
@@ -337,8 +341,8 @@ func (mp *txMemPool) removeTransaction(tx *btcutil.Tx, removeRedeemers bool) {
 
 // retrieveDependantTxs...
 // TODO(roasbeef): version that traces to all ancestors...
-func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*TxDesc {
-	var txns []*TxDesc
+func (mp *txMemPool) retrieveDependantTxs(tx *btcutil.Tx) []*mempoolTxDesc {
+	var txns []*mempoolTxDesc
 	addedTxns := make(map[wire.ShaHash]struct{})
 
 	// Iterate through all refereneced transaction outputs.
@@ -857,9 +861,9 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// in the next block.  Transactions which are being added back to the
 	// memory pool from blocks that have been disconnected during a reorg
 	// are exempted.
+	currentPriority := calcPriority(tx.MsgTx(), txStore,
+		nextBlockHeight)
 	if isNew && !mp.cfg.DisableRelayPriority && txFee < minFee {
-		currentPriority := calcPriority(tx.MsgTx(), txStore,
-			nextBlockHeight)
 		if currentPriority <= minHighPriority {
 			str := fmt.Sprintf("transaction %v has insufficient "+
 				"priority (%g <= %g)", txHash,
@@ -907,7 +911,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	mp.addTransaction(txStore, tx, curHeight, txFee)
 
 	peerLog.Infof("sending tx add")
-	mp.server.txFeeScraper.txAdd <- time.Now()
+	mp.cfg.TxFeeScraper.txAdd <- time.Now()
 	peerLog.Infof("sent tx add")
 
 	var mempoolSize int
@@ -918,14 +922,6 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	for _, txOut := range tx.MsgTx().TxOut {
 		totalSatoshiOut += txOut.Value
 	}
-
-	txD := &TxDesc{
-		Tx:     tx,
-		Added:  time.Now(),
-		Height: curHeight,
-		Fee:    txFee,
-	}
-	currentPriority := txD.CurrentPriority(txStore, nextBlockHeight)
 
 	totalAncestralFees := int64(0)
 	for _, txD := range mp.retrieveDependantTxs(tx) {
@@ -944,7 +940,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		MempoolSize:        len(mp.pool),
 		MempoolSizeBytes:   mempoolSize,
 		BlockDiscovered:    curHeight,
-		IncomingTxRate:     mp.server.txFeeScraper.currentTxRate(),
+		IncomingTxRate:     mp.cfg.TxFeeScraper.currentTxRate(),
 		TxID:               tx.Sha(),
 		TotalInputValue:    btcutil.Amount(totalSatoshiOut + txFee),
 		TotalOutputValue:   btcutil.Amount(totalSatoshiOut),
@@ -952,7 +948,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 		TimeStamp:          time.Now(),
 	}
 	peerLog.Infof("sending feature")
-	mp.server.txFeeScraper.initFeatures <- &featureInitMsg{feature: txFeature}
+	mp.cfg.TxFeeScraper.initFeatures <- &featureInitMsg{feature: txFeature}
 	peerLog.Infof("sent feature")
 
 	txmpLog.Debugf("Accepted transaction %v (pool size: %v)", txHash,
