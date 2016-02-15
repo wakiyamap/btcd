@@ -531,7 +531,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		}
 
 		prevOut := wire.NewOutPoint(txHash, uint32(input.Vout))
-		txIn := wire.NewTxIn(prevOut, []byte{})
+		txIn := wire.NewTxIn(prevOut, []byte{}, nil)
 		if c.LockTime != nil && *c.LockTime != 0 {
 			txIn.Sequence = wire.MaxTxInSequenceNum - 1
 		}

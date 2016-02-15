@@ -95,6 +95,7 @@ func (o OutPoint) String() string {
 type TxIn struct {
 	PreviousOutPoint OutPoint
 	SignatureScript  []byte
+	Witness          TxWitness
 	Sequence         uint32
 }
 
@@ -111,10 +112,11 @@ func (t *TxIn) SerializeSize() int {
 // NewTxIn returns a new bitcoin transaction input with the provided
 // previous outpoint point and signature script with a default sequence of
 // MaxTxInSequenceNum.
-func NewTxIn(prevOut *OutPoint, signatureScript []byte) *TxIn {
+func NewTxIn(prevOut *OutPoint, signatureScript []byte, witness [][]byte) *TxIn {
 	return &TxIn{
 		PreviousOutPoint: *prevOut,
 		SignatureScript:  signatureScript,
+		Witness:          witness,
 		Sequence:         MaxTxInSequenceNum,
 	}
 }
@@ -143,13 +145,11 @@ func NewTxOut(value int64, pkScript []byte) *TxOut {
 }
 
 // TxWitness defines the witness for a TxIn, which is a byte slice
-type TxWitness struct {
-	ScriptWitness [][]byte
-}
+type TxWitness [][]byte
 
-func (t *TxWitness) SerializeSize() int {
-	n := VarIntSerializeSize(uint64(len(t.ScriptWitness)))
-	for _, witPush := range t.ScriptWitness {
+func (t TxWitness) SerializeSize() int {
+	n := VarIntSerializeSize(uint64(len(t)))
+	for _, witPush := range t {
 		n += VarIntSerializeSize(uint64(len(witPush)))
 		n += len(witPush)
 	}
@@ -163,12 +163,11 @@ func (t *TxWitness) SerializeSize() int {
 // Use the AddTxIn and AddTxOut functions to build up the list of transaction
 // inputs and outputs.
 type MsgTx struct {
-	Version   int32
-	Flags     byte
-	TxIn      []*TxIn
-	TxOut     []*TxOut
-	TxWitness []*TxWitness
-	LockTime  uint32
+	Version  int32
+	Flags    byte
+	TxIn     []*TxIn
+	TxOut    []*TxOut
+	LockTime uint32
 }
 
 //TODO : add both txin and associated witness simultaneously
@@ -207,12 +206,11 @@ func (msg *MsgTx) Copy() *MsgTx {
 	// Create new tx and start by copying primitive values and making space
 	// for the transaction inputs and outputs.
 	newTx := MsgTx{
-		Version:   msg.Version,
-		Flags:     msg.Flags,
-		TxIn:      make([]*TxIn, 0, len(msg.TxIn)),
-		TxOut:     make([]*TxOut, 0, len(msg.TxOut)),
-		TxWitness: make([]*TxWitness, 0, len(msg.TxIn)), // 1 witness per txin
-		LockTime:  msg.LockTime,
+		Version:  msg.Version,
+		Flags:    msg.Flags,
+		TxIn:     make([]*TxIn, 0, len(msg.TxIn)),
+		TxOut:    make([]*TxOut, 0, len(msg.TxOut)),
+		LockTime: msg.LockTime,
 	}
 
 	// Deep copy the old TxIn data.
@@ -231,6 +229,16 @@ func (msg *MsgTx) Copy() *MsgTx {
 			newScript = make([]byte, oldScriptLen, oldScriptLen)
 			copy(newScript, oldScript[:oldScriptLen])
 		}
+
+		//Deep copy the old witness data
+		var newTxinWitness [][]byte
+
+		for _, oldItem := range oldTxIn.Witness {
+			var newItem []byte
+			copy(newItem, oldItem)
+			newTxinWitness = append(newTxinWitness, newItem)
+		}
+		oldTxIn.Witness = newTxinWitness
 
 		// Create new txIn with the deep copied data and append it to
 		// new Tx.
@@ -260,19 +268,6 @@ func (msg *MsgTx) Copy() *MsgTx {
 			PkScript: newScript,
 		}
 		newTx.TxOut = append(newTx.TxOut, &newTxOut)
-	}
-
-	// Deep copy old winess data
-	for _, oldWitness := range msg.TxWitness {
-
-		var newScriptWitness [][]byte
-		for _, oldItem := range oldWitness.ScriptWitness {
-			var newItem []byte
-			copy(newItem, oldItem)
-			newScriptWitness = append(newScriptWitness, newItem)
-		}
-		newTxWitness := TxWitness{ScriptWitness: newScriptWitness}
-		newTx.TxWitness = append(newTx.TxWitness, &newTxWitness)
 	}
 
 	return &newTx
@@ -362,28 +357,46 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		msg.TxOut[i] = &to
 	}
 
-	msg.TxWitness = make([]*TxWitness, len(msg.TxIn))
 	if msg.Flags != 0 { // witness tx, so decode script witnesses
-		for i := 0; i < len(msg.TxIn); i++ {
-			fmt.Printf("tx %s witness %d: ", msg.TxSha().String(), i)
-			wi := TxWitness{}
-			// first read varint of number of "items" in this script_witness
+		for _, txin := range msg.TxIn {
 			witCount, err := readVarInt(r, pver)
 			if err != nil {
 				return err
 			}
-			wi.ScriptWitness = make([][]byte, witCount)
+			txin.Witness = make([][]byte, witCount)
 			for j := uint64(0); j < witCount; j++ {
 				witPush, err := readVarBytes(r, pver, MaxMessagePayload,
 					"Script Witness Item")
 				if err != nil {
 					return err
 				}
-				wi.ScriptWitness[j] = witPush
+				txin.Witness[j] = witPush
 			}
-			msg.TxWitness[i] = &wi
 		}
 	}
+
+	//	msg.TxWitness = make([]*TxWitness, len(msg.TxIn))
+	//	if msg.Flags != 0 { // witness tx, so decode script witnesses
+	//		for i := 0; i < len(msg.TxIn); i++ {
+	//			fmt.Printf("tx %s witness %d: ", msg.TxSha().String(), i)
+	//			wi := TxWitness{}
+	//			// first read varint of number of "items" in this script_witness
+	//			witCount, err := readVarInt(r, pver)
+	//			if err != nil {
+	//				return err
+	//			}
+	//			wi.ScriptWitness = make([][]byte, witCount)
+	//			for j := uint64(0); j < witCount; j++ {
+	//				witPush, err := readVarBytes(r, pver, MaxMessagePayload,
+	//					"Script Witness Item")
+	//				if err != nil {
+	//					return err
+	//				}
+	//				wi.ScriptWitness[j] = witPush
+	//			}
+	//			msg.TxWitness[i] = &wi
+	//		}
+	//	}
 
 	_, err = io.ReadFull(r, buf[:])
 	if err != nil {
@@ -455,11 +468,13 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 	}
 
 	if pver == 1 && msg.Flags != 0x00 { // check if this is a witness tx
-		for _, txwit := range msg.TxWitness {
-			err = writeTxWitness(w, pver, msg.Version, txwit)
+		for _, ti := range msg.TxIn {
+
+			err = writeTxWitness(w, pver, msg.Version, ti.Witness)
 			if err != nil {
 				return err
 			}
+
 		}
 	}
 
@@ -526,12 +541,10 @@ func (msg *MsgTx) SerializeSizeWitness() int {
 	n := msg.SerializeSize()
 
 	if msg.Flags != 0 {
-		//		 2 bytes marker & flag
-		//	+ Serialized varint size for the number of inputs/witnesses and outputs.
-		n += 2
+		n += 2 // extra 2 bytes for marker & flag
 
-		for _, txWit := range msg.TxWitness {
-			n += txWit.SerializeSize()
+		for _, txin := range msg.TxIn { // add witness sizes
+			n += txin.Witness.SerializeSize()
 		}
 	}
 	return n
@@ -717,12 +730,12 @@ func writeTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
 	return nil
 }
 
-func writeTxWitness(w io.Writer, pver uint32, version int32, wit *TxWitness) error {
-	err := writeVarInt(w, pver, uint64(len(wit.ScriptWitness)))
+func writeTxWitness(w io.Writer, pver uint32, version int32, wit [][]byte) error {
+	err := writeVarInt(w, pver, uint64(len(wit)))
 	if err != nil {
 		return err
 	}
-	for _, item := range wit.ScriptWitness {
+	for _, item := range wit {
 		err = writeVarBytes(w, pver, item)
 		if err != nil {
 			return err
