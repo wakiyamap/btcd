@@ -296,20 +296,16 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 		if err != nil {
 			return err
 		}
-		msg.Flags = f[0] // read flag byte
-		if msg.Flags == 0 {
+		msg.Flags = f[0]       // read flag byte
+		if msg.Flags != 0x01 { // currently only 0x01 is supported
 			str := fmt.Sprintf("witness tx but flag byte is %x", f)
-
-			fmt.Printf("%s letting error slide! %s\n", msg.TxSha().String(), str)
-			//			return messageError("MsgTx.BtcDecode", str)
+			return messageError("MsgTx.BtcDecode", str)
 		}
 		// now get actual txin count
 		count, err = readVarInt(r, pver)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s is wit tx ver %d txin count %d\n",
-			msg.TxSha().String(), msg.Version, count)
 	}
 
 	// Prevent more input transactions than could possibly fit into a
@@ -374,29 +370,6 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 			}
 		}
 	}
-
-	//	msg.TxWitness = make([]*TxWitness, len(msg.TxIn))
-	//	if msg.Flags != 0 { // witness tx, so decode script witnesses
-	//		for i := 0; i < len(msg.TxIn); i++ {
-	//			fmt.Printf("tx %s witness %d: ", msg.TxSha().String(), i)
-	//			wi := TxWitness{}
-	//			// first read varint of number of "items" in this script_witness
-	//			witCount, err := readVarInt(r, pver)
-	//			if err != nil {
-	//				return err
-	//			}
-	//			wi.ScriptWitness = make([][]byte, witCount)
-	//			for j := uint64(0); j < witCount; j++ {
-	//				witPush, err := readVarBytes(r, pver, MaxMessagePayload,
-	//					"Script Witness Item")
-	//				if err != nil {
-	//					return err
-	//				}
-	//				wi.ScriptWitness[j] = witPush
-	//			}
-	//			msg.TxWitness[i] = &wi
-	//		}
-	//	}
 
 	_, err = io.ReadFull(r, buf[:])
 	if err != nil {

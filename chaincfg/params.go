@@ -308,7 +308,7 @@ var SegNetParams = Params{
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x1e, // starts with ?
+	PubKeyHashAddrID: 0x1e, // starts with D
 	ScriptHashAddrID: 0x32, // starts with ?
 	PrivateKeyID:     0x9e, // starts with ?
 
@@ -387,22 +387,25 @@ var (
 
 var (
 	registeredNets = map[wire.BitcoinNet]struct{}{
-		MainNetParams.Net:       {},
-		TestNet3Params.Net:      {},
-		RegressionNetParams.Net: {},
-		SimNetParams.Net:        {},
+		MainNetParams.Net:       struct{}{},
+		TestNet3Params.Net:      struct{}{},
+		RegressionNetParams.Net: struct{}{},
+		SimNetParams.Net:        struct{}{},
+		SegNetParams.Net:        struct{}{},
 	}
 
 	pubKeyHashAddrIDs = map[byte]struct{}{
-		MainNetParams.PubKeyHashAddrID:  {},
-		TestNet3Params.PubKeyHashAddrID: {}, // shared with regtest
-		SimNetParams.PubKeyHashAddrID:   {},
+		MainNetParams.PubKeyHashAddrID:  struct{}{},
+		TestNet3Params.PubKeyHashAddrID: struct{}{}, // shared with regtest
+		SimNetParams.PubKeyHashAddrID:   struct{}{},
+		SegNetParams.PubKeyHashAddrID:   struct{}{},
 	}
 
 	scriptHashAddrIDs = map[byte]struct{}{
-		MainNetParams.ScriptHashAddrID:  {},
-		TestNet3Params.ScriptHashAddrID: {}, // shared with regtest
-		SimNetParams.ScriptHashAddrID:   {},
+		MainNetParams.ScriptHashAddrID:  struct{}{},
+		TestNet3Params.ScriptHashAddrID: struct{}{}, // shared with regtest
+		SimNetParams.ScriptHashAddrID:   struct{}{},
+		SegNetParams.ScriptHashAddrID:   struct{}{},
 	}
 
 	// Testnet is shared with regtest.
@@ -410,6 +413,7 @@ var (
 		MainNetParams.HDPrivateKeyID:  MainNetParams.HDPublicKeyID[:],
 		TestNet3Params.HDPrivateKeyID: TestNet3Params.HDPublicKeyID[:],
 		SimNetParams.HDPrivateKeyID:   SimNetParams.HDPublicKeyID[:],
+		SegNetParams.HDPrivateKeyID:   SegNetParams.HDPublicKeyID[:],
 	}
 )
 
