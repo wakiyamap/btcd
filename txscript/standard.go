@@ -309,6 +309,11 @@ func payToPubKeyHashScript(pubKeyHash []byte) ([]byte, error) {
 		Script()
 }
 
+// payToWitnessPubKeyHashScript creates a new pay to winess pubkey hash script.
+func payToWitnessPubKeyHashScript(pubKeyHash []byte) ([]byte, error) {
+	return NewScriptBuilder().AddOp(OP_0).AddData(pubKeyHash).Script()
+}
+
 // payToScriptHashScript creates a new script to pay a transaction output to a
 // script hash. It is expected that the input is a valid hash.
 func payToScriptHashScript(scriptHash []byte) ([]byte, error) {
@@ -344,6 +349,12 @@ func PayToAddrScript(addr btcutil.Address) ([]byte, error) {
 			return nil, ErrUnsupportedAddress
 		}
 		return payToPubKeyScript(addr.ScriptAddress())
+
+	case *btcutil.AddressWitnessPubKeyHash:
+		if addr == nil {
+			return nil, ErrUnsupportedAddress
+		}
+		return payToWitnessPubKeyHashScript(addr.ScriptAddress())
 	}
 
 	return nil, ErrUnsupportedAddress
