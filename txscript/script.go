@@ -264,6 +264,149 @@ func removeOpcodeByData(pkscript []parsedOpcode, data []byte) []parsedOpcode {
 
 }
 
+// calcHashPrevOuts makes a single hash of all previous outputs in the tx
+func calcHashPrevOuts(tx *wire.MsgTx, hType SigHashType) wire.ShaHash {
+	// skip this (0x00) for anyonecanpay
+	if hType == SigHashAnyOneCanPay {
+		var empty [32]byte
+		return empty
+	}
+
+	var pre []byte
+	for _, in := range tx.TxIn {
+		// first append 32 byte hash
+		pre = append(pre, in.PreviousOutPoint.Hash.Bytes()...)
+		// then make a buffer, put 4 byte index in lil' endian and append that
+		var buf [4]byte
+		binary.LittleEndian.PutUint32(buf[:], in.PreviousOutPoint.Index)
+		pre = append(pre, buf[:]...)
+	}
+	fmt.Printf("pre: %x\n", pre)
+	return wire.DoubleSha256SH(pre)
+}
+
+// calcHashSequence is hash of txins' seq numbers, lil' endian, stuck together
+func calcHashSequence(tx *wire.MsgTx, hType SigHashType) wire.ShaHash {
+	// skip (0x00) for single, none, anyonecanpay
+	if hType == SigHashSingle || hType == SigHashNone ||
+		hType == SigHashAnyOneCanPay {
+		var empty [32]byte
+		return empty
+	}
+
+	var pre []byte
+	for _, in := range tx.TxIn {
+		var buf [4]byte
+		binary.LittleEndian.PutUint32(buf[:], in.Sequence)
+		pre = append(pre, buf[:]...)
+	}
+	fmt.Printf("pre: %x\n", pre)
+	return wire.DoubleSha256SH(pre)
+}
+
+// calcHashOutputs also wants a input index, which it only uses for
+// sighash single.  If it's not sighash single, just put a 0 or whatever.
+func calcHashOutputs(
+	tx *wire.MsgTx, inIndex int, hType SigHashType) wire.ShaHash {
+	if hType == SigHashNone ||
+		(hType == SigHashSingle && inIndex <= len(tx.TxOut)) {
+		var empty [32]byte
+		return empty
+	}
+	if hType == SigHashSingle {
+		var buf bytes.Buffer
+		wire.WriteTxOut(&buf, 0, 0, tx.TxOut[inIndex])
+		return wire.DoubleSha256SH(buf.Bytes())
+	}
+
+	var pre []byte
+	for _, out := range tx.TxOut {
+		var buf bytes.Buffer
+		wire.WriteTxOut(&buf, 0, 0, out)
+		pre = append(pre, buf.Bytes()...)
+	}
+	fmt.Printf("pre: %x\n", pre)
+	return wire.DoubleSha256SH(pre)
+}
+
+// calcWitnessSignatureHash is the witnessified version of calcSignatureHash
+// put your pkscripts in the sigscript slot before handing the tx to this
+// function.  Also you're clearly supposed to cache the 3 sub-hashes generated
+// here, because they apply to the tx, not a txin.  But this doesn't yet.
+func calcWitnessSignatureHash(script []parsedOpcode, hashType SigHashType,
+	tx *wire.MsgTx, idx int, amt int64) []byte {
+	// in the script.go calcSignatureHash(), idx is assumed safe, so I guess
+	// that's OK here too...?  Nah I'm gonna check
+	if idx > len(tx.TxIn)-1 {
+		return nil
+	}
+
+	// first get hashPrevOuts, hashSequence, and hashOutputs
+	hashPrevOuts := calcHashPrevOuts(tx, hashType)
+	hashSequence := calcHashSequence(tx, hashType)
+	hashOutputs := calcHashOutputs(tx, idx, hashType)
+
+	var buf4 [4]byte // buffer for 4-byte stuff
+	var buf8 [8]byte // buffer for 8-byte stuff
+	var pre []byte   // the pre-image we're generating
+
+	binary.LittleEndian.PutUint32(buf4[:], uint32(tx.Version))
+	pre = append(pre, buf4[:]...)
+
+	pre = append(pre, hashPrevOuts.Bytes()...)
+	pre = append(pre, hashSequence.Bytes()...)
+
+	// outpoint being spent
+	pre = append(pre, tx.TxIn[idx].PreviousOutPoint.Hash.Bytes()...)
+	binary.LittleEndian.PutUint32(buf4[:], tx.TxIn[idx].PreviousOutPoint.Index)
+	pre = append(pre, buf4[:]...)
+
+	// scriptCode which is some new thing
+
+	// detect wpkh mode
+	if len(tx.TxIn[idx].SignatureScript) == 22 &&
+		tx.TxIn[idx].SignatureScript[0] == 0x00 &&
+		tx.TxIn[idx].SignatureScript[1] == 0x14 {
+		// wpkh mode .... recreate op_dup codes here
+		sCode := []byte{0x19, 0x76, 0xa9, 0x14}
+		sCode = append(sCode, tx.TxIn[idx].SignatureScript[2:22]...)
+		sCode = append(sCode, []byte{0x88, 0xac}...)
+		pre = append(pre, sCode...)
+	} else if len(tx.TxIn[idx].SignatureScript) == 34 &&
+		tx.TxIn[idx].SignatureScript[0] == 0x00 &&
+		tx.TxIn[idx].SignatureScript[1] == 0x20 {
+		// whs mode- need to remove codeseparators.  this doesn't yet.
+		var buf bytes.Buffer
+		wire.WriteVarBytes(&buf, 0, tx.TxIn[idx].Witness[0])
+		pre = append(pre, buf.Bytes()...)
+	} else {
+		// ?? this is not witness tx! fail
+		return nil
+	}
+
+	// amount being signed off
+	binary.LittleEndian.PutUint64(buf8[:], uint64(amt))
+	pre = append(pre, buf8[:]...)
+
+	// nsequence of input
+	binary.LittleEndian.PutUint32(buf4[:], tx.TxIn[idx].Sequence)
+	pre = append(pre, buf4[:]...)
+
+	pre = append(pre, hashOutputs.Bytes()...)
+
+	// locktime
+	binary.LittleEndian.PutUint32(buf4[:], tx.LockTime)
+	pre = append(pre, buf4[:]...)
+
+	// hashType... in 4 bytes, instead of 1, because reasons.
+	binary.LittleEndian.PutUint32(buf4[:], uint32(hashType))
+	pre = append(pre, buf4[:]...)
+
+	fmt.Printf("pre: %x\n", pre)
+	hsh := wire.DoubleSha256SH(pre)
+	return hsh.Bytes()
+}
+
 // calcSignatureHash will, given a script and hash type for the current script
 // engine instance, calculate the signature hash to be used for signing and
 // verification.

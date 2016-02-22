@@ -434,7 +434,7 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 	}
 
 	for _, to := range msg.TxOut {
-		err = writeTxOut(w, pver, msg.Version, to)
+		err = WriteTxOut(w, pver, msg.Version, to)
 		if err != nil {
 			return err
 		}
@@ -688,7 +688,8 @@ func readTxOut(r io.Reader, pver uint32, version int32, to *TxOut) error {
 
 // writeTxOut encodes to into the bitcoin protocol encoding for a transaction
 // output (TxOut) to w.
-func writeTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
+// exported for txscript
+func WriteTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
 	var buf [8]byte
 	binary.LittleEndian.PutUint64(buf[:], uint64(to.Value))
 	_, err := w.Write(buf[:])
@@ -709,7 +710,7 @@ func writeTxWitness(w io.Writer, pver uint32, version int32, wit [][]byte) error
 		return err
 	}
 	for _, item := range wit {
-		err = writeVarBytes(w, pver, item)
+		err = WriteVarBytes(w, pver, item)
 		if err != nil {
 			return err
 		}

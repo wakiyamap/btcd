@@ -14,6 +14,49 @@ import (
 	"github.com/btcsuite/btcutil"
 )
 
+// RawTxInWitnessSignature is RawTxInSignature but witnessified.
+// just swaps out calcSignatureHash for calcWitnessSignatureHash
+func RawTxInWitnessSignature(
+	tx *wire.MsgTx, idx int, amt int64, subScript []byte,
+	hashType SigHashType, key *btcec.PrivateKey) ([]byte, error) {
+
+	parsedScript, err := parseScript(subScript)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse output script: %v", err)
+	}
+	hash := calcWitnessSignatureHash(parsedScript, hashType, tx, idx, amt)
+	signature, err := key.Sign(hash)
+	if err != nil {
+		return nil, fmt.Errorf("cannot sign tx input: %s", err)
+	}
+
+	return append(signature.Serialize(), byte(hashType)), nil
+}
+
+// WitnessSignatureScript is SignatureScript but witnessified.
+// just swaps out RawTxInSignature for RawTxInWitnessSignature.
+// also you need to tell the amount you're signing off
+func WitnessSignatureScript(
+	tx *wire.MsgTx, idx int, amt int64, subscript []byte, hashType SigHashType,
+	privKey *btcec.PrivateKey, compress bool) ([]byte, error) {
+
+	sig, err := RawTxInWitnessSignature(
+		tx, idx, amt, subscript, hashType, privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	pk := (*btcec.PublicKey)(&privKey.PublicKey)
+	var pkData []byte
+	if compress {
+		pkData = pk.SerializeCompressed()
+	} else {
+		pkData = pk.SerializeUncompressed()
+	}
+
+	return NewScriptBuilder().AddData(sig).AddData(pkData).Script()
+}
+
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of
 // the given transaction, with hashType appended to it.
 func RawTxInSignature(tx *wire.MsgTx, idx int, subScript []byte,

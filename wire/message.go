@@ -295,7 +295,6 @@ func ReadMessageN(r io.Reader, pver uint32, btcnet BitcoinNet) (int, Message, []
 			"indicates %d bytes, but max message payload is %d "+
 			"bytes.", hdr.length, MaxMessagePayload)
 		return totalBytes, nil, nil, messageError("ReadMessage", str)
-
 	}
 
 	// Check for messages from the wrong bitcoin network.
