@@ -20,11 +20,12 @@ func RawTxInWitnessSignature(
 	tx *wire.MsgTx, idx int, amt int64, subScript []byte,
 	hashType SigHashType, key *btcec.PrivateKey) ([]byte, error) {
 
-	parsedScript, err := parseScript(subScript)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse output script: %v", err)
-	}
-	hash := calcWitnessSignatureHash(parsedScript, hashType, tx, idx, amt)
+	//	parsedScript, err := parseScript(subScript)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("cannot parse output script: %v", err)
+	//	}
+	hash := calcWitnessSignatureHash(subScript, hashType, tx, idx, amt)
+	fmt.Printf("sighash %x\n", hash)
 	signature, err := key.Sign(hash)
 	if err != nil {
 		return nil, fmt.Errorf("cannot sign tx input: %s", err)
@@ -36,9 +37,9 @@ func RawTxInWitnessSignature(
 // WitnessSignatureScript is SignatureScript but witnessified.
 // just swaps out RawTxInSignature for RawTxInWitnessSignature.
 // also you need to tell the amount you're signing off
-func WitnessSignatureScript(
+func WitnessScript(
 	tx *wire.MsgTx, idx int, amt int64, subscript []byte, hashType SigHashType,
-	privKey *btcec.PrivateKey, compress bool) ([]byte, error) {
+	privKey *btcec.PrivateKey, compress bool) ([][]byte, error) {
 
 	sig, err := RawTxInWitnessSignature(
 		tx, idx, amt, subscript, hashType, privKey)
@@ -54,7 +55,9 @@ func WitnessSignatureScript(
 		pkData = pk.SerializeUncompressed()
 	}
 
-	return NewScriptBuilder().AddData(sig).AddData(pkData).Script()
+	return append([][]byte{sig}, pkData), nil
+
+	//	return NewScriptBuilder().AddData(sig).AddData(pkData).Script()
 }
 
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of

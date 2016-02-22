@@ -192,11 +192,17 @@ func (msg *MsgBlock) Serialize(w io.Writer) error {
 	// At the current time, there is no difference between the wire encoding
 	// at protocol version 0 and the stable long-term storage format.  As
 	// a result, make use of BtcEncode.
+
+	// this overwrites the block, turning it into a non-witness block!
+	for _, tx := range msg.Transactions {
+		tx.Flags = 0x00
+	}
+
 	return msg.BtcEncode(w, 0)
 }
 
 func (msg *MsgBlock) SerializeWitness(w io.Writer) error {
-	return msg.BtcEncode(w, 1)
+	return msg.BtcEncode(w, 0)
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the

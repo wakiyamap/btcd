@@ -149,9 +149,9 @@ type TxWitness [][]byte
 
 func (t TxWitness) SerializeSize() int {
 	n := VarIntSerializeSize(uint64(len(t)))
-	for _, witPush := range t {
-		n += VarIntSerializeSize(uint64(len(witPush)))
-		n += len(witPush)
+	for _, witItem := range t {
+		n += VarIntSerializeSize(uint64(len(witItem)))
+		n += len(witItem)
 	}
 	return n
 }
@@ -238,13 +238,13 @@ func (msg *MsgTx) Copy() *MsgTx {
 			copy(newItem, oldItem)
 			newTxinWitness = append(newTxinWitness, newItem)
 		}
-		oldTxIn.Witness = newTxinWitness
 
 		// Create new txIn with the deep copied data and append it to
 		// new Tx.
 		newTxIn := TxIn{
 			PreviousOutPoint: newOutPoint,
 			SignatureScript:  newScript,
+			Witness:          newTxinWitness,
 			Sequence:         oldTxIn.Sequence,
 		}
 		newTx.TxIn = append(newTx.TxIn, &newTxIn)
@@ -409,7 +409,9 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		return err
 	}
 
-	if pver == 1 && msg.Flags != 0x00 {
+	// always encodes witness tx if flag byte is non-zero
+	// if you want to encode a non-witness tx, set flags = 0 first
+	if msg.Flags != 0x00 {
 		w.Write([]byte{0x00})      // write 0 here to indicate witness tx
 		w.Write([]byte{msg.Flags}) // flag byte
 	}
@@ -440,14 +442,12 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32) error {
 		}
 	}
 
-	if pver == 1 && msg.Flags != 0x00 { // check if this is a witness tx
+	if msg.Flags != 0x00 { // check if this is a witness tx
 		for _, ti := range msg.TxIn {
-
 			err = writeTxWitness(w, pver, msg.Version, ti.Witness)
 			if err != nil {
 				return err
 			}
-
 		}
 	}
 
@@ -474,10 +474,15 @@ func (msg *MsgTx) Serialize(w io.Writer) error {
 	// At the current time, there is no difference between the wire encoding
 	// at protocol version 0 and the stable long-term storage format.  As
 	// a result, make use of BtcEncode.
-	return msg.BtcEncode(w, 0)
+
+	// copy and de-assert flags byte to de-witnessify
+	txc := msg.Copy()
+	txc.Flags = 0x00
+	return txc.BtcEncode(w, 0)
 }
+
 func (msg *MsgTx) SerializeWitness(w io.Writer) error {
-	return msg.BtcEncode(w, 1)
+	return msg.BtcEncode(w, 0)
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the
