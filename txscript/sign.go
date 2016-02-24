@@ -16,15 +16,15 @@ import (
 
 // RawTxInWitnessSignature is RawTxInSignature but witnessified.
 // just swaps out calcSignatureHash for calcWitnessSignatureHash
-func RawTxInWitnessSignature(
-	tx *wire.MsgTx, idx int, amt int64, subScript []byte,
-	hashType SigHashType, key *btcec.PrivateKey) ([]byte, error) {
+func RawTxInWitnessSignature(tx *wire.MsgTx, hc HashCache, idx int,
+	amt int64, subScript []byte, hashType SigHashType,
+	key *btcec.PrivateKey) ([]byte, error) {
 
 	//	parsedScript, err := parseScript(subScript)
 	//	if err != nil {
 	//		return nil, fmt.Errorf("cannot parse output script: %v", err)
 	//	}
-	hash := calcWitnessSignatureHash(subScript, hashType, tx, idx, amt)
+	hash := calcWitnessSignatureHash(subScript, hc, hashType, tx, idx, amt)
 	fmt.Printf("sighash %x\n", hash)
 	signature, err := key.Sign(hash)
 	if err != nil {
@@ -37,12 +37,14 @@ func RawTxInWitnessSignature(
 // WitnessSignatureScript is SignatureScript but witnessified.
 // just swaps out RawTxInSignature for RawTxInWitnessSignature.
 // also you need to tell the amount you're signing off
-func WitnessScript(
-	tx *wire.MsgTx, idx int, amt int64, subscript []byte, hashType SigHashType,
+// the point of SegWit's new sighash modes is to cache the 3 partial hashes
+// so you compute once per tx, not once per txin.  Lets do that.
+func WitnessScript(tx *wire.MsgTx, hc HashCache, idx int, amt int64,
+	subscript []byte, hashType SigHashType,
 	privKey *btcec.PrivateKey, compress bool) ([][]byte, error) {
 
 	sig, err := RawTxInWitnessSignature(
-		tx, idx, amt, subscript, hashType, privKey)
+		tx, hc, idx, amt, subscript, hashType, privKey)
 	if err != nil {
 		return nil, err
 	}

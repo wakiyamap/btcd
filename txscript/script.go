@@ -41,6 +41,23 @@ const (
 	MaxScriptElementSize  = 520 // Max bytes pushable to the stack.
 )
 
+// HashCache.  Get it???  For Segwit.  Per-tx hashes instead of per-txin.
+type HashCache struct {
+	HashPrevOuts wire.ShaHash
+	HashSequence wire.ShaHash
+	HashOutputs  wire.ShaHash
+}
+
+// CalcHashCache calculates the hashes which are used to make sighashes to sign.
+func CalcHashCache(tx *wire.MsgTx, inIndex int, hType SigHashType) HashCache {
+	var hc HashCache
+	hc.HashPrevOuts = calcHashPrevOuts(tx, hType)
+	hc.HashSequence = calcHashSequence(tx, hType)
+	hc.HashOutputs = calcHashOutputs(tx, inIndex, hType)
+
+	return hc
+}
+
 // isSmallInt returns whether or not the opcode is considered a small integer,
 // which is an OP_0, or OP_1 through OP_16.
 func isSmallInt(op *opcode) bool {
@@ -333,8 +350,8 @@ func calcHashOutputs(
 // put your pkscripts in the sigscript slot before handing the tx to this
 // function.  Also you're clearly supposed to cache the 3 sub-hashes generated
 // here, because they apply to the tx, not a txin.  But this doesn't yet.
-func calcWitnessSignatureHash(subscript []byte, hashType SigHashType,
-	tx *wire.MsgTx, idx int, amt int64) []byte {
+func calcWitnessSignatureHash(subscript []byte, hc HashCache,
+	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) []byte {
 	// in the script.go calcSignatureHash(), idx is assumed safe, so I guess
 	// that's OK here too...?  Nah I'm gonna check
 	if idx > len(tx.TxIn)-1 {
@@ -345,11 +362,6 @@ func calcWitnessSignatureHash(subscript []byte, hashType SigHashType,
 	txCopy := tx.Copy()
 	// no need to clear out sigscripts because we don't touch em
 
-	// first get hashPrevOuts, hashSequence, and hashOutputs
-	hashPrevOuts := calcHashPrevOuts(txCopy, hashType)
-	hashSequence := calcHashSequence(txCopy, hashType)
-	hashOutputs := calcHashOutputs(txCopy, idx, hashType)
-
 	var buf4 [4]byte // buffer for 4-byte stuff
 	var buf8 [8]byte // buffer for 8-byte stuff
 	var pre []byte   // the pre-image we're generating
@@ -357,8 +369,8 @@ func calcWitnessSignatureHash(subscript []byte, hashType SigHashType,
 	binary.LittleEndian.PutUint32(buf4[:], uint32(txCopy.Version))
 	pre = append(pre, buf4[:]...)
 
-	pre = append(pre, hashPrevOuts.Bytes()...)
-	pre = append(pre, hashSequence.Bytes()...)
+	pre = append(pre, hc.HashPrevOuts.Bytes()...)
+	pre = append(pre, hc.HashSequence.Bytes()...)
 
 	// outpoint being spent
 	pre = append(pre, txCopy.TxIn[idx].PreviousOutPoint.Hash.Bytes()...)
@@ -394,7 +406,7 @@ func calcWitnessSignatureHash(subscript []byte, hashType SigHashType,
 	binary.LittleEndian.PutUint32(buf4[:], txCopy.TxIn[idx].Sequence)
 	pre = append(pre, buf4[:]...)
 
-	pre = append(pre, hashOutputs.Bytes()...)
+	pre = append(pre, hc.HashOutputs.Bytes()...)
 
 	// locktime
 	binary.LittleEndian.PutUint32(buf4[:], txCopy.LockTime)
