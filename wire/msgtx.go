@@ -302,7 +302,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 			return messageError("MsgTx.BtcDecode", str)
 		}
 		// now get actual txin count
-		count, err = readVarInt(r, pver)
+		count, err = ReadVarInt(r, pver)
 		if err != nil {
 			return err
 		}
@@ -355,13 +355,13 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32) error {
 
 	if msg.Flags != 0 { // witness tx, so decode script witnesses
 		for _, txin := range msg.TxIn {
-			witCount, err := readVarInt(r, pver)
+			witCount, err := ReadVarInt(r, pver)
 			if err != nil {
 				return err
 			}
 			txin.Witness = make([][]byte, witCount)
 			for j := uint64(0); j < witCount; j++ {
-				witPush, err := readVarBytes(r, pver, MaxMessagePayload,
+				witPush, err := ReadVarBytes(r, pver, MaxMessagePayload,
 					"Script Witness Item")
 				if err != nil {
 					return err
@@ -710,7 +710,7 @@ func WriteTxOut(w io.Writer, pver uint32, version int32, to *TxOut) error {
 }
 
 func writeTxWitness(w io.Writer, pver uint32, version int32, wit [][]byte) error {
-	err := writeVarInt(w, pver, uint64(len(wit)))
+	err := WriteVarInt(w, pver, uint64(len(wit)))
 	if err != nil {
 		return err
 	}
