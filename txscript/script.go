@@ -41,23 +41,6 @@ const (
 	MaxScriptElementSize  = 520 // Max bytes pushable to the stack.
 )
 
-// HashCache.  Get it???  For Segwit.  Per-tx hashes instead of per-txin.
-type HashCache struct {
-	HashPrevOuts wire.ShaHash
-	HashSequence wire.ShaHash
-	HashOutputs  wire.ShaHash
-}
-
-// CalcHashCache calculates the hashes which are used to make sighashes to sign.
-func CalcHashCache(tx *wire.MsgTx, inIndex int, hType SigHashType) HashCache {
-	var hc HashCache
-	hc.HashPrevOuts = calcHashPrevOuts(tx, hType)
-	hc.HashSequence = calcHashSequence(tx, hType)
-	hc.HashOutputs = calcHashOutputs(tx, inIndex, hType)
-
-	return hc
-}
-
 // isSmallInt returns whether or not the opcode is considered a small integer,
 // which is an OP_0, or OP_1 through OP_16.
 func isSmallInt(op *opcode) bool {
