@@ -4,7 +4,11 @@
 
 package wire
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/btcsuite/btcd/wire"
+)
 
 // TestServiceFlagStringer tests the stringized output for service flag types.
 func TestServiceFlagStringer(t *testing.T) {
@@ -13,10 +17,11 @@ func TestServiceFlagStringer(t *testing.T) {
 		want string
 	}{
 		{0, "0x0"},
-		{SFNodeNetwork, "SFNodeNetwork"},
-		{SFNodeGetUTXO, "SFNodeGetUTXO"},
-		{SFNodeBloom, "SFNodeBloom"},
-		{0xffffffff, "SFNodeNetwork|SFNodeGetUTXO|SFNodeBloom|0xfffffff8"},
+		{wire.SFNodeNetwork, "SFNodeNetwork"},
+		{wire.SFNodeGetUTXO, "SFNodeGetUTXO"},
+		{wire.SFNodeBloom, "SFNodeBloom"},
+		{wire.SFNodeWitness, "SFNodeWitness"},
+		{0xffffffff, "SFNodeNetwork|SFNodeGetUTXO|SFNodeBloom|SFNodeWitness|0xfffffff0"},
 	}
 
 	t.Logf("Running %d tests", len(tests))
