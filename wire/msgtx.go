@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 )
 
@@ -197,6 +198,25 @@ func (msg *MsgTx) TxSha() ShaHash {
 	buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSize()))
 	_ = msg.Serialize(buf)
 	return DoubleSha256SH(buf.Bytes())
+}
+
+// WTxSha generates the ShaHash of the transaction serialized according to the
+// new witness serialization defined in BIP0141. The final output is used within
+// the Segregated Witness commitment of all the witnesses within a block.
+func (msg *MsgTx) WTxSha() ShaHash {
+	var zeroHash ShaHash
+	prevHash := msg.TxIn[0].PreviousOutPoint.Hash
+	prevIndex := msg.TxIn[0].PreviousOutPoint.Index
+
+	// The wtxid for coinbase transactions is defined to be the zero hash.
+	if len(msg.TxIn) == 1 && prevIndex == math.MaxUint32 &&
+		prevHash.IsEqual(&zeroHash) {
+		return zeroHash
+	} else {
+		buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeWitness()))
+		_ = msg.SerializeWitness(buf)
+		return DoubleSha256SH(buf.Bytes())
+	}
 }
 
 // Copy creates a deep copy of a transaction so that the original does not get
