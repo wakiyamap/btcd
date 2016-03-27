@@ -43,6 +43,12 @@ const (
 	// sendheaders message.
 	SendHeadersVersion uint32 = 70012
 
+	// WitnessVersion is the protocol version which added the new witness
+	// inventory types.
+	// TODO(roasbeef): this is incorrect, change s.t writing in peer works
+	// properly
+	WitnessVersion uint32 = 70013
+
 	// RejectVersion is the protocol version which added a new reject
 	// message.
 	RejectVersion uint32 = 70002
