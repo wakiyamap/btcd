@@ -142,13 +142,13 @@ var testNet3GenesisBlock = wire.MsgBlock{
 	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},
 }
 
-// testNet3GenesisHash is the hash of the first block in the block chain for the
-// test network (version 3).
+// segNetGenesisHash is the hash of the first block in the block chain for the
+// segwit test network version 4
 var segNetGenesisHash = wire.ShaHash([wire.HashSize]byte{ // Make go vet happy.
-	0xaa, 0x02, 0x2f, 0xd2, 0x64, 0x04, 0xd3, 0xa1,
-	0xf6, 0xac, 0x34, 0x8f, 0xc0, 0x49, 0x99, 0x6a,
-	0x52, 0xf4, 0x0d, 0x83, 0x30, 0x17, 0xc7, 0xca,
-	0x3f, 0x05, 0xdf, 0x8d, 0x51, 0x9c, 0x5b, 0x0d,
+	0xb2, 0x91, 0x21, 0x1d, 0x4b, 0xb2, 0xb7, 0xe1,
+	0xb7, 0xa4, 0x75, 0x82, 0x25, 0xe6, 0x9e, 0x50,
+	0x10, 0x40, 0x91, 0xa6, 0x37, 0x21, 0x3d, 0x03,
+	0x32, 0x95, 0xc0, 0x10, 0xf5, 0x5f, 0xfb, 0x18,
 })
 
 // segNetGenesisMerkleRoot is the hash of the first transaction in the genesis
@@ -156,15 +156,14 @@ var segNetGenesisHash = wire.ShaHash([wire.HashSize]byte{ // Make go vet happy.
 // for the main network.
 var segNetGenesisMerkleRoot = genesisMerkleRoot
 
-// testNet3GenesisBlock defines the genesis block of the block chain which
-// serves as the public transaction ledger for the test network (version 3).
+// segNetGenesisBlock defines the genesis block of segwit testnet v4
 var segNetGenesisBlock = wire.MsgBlock{
 	Header: wire.BlockHeader{
 		Version:    1,
 		PrevBlock:  wire.ShaHash{},           // 0000000000000000000000000000000000000000000000000000000000000000
 		MerkleRoot: segNetGenesisMerkleRoot,  // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
 		Timestamp:  time.Unix(1452831101, 0), // 2016-01-15 04:11:41 +0000 UTC
-		Bits:       0x1d00ffff,               // 486604799 [00000000ffff0000000000000000000000000000000000000000000000000000]
+		Bits:       0x1e01ffff,               // ?? [000007ffff000000000000000000000000000000000000000000000000000000]
 		Nonce:      0x00000000,               // 0.  They didn't even try.
 	},
 	Transactions: []*wire.MsgTx{&genesisCoinbaseTx},

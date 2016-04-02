@@ -34,6 +34,9 @@ var (
 	// simNetPowLimit is the highest proof of work value a Bitcoin block
 	// can have for the simulation test network.  It is the value 2^255 - 1.
 	simNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 255), bigOne)
+
+	// segnet4 has a pow limit of 1e01ffff which is 19 0-bits in front, I think
+	segnet4PowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 233), bigOne)
 )
 
 // Checkpoint identifies a known good point in the block chain.  Using
@@ -288,8 +291,8 @@ var SegNetParams = Params{
 	// Chain parameters
 	GenesisBlock:           &segNetGenesisBlock,
 	GenesisHash:            &segNetGenesisHash,
-	PowLimit:               testNet3PowLimit,
-	PowLimitBits:           0x1d00ffff,
+	PowLimit:               segnet4PowLimit, // same as tn3 / main, right?
+	PowLimitBits:           0x1e01ffff,
 	SubsidyHalvingInterval: 210000,
 	ResetMinDifficulty:     true,
 	GenerateSupported:      false,
