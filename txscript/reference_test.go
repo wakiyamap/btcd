@@ -160,16 +160,16 @@ func parseScriptFlags(flagStr string) (ScriptFlags, error) {
 func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 	coinbaseTx := wire.NewMsgTx()
 
-	outPoint := wire.NewOutPoint(&chainhash.Hash{}, ^uint32(0))
-	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0})
+	outPoint := wire.NewOutPoint(&wire.ShaHash{}, ^uint32(0))
+	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0}, nil)
 	txOut := wire.NewTxOut(0, pkScript)
 	coinbaseTx.AddTxIn(txIn)
 	coinbaseTx.AddTxOut(txOut)
 
 	spendingTx := wire.NewMsgTx()
-	coinbaseTxHash := coinbaseTx.TxHash()
-	outPoint = wire.NewOutPoint(&coinbaseTxHash, 0)
-	txIn = wire.NewTxIn(outPoint, sigScript)
+	coinbaseTxSha := coinbaseTx.TxSha()
+	outPoint = wire.NewOutPoint(&coinbaseTxSha, 0)
+	txIn = wire.NewTxIn(outPoint, sigScript, nil)
 	txOut = wire.NewTxOut(0, nil)
 
 	spendingTx.AddTxIn(txIn)
@@ -180,6 +180,7 @@ func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 
 // TestScriptInvalidTests ensures all of the tests in script_invalid.json fail
 // as expected.
+// TODO(roasbeef): add invalid segwitty tests
 func TestScriptInvalidTests(t *testing.T) {
 	file, err := ioutil.ReadFile("data/script_invalid.json")
 	if err != nil {
@@ -246,6 +247,7 @@ func TestScriptInvalidTests(t *testing.T) {
 
 // TestScriptValidTests ensures all of the tests in script_valid.json pass as
 // expected.
+// TODO(roasbeef): add valid segwitty scripts
 func TestScriptValidTests(t *testing.T) {
 	file, err := ioutil.ReadFile("data/script_valid.json")
 	if err != nil {
@@ -664,3 +666,6 @@ func TestCalcSignatureHash(t *testing.T) {
 		}
 	}
 }
+
+// TODO(roasbeef): replicate seg wit sighash tests here
+//  * possibly PR to add more?

@@ -276,13 +276,13 @@ func (msg *MsgTx) TxHash() chainhash.Hash {
 // new witness serialization defined in BIP0141. The final output is used within
 // the Segregated Witness commitment of all the witnesses within a block. If a
 // transaction has no witness data, then the witness sha, is the same as its txid.
-func (msg *MsgTx) WitnessSha() ShaHash {
+func (msg *MsgTx) WitnessSha() chainhash.Hash {
 	if len(msg.TxIn[0].Witness) == 0 {
-		return msg.TxSha()
+		return msg.TxHash()
 	} else {
 		buf := bytes.NewBuffer(make([]byte, 0, msg.SerializeSizeWitness()))
 		_ = msg.SerializeWitness(buf)
-		return DoubleSha256SH(buf.Bytes())
+		return chainhash.DoubleHashH(buf.Bytes())
 	}
 }
 
