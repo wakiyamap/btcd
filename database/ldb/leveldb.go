@@ -430,7 +430,7 @@ func (db *LevelDb) InsertBlock(block *btcutil.Block) (height int32, rerr error) 
 			if txsha.IsEqual(dupsha) {
 				// marking TxOut[0] as spent
 				po := wire.NewOutPoint(dupsha, 0)
-				txI := wire.NewTxIn(po, []byte("garbage"))
+				txI := wire.NewTxIn(po, []byte("garbage"), nil)
 
 				var spendtx wire.MsgTx
 				spendtx.AddTxIn(txI)
@@ -448,7 +448,7 @@ func (db *LevelDb) InsertBlock(block *btcutil.Block) (height int32, rerr error) 
 			if txsha.IsEqual(dupsha) {
 				// marking TxOut[0] as spent
 				po := wire.NewOutPoint(dupsha, 0)
-				txI := wire.NewTxIn(po, []byte("garbage"))
+				txI := wire.NewTxIn(po, []byte("garbage"), nil)
 
 				var spendtx wire.MsgTx
 				spendtx.AddTxIn(txI)
