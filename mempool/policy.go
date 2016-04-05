@@ -14,14 +14,11 @@ import (
 )
 
 const (
-	// maxStandardP2SHSigOps is the maximum number of signature operations
-	// that are considered standard in a pay-to-script-hash script.
-	maxStandardP2SHSigOps = 15
+	// maxStandardTxCost...
+	maxStandardTxCost = 400000
 
-	// maxStandardTxSize is the maximum size allowed for transactions that
-	// are considered standard and will therefore be relayed and considered
-	// for mining.
-	maxStandardTxSize = 100000
+	// maxStandardSigOpsCost...
+	maxStandardSigOpsCost = blockchain.MaxBlockSigOpsCost / 4
 
 	// maxStandardSigScriptSize is the maximum size allowed for a
 	// transaction input signature script to be considered standard.  This
@@ -104,19 +101,20 @@ func CalcPriority(tx *wire.MsgTx, utxoView *blockchain.UtxoViewpoint, nextBlockH
 	// <33 byte compresed pubkey> + OP_CHECKSIG}]
 	//
 	// Thus 1 + 73 + 1 + 1 + 33 + 1 = 110
-	overhead := 0
+	overhead := int64(0)
 	for _, txIn := range tx.TxIn {
 		// Max inputs + size can't possibly overflow here.
-		overhead += 41 + minInt(110, len(txIn.SignatureScript))
+		overhead += 41 + int64(minInt(110, len(txIn.SignatureScript)))
 	}
 
-	serializedTxSize := tx.SerializeSize()
-	if overhead >= serializedTxSize {
+	// TODO(roasbeef): use virtualSize here?
+	virtualSize := blockchain.GetTxVirtualSize(btcutil.NewTx(tx))
+	if overhead >= virtualSize {
 		return 0.0
 	}
 
 	inputValueAge := calcInputValueAge(tx, utxoView, nextBlockHeight)
-	return inputValueAge / float64(serializedTxSize-overhead)
+	return inputValueAge / float64(virtualSize-overhead)
 }
 
 // calcInputValueAge is a helper function used to calculate the input age of
@@ -348,10 +346,10 @@ func checkTransactionStandard(tx *btcutil.Tx, height int32, timeSource blockchai
 	// almost as much to process as the sender fees, limit the maximum
 	// size of a transaction.  This also helps mitigate CPU exhaustion
 	// attacks.
-	serializedLen := msgTx.SerializeSize()
-	if serializedLen > maxStandardTxSize {
-		str := fmt.Sprintf("transaction size of %v is larger than max "+
-			"allowed size of %v", serializedLen, maxStandardTxSize)
+	txCost := blockchain.GetTransactionCost(tx)
+	if txCost > maxStandardTxCost {
+		str := fmt.Sprintf("cost of transaction %v is larger than max "+
+			"allowed cost of %v", txCost, maxStandardTxCost)
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 
