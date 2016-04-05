@@ -196,17 +196,17 @@ func TestWTxSha(t *testing.T) {
 		return
 	}
 	hashStrWTxid := "0858eab78e77b6b033da30f46699996396cf48fcf625a783c85a51403e175e74"
-	wantHashWTxid, err := wire.NewShaHashFromStr(hashStrWTxid)
+	wantHashWTxid, err := NewShaHashFromStr(hashStrWTxid)
 	if err != nil {
 		t.Errorf("NewShaHashFromStr: %v", err)
 		return
 	}
 
 	// From block 23157 in a past version of segnet.
-	msgTx := wire.NewMsgTx()
-	txIn := wire.TxIn{
-		PreviousOutPoint: wire.OutPoint{
-			Hash: wire.ShaHash{
+	msgTx := NewMsgTx()
+	txIn := TxIn{
+		PreviousOutPoint: OutPoint{
+			Hash: ShaHash{
 				0xa5, 0x33, 0x52, 0xd5, 0x13, 0x57, 0x66, 0xf0,
 				0x30, 0x76, 0x59, 0x74, 0x18, 0x26, 0x3d, 0xa2,
 				0xd9, 0xc9, 0x58, 0x31, 0x59, 0x68, 0xfe, 0xa8,
@@ -236,7 +236,7 @@ func TestWTxSha(t *testing.T) {
 		},
 		Sequence: 0xffffffff,
 	}
-	txOut := wire.TxOut{
+	txOut := TxOut{
 		Value: 395019,
 		PkScript: []byte{
 			0x00, // Version 0 witness program
@@ -263,7 +263,7 @@ func TestWTxSha(t *testing.T) {
 	}
 
 	// The wtxid of a coinbase transaction should be the zero hash.
-	var zeroHash wire.ShaHash
+	var zeroHash ShaHash
 	coinbaseWtxID := multiTx.WTxSha()
 	if !coinbaseWtxID.IsEqual(&zeroHash) {
 		t.Errorf("wtxid for a coinbase transaction should be the zero "+
@@ -374,7 +374,7 @@ func TestTxWire(t *testing.T) {
 			multiWitnessTx,
 			multiWitnessTx,
 			multiWitnessTxEncoded,
-			wire.WitnessVersion,
+			WitnessVersion,
 		},
 	}
 
@@ -486,11 +486,11 @@ func TestTxSerialize(t *testing.T) {
 	}
 
 	tests := []struct {
-		in           *wire.MsgTx // Message to encode
-		out          *wire.MsgTx // Expected decoded message
-		buf          []byte      // Serialized data
-		pkScriptLocs []int       // Expected output script locations
-		witness      bool        // Serialize using the witness encoding
+		in           *MsgTx // Message to encode
+		out          *MsgTx // Expected decoded message
+		buf          []byte // Serialized data
+		pkScriptLocs []int  // Expected output script locations
+		witness      bool   // Serialize using the witness encoding
 	}{
 		// No transactions.
 		{
@@ -768,8 +768,8 @@ func TestTxSerializeSize(t *testing.T) {
 
 func TestTxVirtualSize(t *testing.T) {
 	tests := []struct {
-		in   *wire.MsgTx // Tx to encode
-		size int         // Expected virtual size
+		in   *MsgTx // Tx to encode
+		size int    // Expected virtual size
 	}{
 		// Transaction with an input which includes witness data, and
 		// one output.
@@ -790,8 +790,8 @@ func TestTxVirtualSize(t *testing.T) {
 
 func TestTxWitnessSize(t *testing.T) {
 	tests := []struct {
-		in   *wire.MsgTx // Tx to encode
-		size int         // Expected serialized size w/ witnesses
+		in   *MsgTx // Tx to encode
+		size int    // Expected serialized size w/ witnesses
 	}{
 		// Transaction with an input which includes witness data, and
 		// one output.
@@ -911,12 +911,12 @@ var multiTxPkScriptLocs = []int{63, 139}
 
 // multiWitnessTx is a MsgTx with an input with witness data, and an
 // output used in various tests.
-var multiWitnessTx = &wire.MsgTx{
+var multiWitnessTx = &MsgTx{
 	Version: 1,
-	TxIn: []*wire.TxIn{
+	TxIn: []*TxIn{
 		{
-			PreviousOutPoint: wire.OutPoint{
-				Hash: wire.ShaHash{
+			PreviousOutPoint: OutPoint{
+				Hash: ShaHash{
 					0xa5, 0x33, 0x52, 0xd5, 0x13, 0x57, 0x66, 0xf0,
 					0x30, 0x76, 0x59, 0x74, 0x18, 0x26, 0x3d, 0xa2,
 					0xd9, 0xc9, 0x58, 0x31, 0x59, 0x68, 0xfe, 0xa8,
@@ -948,7 +948,7 @@ var multiWitnessTx = &wire.MsgTx{
 			Sequence: 0xffffffff,
 		},
 	},
-	TxOut: []*wire.TxOut{
+	TxOut: []*TxOut{
 		{
 			Value: 395019,
 			PkScript: []byte{ // p2wkh output
