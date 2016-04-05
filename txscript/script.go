@@ -69,6 +69,80 @@ func IsPayToScriptHash(script []byte) bool {
 	return isScriptHash(pops)
 }
 
+// isWitnessScriptHash returns true if the passed script is a
+// pay-to-witness-script-hash transaction, false otherwise.
+func isWitnessScriptHash(pops []parsedOpcode) bool {
+	return len(pops) == 2 &&
+		pops[0].opcode.value == OP_0 &&
+		pops[1].opcode.value == OP_DATA_32
+}
+
+// IsPayToWitnessScriptHash returns true if the is in the standard
+// pay-to-witness-script-hash (P2WSH) format, false otherwise.
+func IsPayToWitnessScriptHash(script []byte) bool {
+	pops, err := parseScript(script)
+	if err != nil {
+		return false
+	}
+	return isWitnessScriptHash(pops)
+}
+
+// IsPayToWitnessPubKeyHash returns true if the is in the standard
+// pay-to-witness-pubkey-hash (P2WKH) format, false otherwise.
+func IsPayToWitnessPubKeyHash(script []byte) bool {
+	pops, err := parseScript(script)
+	if err != nil {
+		return false
+	}
+	return isWitnessPubKeyHash(pops)
+}
+
+// isWitnessPubKeyHash returns true if the passed script is a pay-to-witness-pubkey-hash, and false otherwise.
+func isWitnessPubKeyHash(pops []parsedOpcode) bool {
+	return len(pops) == 2 &&
+		pops[0].opcode.value == OP_0 &&
+		pops[1].opcode.value == OP_DATA_20
+}
+
+// IsWitnessProgram...
+func IsWitnessProgram(script []byte) bool {
+	// The length of the script must be between 4 and 34 byte. The smallest
+	// program is the witness version, followed by a data push of 2 bytes.
+	// The largest allowed witness program has a data push of 32-bytes.
+	if len(script) < 4 || len(script) > 34 {
+		return false
+	}
+
+	pops, err := parseScript(script)
+	if err != nil {
+		return false
+	}
+
+	return isWitnessProgram(pops)
+}
+
+func isWitnessProgram(pops []parsedOpcode) bool {
+	return len(pops) == 2 &&
+		isSmallInt(pops[0].opcode) &&
+		(len(pops[0].data) >= 2 && len(pops[0].data) <= 32)
+}
+
+// ExtractWitnessProgramInfo...
+func ExtractWitnessProgramInfo(script []byte) (uint, []byte, error) {
+	var witnessVersion uint
+	var witnessProgram []byte
+
+	pops, err := parseScript(script)
+	if err != nil {
+		return witnessVersion, witnessProgram, err
+	}
+
+	witnessVersion = uint(pops[0].opcode.value - (OP_1 - 1))
+	witnessProgram = pops[1].data
+
+	return witnessVersion, witnessProgram, nil
+}
+
 // isPushOnly returns true if the script only pushes data, false otherwise.
 func isPushOnly(pops []parsedOpcode) bool {
 	// NOTE: This function does NOT verify opcodes directly since it is
