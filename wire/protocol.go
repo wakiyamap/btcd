@@ -45,9 +45,7 @@ const (
 
 	// WitnessVersion is the protocol version which added the new witness
 	// inventory types.
-	// TODO(roasbeef): this is incorrect, change s.t writing in peer works
-	// properly
-	WitnessVersion uint32 = 70013
+	WitnessVersion uint32 = 70012
 
 	// RejectVersion is the protocol version which added a new reject
 	// message.
@@ -70,7 +68,7 @@ const (
 	SFNodeBloom
 
 	// SFNodeWitness is a flag used to indicate a peer supports blocks
-	// and transactions including witness data (BIP0144)
+	// and transactions including witness data (BIP0144).
 	SFNodeWitness
 )
 
