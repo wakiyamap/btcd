@@ -2427,6 +2427,8 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
+		// TODO(roasbeef): actually make a paramter
+		hashCache: txscript.NewHashCache(cfg.SigCacheMaxSize),
 	}
 	bm, err := newBlockManager(&s)
 	if err != nil {
@@ -2443,6 +2445,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		Chain:                s.blockManager.chain,
 		RelayNtfnChan:        s.relayNtfnChan,
 		SigCache:             s.sigCache,
+		HashCache:            s.hashCache,
 		TimeSource:           s.timeSource,
 	}
 	s.txMemPool = newTxMemPool(&txC)
