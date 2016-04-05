@@ -717,6 +717,55 @@ func GetPreciseSigOpCount(scriptSig, scriptPubKey []byte, bip16 bool) int {
 	return getSigOpCount(shPops, true)
 }
 
+// GetWitnessSigOpCount...
+// TODO(roasbeef): fin
+// * tests, comments
+func GetWitnessSigOpCount(sigScript, pkScript []byte, witness wire.TxWitness) int {
+
+	// Regular witness programs.
+	if IsPayToWitnessPubKeyHash(pkScript) ||
+		IsPayToWitnessScriptHash(pkScript) {
+		// TODO(roasbeef): don't assume version 0 wit program
+		return getWitnessSigOps(0, pkScript, witness)
+	}
+
+	// A possible instance of nested p2sh.
+	sigPops, err := parseScript(sigScript)
+	if err != nil {
+		return 0
+	}
+	if IsPayToScriptHash(pkScript) &&
+		isPushOnly(sigPops) &&
+		IsPayToWitnessScriptHash(sigScript) {
+		return getWitnessSigOps(0, sigScript, witness)
+	}
+
+	return 0
+}
+
+// getWitnessSigOps...
+// TODO(roasbeef): fin
+func getWitnessSigOps(witnessVersion int, witnessProgram []byte,
+	witness [][]byte) int {
+
+	if witnessVersion == 0 {
+		switch {
+		case len(witnessProgram) == 20:
+			return 1
+		case len(witnessProgram) == 32 && len(witness) > 0:
+			pkScript := witness[len(witness)-1]
+			pops, err := parseScript(pkScript)
+			if err != nil {
+				return 0
+			}
+
+			return getSigOpCount(pops, true)
+		}
+	}
+
+	return 0
+}
+
 // IsUnspendable returns whether the passed public key script is unspendable, or
 // guaranteed to fail at execution.  This allows inputs to be pruned instantly
 // when entering the UTXO set.
