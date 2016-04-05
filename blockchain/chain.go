@@ -166,6 +166,7 @@ type BlockChain struct {
 	chainParams         *chaincfg.Params
 	notifications       NotificationCallback
 	sigCache            *txscript.SigCache
+	hashCache           *txscript.HashCache
 
 	// chainLock protects concurrent access to the vast majority of the
 	// fields in this struct below this point.
@@ -763,7 +764,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *U
 	curTotalTxns := b.stateSnapshot.TotalTxns
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(block.MsgBlock().Transactions))
-	blockSize := uint64(block.MsgBlock().SerializeSize())
+	blockSize := uint64(block.MsgBlock().SerializeSizeWitness())
 	state := newBestState(node, blockSize, numTxns, curTotalTxns+numTxns)
 
 	// Atomically insert info into the database.
@@ -880,7 +881,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 	curTotalTxns := b.stateSnapshot.TotalTxns
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(prevBlock.MsgBlock().Transactions))
-	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
+	blockSize := uint64(prevBlock.MsgBlock().SerializeSizeWitness())
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, numTxns, newTotalTxns)
 
@@ -1370,6 +1371,9 @@ type Config struct {
 	// This field can be nil if the caller is not interested in using a
 	// signature cache.
 	SigCache *txscript.SigCache
+
+	// HashCache...
+	HashCache *txscript.HashCache
 }
 
 // New returns a BlockChain instance using the provided configuration details.
@@ -1399,6 +1403,7 @@ func New(config *Config) (*BlockChain, error) {
 		chainParams:         params,
 		notifications:       config.Notifications,
 		sigCache:            config.SigCache,
+		hashCache:           config.HashCache,
 		root:                nil,
 		bestNode:            nil,
 		index:               make(map[wire.ShaHash]*blockNode),
