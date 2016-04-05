@@ -2548,7 +2548,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			FreeTxRelayLimit:     cfg.FreeTxRelayLimit,
 			MaxOrphanTxs:         cfg.MaxOrphanTxs,
 			MaxOrphanTxSize:      defaultMaxOrphanTxSize,
-			MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
+			MaxSigOpCostPerTx:    blockchain.MaxBlockSigOpsCost / 4,
 			MinRelayTxFee:        cfg.minRelayTxFee,
 		},
 		ChainParams:   chainParams,
