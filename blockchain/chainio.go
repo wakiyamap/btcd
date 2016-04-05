@@ -1061,9 +1061,15 @@ func (b *BlockChain) createChainState() error {
 	// Initialize the state related to the best block.  Since it is the
 	// genesis block, use its timestamp for the median time.
 	numTxns := uint64(len(genesisBlock.MsgBlock().Transactions))
+<<<<<<< HEAD
 	blockSize := uint64(genesisBlock.MsgBlock().SerializeSize())
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns,
 		b.bestNode.timestamp)
+=======
+	// TODO(roasbeef): add block cost into best state, or just replace?
+	blockSize := uint64(genesisBlock.MsgBlock().SerializeSizeWitness())
+	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns)
+>>>>>>> c48cc89... blockchain: add HashCache to Config, use witness size for block snapshot
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1235,6 +1241,8 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *chainhash.Hash) (*btcutil.Block,
 	}
 
 	// Create the encapsulated block and set the height appropriately.
+	// TODO(roasbeef): need to default this to witness
+	//  * or just make use witness des always internally?
 	block, err := btcutil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err
