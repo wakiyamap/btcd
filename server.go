@@ -45,7 +45,7 @@ const (
 const (
 	// defaultServices describes the default services that are supported by
 	// the server.
-	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom
+	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom | wire.SFNodeWitness
 
 	// defaultMaxOutbound is the default number of max outbound peers.
 	defaultMaxOutbound = 8
@@ -183,6 +183,7 @@ type server struct {
 	chainParams          *chaincfg.Params
 	addrManager          *addrmgr.AddrManager
 	sigCache             *txscript.SigCache
+	hashCache            *txscript.HashCache
 	rpcServer            *rpcServer
 	blockManager         *blockManager
 	txMemPool            *mempool.TxPool
@@ -219,6 +220,7 @@ type serverPeer struct {
 	*peer.Peer
 
 	server          *server
+	witnessEnabled  bool
 	persistent      bool
 	continueHash    *chainhash.Hash
 	relayMtx        sync.Mutex
@@ -400,6 +402,14 @@ func (sp *serverPeer) OnVersion(p *peer.Peer, msg *wire.MsgVersion) {
 				addrManager.Good(p.NA())
 			}
 		}
+	}
+
+	// Determine if the peer would like to receive witness data with
+	// transactions, or not.
+	if p.ProtocolVersion() >= wire.WitnessVersion &&
+		p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
+
+		sp.witnessEnabled = true
 	}
 
 	// Add valid peer to the server.
