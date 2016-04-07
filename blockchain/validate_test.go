@@ -65,7 +65,7 @@ func TestCheckSerializedHeight(t *testing.T) {
 	coinbaseOutpoint := wire.NewOutPoint(&chainhash.Hash{}, math.MaxUint32)
 	coinbaseTx := wire.NewMsgTx()
 	coinbaseTx.Version = 2
-	coinbaseTx.AddTxIn(wire.NewTxIn(coinbaseOutpoint, nil))
+	coinbaseTx.AddTxIn(wire.NewTxIn(coinbaseOutpoint, nil, nil))
 
 	// Expected rule errors.
 	missingHeightError := blockchain.RuleError{
