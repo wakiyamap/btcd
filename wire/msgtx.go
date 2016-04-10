@@ -74,6 +74,20 @@ const (
 	// peers.  Thus, the peak usage of the free list is 12,500 * 512 =
 	// 6,400,000 bytes.
 	freeListMaxItems = 12500
+
+	// maxWitnessItemsPerInput is the maximum number of witness items to
+	// be read for the witness data for a single TxIn. This number is
+	// derived using a possble lower bound for the encoding of a witness
+	// item: 1 byte for length + 1 byte for the witness item itself, or two
+	// bytes. This value is then divided by the currently allowed maximum
+	// "cost" for a transaction.
+	maxWitnessItemsPerInput = 500000
+
+	// maxWitnessItemSize is the maximum allowed size for an item within
+	// an input's witness data. This number is derived from the fact that
+	// for script validation, each pushed item onto the stack must be less
+	// than 10k bytes.
+	maxWitnessItemSize = 11000
 )
 
 // scriptFreeList defines a free list of byte slices (up to the maximum number
@@ -272,11 +286,12 @@ func (msg *MsgTx) TxHash() chainhash.Hash {
 	return chainhash.DoubleHashH(buf.Bytes())
 }
 
-// WitnessSha generates the ShaHash of the transaction serialized according to the
-// new witness serialization defined in BIP0141. The final output is used within
-// the Segregated Witness commitment of all the witnesses within a block. If a
-// transaction has no witness data, then the witness sha, is the same as its txid.
-func (msg *MsgTx) WitnessSha() chainhash.Hash {
+// WitnessHash generates the hash of the transaction serialized according to
+// the new witness serialization defined in BIP0141. The final output is used
+// within the Segregated Witness commitment of all the witnesses within a
+// block. If a transaction has no witness data, then the witness sha, is the
+// same as its txid.
+func (msg *MsgTx) WitnessHash() chainhash.Hash {
 	if msg.NoWitness() {
 		return msg.TxHash()
 	} else {
@@ -382,7 +397,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 	var flag [1]byte
 	if count == 0 && enc == WitnessEncoding {
 		// Next, we need to read the flag, which is a single byte.
-		if _, err = r.Read(flag[:]); err != nil {
+		if _, err = io.ReadFull(r, flag[:]); err != nil {
 			return err
 		}
 
@@ -393,7 +408,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			return messageError("MsgTx.BtcDecode", str)
 		}
 
-		// Wit the Segregated Witness specific fields decoded, we can
+		// With the Segregated Witness specific fields decoded, we can
 		// now read in the actual txin count.
 		count, err = ReadVarInt(r, pver)
 		if err != nil {
@@ -495,12 +510,21 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 				return err
 			}
 
+			// Prevent a possible memory exhaustion attack by
+			// limiting the witCount value to a sane upper bound.
+			if witCount > maxWitnessItemsPerInput {
+				str := fmt.Sprintf("too many witness items to fit "+
+					"into max message size [count %d, max %d]",
+					witCount, maxWitnessItemsPerInput)
+				return messageError("MsgTx.BtcDecode", str)
+			}
+
 			// Then for witCount number of stack items, each item
 			// has a varint length prefix, followed by the witness
 			// item itself.
 			txin.Witness = make([][]byte, witCount)
 			for j := uint64(0); j < witCount; j++ {
-				witPush, err := ReadVarBytes(r, pver, MaxMessagePayload,
+				witPush, err := ReadVarBytes(r, pver, maxWitnessItemSize,
 					"script witness item")
 				if err != nil {
 					returnScriptBuffers()
@@ -611,13 +635,14 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32, enc MessageEncoding) error
 	if enc == WitnessEncoding && !msg.NoWitness() {
 		// After the txn's Version field, we include two additional
 		// bytes specific to the witness encoding. The first byte is an
-		// always 0 marker byte, which allows decoders to distinguish a
-		// serialized transaction with witnesses from a regular (legacy)
+		// always 0x00 marker byte, which allows decoders to distinguish
+		// a serialized transaction with witnesses from a regular (legacy)
 		// one. The second byte is the Flag field, which at the moment is
 		// always 0x01, but way be extended in the future to accommodate
 		// auxiliary non-commited fields.
-		w.Write([]byte{0x00})
-		w.Write([]byte{0x01}) // TODO(roasbeef): const?
+		if _, err := w.Write([]byte{0x00, 0x01}); err != nil {
+			return err
+		}
 	}
 
 	count := uint64(len(msg.TxIn))

@@ -272,10 +272,13 @@ func (b *blockManager) startSync(peers *list.List) {
 		sp := e.Value.(*serverPeer)
 
 		// TODO(roasbeef): only do this after soft-fork switch over
+		sp.witnessMtx.Lock()
 		if !sp.witnessEnabled {
 			bmgrLog.Infof("peer %v not witness enabled, skipping", sp)
+			sp.witnessMtx.Unlock()
 			continue
 		}
+		sp.witnessMtx.Unlock()
 
 		// Remove sync candidate peers that are no longer candidates due
 		// to passing their latest known block.  NOTE: The < is
@@ -765,9 +768,11 @@ func (b *blockManager) fetchHeaderBlocks() {
 			b.requestedBlocks[*node.sha] = struct{}{}
 			b.syncPeer.requestedBlocks[*node.sha] = struct{}{}
 
+			b.syncPeer.witnessMtx.Lock()
 			if b.syncPeer.witnessEnabled {
 				iv.Type = wire.InvTypeWitnessBlock
 			}
+			b.syncPeer.witnessMtx.Unlock()
 
 			gdmsg.AddInvVect(iv)
 			numRequested++
@@ -1065,9 +1070,11 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 				// after switch over
 				// If the peer is capable, request the block
 				// including all witness data.
+				imsg.peer.witnessMtx.Lock()
 				if imsg.peer.witnessEnabled {
 					iv.Type = wire.InvTypeWitnessBlock
 				}
+				imsg.peer.witnessMtx.Unlock()
 
 				gdmsg.AddInvVect(iv)
 				numRequested++
@@ -1085,9 +1092,11 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 
 				// If the peer is capable, request the txn
 				// including all witness data.
+				imsg.peer.witnessMtx.Lock()
 				if imsg.peer.witnessEnabled {
 					iv.Type = wire.InvTypeWitnessTx
 				}
+				imsg.peer.witnessMtx.Unlock()
 
 				gdmsg.AddInvVect(iv)
 				numRequested++
