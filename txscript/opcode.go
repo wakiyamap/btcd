@@ -1916,10 +1916,7 @@ func opcodeCheckSig(op *parsedOpcode, vm *Engine) error {
 	if vm.witness {
 		var sigHashes *TxSigHashes
 		if vm.hashCache != nil {
-			if found := vm.hashCache.ContainsHashes(&vm.tx); !found {
-				vm.hashCache.AddSigHashes(&vm.tx)
-			}
-			sigHashes, _ = vm.hashCache.GetSigHashes(&vm.tx)
+			sigHashes = vm.hashCache
 		} else {
 			sigHashes = NewTxSigHashes(&vm.tx)
 		}
@@ -2165,10 +2162,7 @@ func opcodeCheckMultiSig(op *parsedOpcode, vm *Engine) error {
 		if vm.witness {
 			var sigHashes *TxSigHashes
 			if vm.hashCache != nil {
-				if found := vm.hashCache.ContainsHashes(&vm.tx); !found {
-					vm.hashCache.AddSigHashes(&vm.tx)
-				}
-				sigHashes, _ = vm.hashCache.GetSigHashes(&vm.tx)
+				sigHashes = vm.hashCache
 			} else {
 				sigHashes = NewTxSigHashes(&vm.tx)
 			}
