@@ -20,10 +20,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/database"
-	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	flags "github.com/btcsuite/go-flags"
 	"github.com/btcsuite/go-socks/socks"
@@ -46,7 +45,8 @@ const (
 	defaultBlockMinSize          = 0
 	defaultBlockMaxSize          = 750000
 	blockMaxSizeMin              = 1000
-	blockMaxSizeMax              = wire.MaxBlockPayload - 1000
+	blockMaxSizeMax              = blockchain.MaxBlockBaseSize - 1000
+	defaultBlockPrioritySize     = 50000
 	defaultGenerate              = false
 	defaultMaxOrphanTransactions = 1000
 	defaultMaxOrphanTxSize       = 5000
