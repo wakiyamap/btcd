@@ -776,7 +776,7 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *U
 	curTotalTxns := b.stateSnapshot.TotalTxns
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(block.MsgBlock().Transactions))
-	blockSize := uint64(block.MsgBlock().SerializeSizeWitness())
+	blockSize := uint64(block.MsgBlock().SerializeSize())
 	blockCost := uint64(GetBlockCost(block))
 	state := newBestState(node, blockSize, blockCost, numTxns, curTotalTxns+numTxns)
 
@@ -901,7 +901,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 	curTotalTxns := b.stateSnapshot.TotalTxns
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(prevBlock.MsgBlock().Transactions))
-	blockSize := uint64(prevBlock.MsgBlock().SerializeSizeWitness())
+	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
 	blockCost := uint64(GetBlockCost(prevBlock))
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, blockCost, numTxns, newTotalTxns)
