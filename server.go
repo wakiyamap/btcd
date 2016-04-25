@@ -1052,7 +1052,7 @@ func (s *server) pushBlockMsg(sp *serverPeer, hash *wire.ShaHash, doneChan chan<
 
 	// Deserialize the block.
 	var msgBlock wire.MsgBlock
-	err = msgBlock.DeserializeWitness(bytes.NewReader(blockBytes))
+	err = msgBlock.Deserialize(bytes.NewReader(blockBytes))
 	if err != nil {
 		peerLog.Tracef("Unable to deserialize requested block hash "+
 			"%v: %v", hash, err)

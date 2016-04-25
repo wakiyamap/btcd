@@ -264,13 +264,8 @@ func TestWTxSha(t *testing.T) {
 	}
 
 	// The wtxid of a coinbase transaction should be the zero hash.
-<<<<<<< HEAD
-	var zeroHash ShaHash
-	coinbaseWtxID := multiTx.WitnessSha()
-=======
-	var zeroHash wire.ShaHash
+	var zeroHash chainhash.Hash
 	coinbaseWtxID := multiTx.WitnessHash()
->>>>>>> 56fb690... multi: address initial code review comments
 	if !coinbaseWtxID.IsEqual(&zeroHash) {
 		t.Errorf("wtxid for a coinbase transaction should be the zero "+
 			"hash, is instead %v", spew.Sprint(coinbaseWtxID))
@@ -542,11 +537,7 @@ func TestTxSerialize(t *testing.T) {
 		// Serialize the transaction.
 		var buf bytes.Buffer
 		var err error
-		if test.witness {
-			err = test.in.SerializeWitness(&buf)
-		} else {
-			err = test.in.Serialize(&buf)
-		}
+		err = test.in.Serialize(&buf)
 		if err != nil {
 			t.Errorf("Serialize #%d error %v", i, err)
 			continue
@@ -561,9 +552,9 @@ func TestTxSerialize(t *testing.T) {
 		var tx MsgTx
 		rbuf := bytes.NewReader(test.buf)
 		if test.witness {
-			err = tx.DeserializeWitness(rbuf)
-		} else {
 			err = tx.Deserialize(rbuf)
+		} else {
+			err = tx.DeserializeNoWitness(rbuf)
 		}
 		if err != nil {
 			t.Errorf("Deserialize #%d error %v", i, err)
@@ -768,15 +759,16 @@ func TestTxSerializeSize(t *testing.T) {
 
 		// Transcaction with an input and an output.
 		{multiTx, 210},
+
 		// Transaction with an input which includes witness data, and
-		// one output. Note that this uses SerializeSize which excludes
-		// the additional bytes due to witness data encoding.
+		// one output. Note that this uses SerializeSizeStripped which
+		// excludes the additional bytes due to witness data encoding.
 		{multiWitnessTx, 82},
 	}
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		serializedSize := test.in.SerializeSize()
+		serializedSize := test.in.SerializeSizeStripped()
 		if serializedSize != test.size {
 			t.Errorf("MsgTx.SerializeSize: #%d got: %d, want: %d", i,
 				serializedSize, test.size)
@@ -821,7 +813,7 @@ func TestTxWitnessSize(t *testing.T) {
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
-		serializedSize := test.in.SerializeSizeWitness()
+		serializedSize := test.in.SerializeSize()
 		if serializedSize != test.size {
 			t.Errorf("MsgTx.SerializeSizeWitness: #%d got: %d, want: %d", i,
 				serializedSize, test.size)
