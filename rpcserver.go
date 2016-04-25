@@ -1474,9 +1474,9 @@ func (state *gbtWorkState) updateBlockTemplate(s *rpcServer, useCoinbaseValue bo
 			template.ValidPayAddress = true
 
 			// Update the merkle root.
-			block := btcutil.NewBlock(template.block)
+			block := btcutil.NewBlock(template.Block)
 			merkles := blockchain.BuildMerkleTreeStore(block.Transactions(), false)
-			template.block.Header.MerkleRoot = *merkles[len(merkles)-1]
+			template.Block.Header.MerkleRoot = *merkles[len(merkles)-1]
 		}
 
 		// Set locals for convenience.
@@ -1562,12 +1562,14 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
+		bTx := btcutil.NewTx(tx)
 		resultTx := btcjson.GetBlockTemplateResultTx{
 			Data:    hex.EncodeToString(txBuf.Bytes()),
 			Hash:    txHash.String(),
 			Depends: depends,
 			Fee:     template.Fees[i],
-			SigOps:  template.SigOpCounts[i],
+			SigOps:  template.SigOpCosts[i],
+			Cost:    blockchain.GetTransactionCost(bTx), // TODO(roasbeef): both versions
 		}
 		transactions = append(transactions, resultTx)
 	}
@@ -1597,6 +1599,12 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 		NonceRange:   gbtNonceRange,
 		Capabilities: gbtCapabilities,
 	}
+	// If the generated block template includes transactions with witness
+	// data, then include the witness commitment in the GBT result.
+	if template.WitnessCommitment != nil {
+		reply.DefaultWitnessCommitment = hex.EncodeToString(template.WitnessCommitment)
+	}
+
 	if useCoinbaseValue {
 		reply.CoinbaseAux = gbtCoinbaseAux
 		reply.CoinbaseValue = &msgBlock.Transactions[0].TxOut[0].Value
@@ -1626,7 +1634,7 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 			Hash:    tx.TxHash().String(),
 			Depends: []int64{},
 			Fee:     template.Fees[0],
-			SigOps:  template.SigOpCounts[0],
+			SigOps:  template.SigOpCosts[0],
 		}
 
 		reply.CoinbaseTxn = &resultTx
