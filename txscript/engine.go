@@ -216,6 +216,13 @@ func (vm *Engine) curPC() (script int, off int, err error) {
 // verifyWitnessProgram validates the stored witness program using the passed
 // witness as input.
 func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
+	for _, witElement := range witness {
+		if len(witElement) > MaxScriptElementSize {
+			// TODO(roasbeef): actual error
+			return fmt.Errorf("witness element too large")
+		}
+	}
+
 	if vm.witnessVersion == 0 {
 		switch len(vm.witnessProgram) {
 		case payToWitnessPubKeyHashDataSize: // P2WKH
