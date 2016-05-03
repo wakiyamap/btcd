@@ -34,6 +34,11 @@ var (
 	// simNetPowLimit is the highest proof of work value a Bitcoin block
 	// can have for the simulation test network.  It is the value 2^255 - 1.
 	simNetPowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 255), bigOne)
+
+	// segnet4PowLimit is the highest proof of work value a Bitcoin block
+	// can have for the segregated witness test network.  It is the value
+	// 2^233 - 1.
+	segnet4PowLimit = new(big.Int).Sub(new(big.Int).Lsh(bigOne, 233), bigOne)
 )
 
 // Checkpoint identifies a known good point in the block chain.  Using
@@ -84,9 +89,11 @@ type Params struct {
 	RelayNonStdTxs bool
 
 	// Address encoding magics
-	PubKeyHashAddrID byte // First byte of a P2PKH address
-	ScriptHashAddrID byte // First byte of a P2SH address
-	PrivateKeyID     byte // First byte of a WIF private key
+	PubKeyHashAddrID        byte // First byte of a P2PKH address
+	ScriptHashAddrID        byte // First byte of a P2SH address
+	PrivateKeyID            byte // First byte of a WIF private key
+	WitnessPubKeyHashAddrID byte // First byte of a P2WPKH address
+	WitnessScriptHashAddrID byte // First byte of a P2WSH address
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID [4]byte
@@ -157,9 +164,11 @@ var MainNetParams = Params{
 	RelayNonStdTxs: false,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x00, // starts with 1
-	ScriptHashAddrID: 0x05, // starts with 3
-	PrivateKeyID:     0x80, // starts with 5 (uncompressed) or K (compressed)
+	PubKeyHashAddrID:        0x00, // starts with 1
+	ScriptHashAddrID:        0x05, // starts with 3
+	PrivateKeyID:            0x80, // starts with 5 (uncompressed) or K (compressed)
+	WitnessPubKeyHashAddrID: 0x06, // starts with p2
+	WitnessScriptHashAddrID: 0x0A, // starts with 7Xh
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x88, 0xad, 0xe4}, // starts with xprv
@@ -266,6 +275,56 @@ var TestNet3Params = Params{
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
 	HDPublicKeyID:  [4]byte{0x04, 0x35, 0x87, 0xcf}, // starts with tpub
+
+	// BIP44 coin type used in the hierarchical deterministic path for
+	// address generation.
+	HDCoinType: 1,
+}
+
+// SegNet4Params defines the network parameters for the test Bitcoin network
+// (version 4).
+var SegNet4Params = Params{
+	Name:        "segnet",
+	Net:         wire.SegNet4,
+	DefaultPort: "28901",
+	DNSSeeds:    []string{"37.34.48.17"},
+
+	// Chain parameters
+	GenesisBlock:           &segNetGenesisBlock,
+	GenesisHash:            &segNetGenesisHash,
+	PowLimit:               segnet4PowLimit,
+	PowLimitBits:           0x1e01ffff,
+	SubsidyHalvingInterval: 210000,
+	ResetMinDifficulty:     true,
+	GenerateSupported:      false,
+
+	// Checkpoints ordered from oldest to newest.
+	// no checkpoints for segnet yet
+	Checkpoints: []Checkpoint{},
+
+	// Enforce current block version once majority of the network has
+	// upgraded.
+	// 70% (7 / 10)
+	// Reject previous block versions once a majority of the network has
+	// upgraded.
+	// 90% (9 / 10)
+	BlockEnforceNumRequired: 7,
+	BlockRejectNumRequired:  9,
+	BlockUpgradeNumToCheck:  10,
+
+	// Mempool parameters
+	RelayNonStdTxs: true,
+
+	// Address encoding magics
+	PubKeyHashAddrID:        0x1e, // starts with D
+	ScriptHashAddrID:        0x32, // starts with M
+	WitnessPubKeyHashAddrID: 0x02, // starts with Gg
+	WitnessScriptHashAddrID: 0x27, // starts with ?
+	PrivateKeyID:            0x9e, // starts with ?
+
+	// BIP32 hierarchical deterministic extended key magics
+	HDPrivateKeyID: [4]byte{0x05, 0x35, 0x83, 0x94}, // starts with sprv
+	HDPublicKeyID:  [4]byte{0x05, 0x35, 0x87, 0xcf}, // starts with spub
 
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
@@ -436,4 +495,5 @@ func init() {
 	mustRegister(&TestNet3Params)
 	mustRegister(&RegressionNetParams)
 	mustRegister(&SimNetParams)
+	mustRegister(&SegNet4Params)
 }

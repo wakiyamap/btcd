@@ -28,6 +28,7 @@ func testName(test []string) (string, error) {
 		return name, fmt.Errorf("invalid test length %d", len(test))
 	}
 
+	// TODO(roasbeef): alter if
 	if len(test) == 4 {
 		name = fmt.Sprintf("test (%s)", test[3])
 	} else {
@@ -160,7 +161,7 @@ func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 	coinbaseTx := wire.NewMsgTx()
 
 	outPoint := wire.NewOutPoint(&wire.ShaHash{}, ^uint32(0))
-	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0})
+	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0}, nil)
 	txOut := wire.NewTxOut(0, pkScript)
 	coinbaseTx.AddTxIn(txIn)
 	coinbaseTx.AddTxOut(txOut)
@@ -168,7 +169,7 @@ func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 	spendingTx := wire.NewMsgTx()
 	coinbaseTxSha := coinbaseTx.TxSha()
 	outPoint = wire.NewOutPoint(&coinbaseTxSha, 0)
-	txIn = wire.NewTxIn(outPoint, sigScript)
+	txIn = wire.NewTxIn(outPoint, sigScript, nil)
 	txOut = wire.NewTxOut(0, nil)
 
 	spendingTx.AddTxIn(txIn)
@@ -179,6 +180,7 @@ func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
 
 // TestScriptInvalidTests ensures all of the tests in script_invalid.json fail
 // as expected.
+// TODO(roasbeef): add invalid segwitty tests
 func TestScriptInvalidTests(t *testing.T) {
 	file, err := ioutil.ReadFile("data/script_invalid.json")
 	if err != nil {
@@ -227,9 +229,9 @@ func TestScriptInvalidTests(t *testing.T) {
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache, nil, 0)
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil, nil, 0)
 			}
 
 			if err == nil {
@@ -245,6 +247,7 @@ func TestScriptInvalidTests(t *testing.T) {
 
 // TestScriptValidTests ensures all of the tests in script_valid.json pass as
 // expected.
+// TODO(roasbeef): add valid segwitty scripts
 func TestScriptValidTests(t *testing.T) {
 	file, err := ioutil.ReadFile("data/script_valid.json")
 	if err != nil {
@@ -294,9 +297,9 @@ func TestScriptValidTests(t *testing.T) {
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache, nil, 0)
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil, nil, 0)
 			}
 
 			if err != nil {
@@ -452,7 +455,7 @@ testloop:
 			// These are meant to fail, so as soon as the first
 			// input fails the transaction has failed. (some of the
 			// test txns have good inputs, too..
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil, nil, 0)
 			if err != nil {
 				continue testloop
 			}
@@ -591,7 +594,7 @@ testloop:
 					k, i, test)
 				continue testloop
 			}
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil, nil, 0)
 			if err != nil {
 				t.Errorf("test (%d:%v:%d) failed to create "+
 					"script: %v", i, test, k, err)
@@ -663,3 +666,6 @@ func TestCalcSignatureHash(t *testing.T) {
 		}
 	}
 }
+
+// TODO(roasbeef): replicate seg wit sighash tests here
+//  * possibly PR to add more?

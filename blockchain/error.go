@@ -31,6 +31,10 @@ const (
 	// maximum allowed size.
 	ErrBlockTooBig
 
+	// ErrBlockCostTooHigh indicates that the block's computed cost metric
+	// exceeds the maximum allowed value.
+	ErrBlockCostTooHigh
+
 	// ErrBlockVersionTooOld indicates the block version is too old and is
 	// no longer accepted since the majority of the network has upgraded
 	// to a newer version.
@@ -188,48 +192,59 @@ const (
 	// such signature verification failures and execution past the end of
 	// the stack.
 	ErrScriptValidation
+
+	// ErrUnexpectedWitness...
+	ErrUnexpectedWitness
+
+	ErrInvalidWitnessCommitment
+
+	ErrWitnessCommitmentMismatch
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
 var errorCodeStrings = map[ErrorCode]string{
-	ErrDuplicateBlock:        "ErrDuplicateBlock",
-	ErrBlockTooBig:           "ErrBlockTooBig",
-	ErrBlockVersionTooOld:    "ErrBlockVersionTooOld",
-	ErrInvalidTime:           "ErrInvalidTime",
-	ErrTimeTooOld:            "ErrTimeTooOld",
-	ErrTimeTooNew:            "ErrTimeTooNew",
-	ErrDifficultyTooLow:      "ErrDifficultyTooLow",
-	ErrUnexpectedDifficulty:  "ErrUnexpectedDifficulty",
-	ErrHighHash:              "ErrHighHash",
-	ErrBadMerkleRoot:         "ErrBadMerkleRoot",
-	ErrBadCheckpoint:         "ErrBadCheckpoint",
-	ErrForkTooOld:            "ErrForkTooOld",
-	ErrCheckpointTimeTooOld:  "ErrCheckpointTimeTooOld",
-	ErrNoTransactions:        "ErrNoTransactions",
-	ErrTooManyTransactions:   "ErrTooManyTransactions",
-	ErrNoTxInputs:            "ErrNoTxInputs",
-	ErrNoTxOutputs:           "ErrNoTxOutputs",
-	ErrTxTooBig:              "ErrTxTooBig",
-	ErrBadTxOutValue:         "ErrBadTxOutValue",
-	ErrDuplicateTxInputs:     "ErrDuplicateTxInputs",
-	ErrBadTxInput:            "ErrBadTxInput",
-	ErrMissingTx:             "ErrMissingTx",
-	ErrUnfinalizedTx:         "ErrUnfinalizedTx",
-	ErrDuplicateTx:           "ErrDuplicateTx",
-	ErrOverwriteTx:           "ErrOverwriteTx",
-	ErrImmatureSpend:         "ErrImmatureSpend",
-	ErrDoubleSpend:           "ErrDoubleSpend",
-	ErrSpendTooHigh:          "ErrSpendTooHigh",
-	ErrBadFees:               "ErrBadFees",
-	ErrTooManySigOps:         "ErrTooManySigOps",
-	ErrFirstTxNotCoinbase:    "ErrFirstTxNotCoinbase",
-	ErrMultipleCoinbases:     "ErrMultipleCoinbases",
-	ErrBadCoinbaseScriptLen:  "ErrBadCoinbaseScriptLen",
-	ErrBadCoinbaseValue:      "ErrBadCoinbaseValue",
-	ErrMissingCoinbaseHeight: "ErrMissingCoinbaseHeight",
-	ErrBadCoinbaseHeight:     "ErrBadCoinbaseHeight",
-	ErrScriptMalformed:       "ErrScriptMalformed",
-	ErrScriptValidation:      "ErrScriptValidation",
+	ErrDuplicateBlock:            "ErrDuplicateBlock",
+	ErrBlockTooBig:               "ErrBlockTooBig",
+	ErrBlockVersionTooOld:        "ErrBlockVersionTooOld",
+	ErrInvalidTime:               "ErrInvalidTime",
+	ErrTimeTooOld:                "ErrTimeTooOld",
+	ErrTimeTooNew:                "ErrTimeTooNew",
+	ErrDifficultyTooLow:          "ErrDifficultyTooLow",
+	ErrUnexpectedDifficulty:      "ErrUnexpectedDifficulty",
+	ErrHighHash:                  "ErrHighHash",
+	ErrBadMerkleRoot:             "ErrBadMerkleRoot",
+	ErrBadCheckpoint:             "ErrBadCheckpoint",
+	ErrForkTooOld:                "ErrForkTooOld",
+	ErrCheckpointTimeTooOld:      "ErrCheckpointTimeTooOld",
+	ErrNoTransactions:            "ErrNoTransactions",
+	ErrTooManyTransactions:       "ErrTooManyTransactions",
+	ErrNoTxInputs:                "ErrNoTxInputs",
+	ErrNoTxOutputs:               "ErrNoTxOutputs",
+	ErrTxTooBig:                  "ErrTxTooBig",
+	ErrBadTxOutValue:             "ErrBadTxOutValue",
+	ErrDuplicateTxInputs:         "ErrDuplicateTxInputs",
+	ErrBadTxInput:                "ErrBadTxInput",
+	ErrMissingTx:                 "ErrMissingTx",
+	ErrUnfinalizedTx:             "ErrUnfinalizedTx",
+	ErrDuplicateTx:               "ErrDuplicateTx",
+	ErrOverwriteTx:               "ErrOverwriteTx",
+	ErrImmatureSpend:             "ErrImmatureSpend",
+	ErrDoubleSpend:               "ErrDoubleSpend",
+	ErrSpendTooHigh:              "ErrSpendTooHigh",
+	ErrBadFees:                   "ErrBadFees",
+	ErrTooManySigOps:             "ErrTooManySigOps",
+	ErrFirstTxNotCoinbase:        "ErrFirstTxNotCoinbase",
+	ErrMultipleCoinbases:         "ErrMultipleCoinbases",
+	ErrBadCoinbaseScriptLen:      "ErrBadCoinbaseScriptLen",
+	ErrBadCoinbaseValue:          "ErrBadCoinbaseValue",
+	ErrMissingCoinbaseHeight:     "ErrMissingCoinbaseHeight",
+	ErrBadCoinbaseHeight:         "ErrBadCoinbaseHeight",
+	ErrScriptMalformed:           "ErrScriptMalformed",
+	ErrScriptValidation:          "ErrScriptValidation",
+	ErrUnexpectedWitness:         "ErrUnexpectedWitness",
+	ErrInvalidWitnessCommitment:  "ErrInvalidWitnessCommitment",
+	ErrWitnessCommitmentMismatch: "ErrWitnessCommitmentMismatch",
+	ErrBlockCostTooHigh:          "ErrBlockCostTooHigh",
 }
 
 // String returns the ErrorCode as a human-readable name.

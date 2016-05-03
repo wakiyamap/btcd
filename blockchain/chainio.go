@@ -1060,7 +1060,8 @@ func (b *BlockChain) createChainState() error {
 	// Initialize the state related to the best block.
 	numTxns := uint64(len(genesisBlock.MsgBlock().Transactions))
 	blockSize := uint64(genesisBlock.MsgBlock().SerializeSize())
-	b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns, numTxns)
+	blockCost := uint64(GetBlockCost(genesisBlock))
+	b.stateSnapshot = newBestState(b.bestNode, blockSize, blockCost, numTxns, numTxns)
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1160,9 +1161,11 @@ func (b *BlockChain) initChainState() error {
 
 		// Initialize the state related to the best block.
 		blockSize := uint64(len(blockBytes))
+		// TODO(roasbeef): versions for both MsgBlock and btcutil.Block
+		blockCost := uint64(GetBlockCost(btcutil.NewBlock(&block)))
 		numTxns := uint64(len(block.Transactions))
-		b.stateSnapshot = newBestState(b.bestNode, blockSize, numTxns,
-			state.totalTxns)
+		b.stateSnapshot = newBestState(b.bestNode, blockSize, blockCost,
+			numTxns, state.totalTxns)
 
 		isStateInitialized = true
 		return nil
@@ -1226,6 +1229,8 @@ func dbFetchBlockByHash(dbTx database.Tx, hash *wire.ShaHash) (*btcutil.Block, e
 	}
 
 	// Create the encapsulated block and set the height appropriately.
+	// TODO(roasbeef): need to default this to witness
+	//  * or just make use witness des always internally?
 	block, err := btcutil.NewBlockFromBytes(blockBytes)
 	if err != nil {
 		return nil, err

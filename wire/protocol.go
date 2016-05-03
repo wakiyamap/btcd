@@ -43,6 +43,10 @@ const (
 	// sendheaders message.
 	SendHeadersVersion uint32 = 70012
 
+	// WitnessVersion is the protocol version which added the new witness
+	// inventory types.
+	WitnessVersion uint32 = 70012
+
 	// RejectVersion is the protocol version which added a new reject
 	// message.
 	RejectVersion uint32 = 70002
@@ -62,6 +66,10 @@ const (
 	// SFNodeBloom is a flag used to indiciate a peer supports bloom
 	// filtering.
 	SFNodeBloom
+
+	// SFNodeWitness is a flag used to indicate a peer supports blocks
+	// and transactions including witness data (BIP0144).
+	SFNodeWitness
 )
 
 // Map of service flags back to their constant names for pretty printing.
@@ -69,6 +77,7 @@ var sfStrings = map[ServiceFlag]string{
 	SFNodeNetwork: "SFNodeNetwork",
 	SFNodeGetUTXO: "SFNodeGetUTXO",
 	SFNodeBloom:   "SFNodeBloom",
+	SFNodeWitness: "SFNodeWitness",
 }
 
 // orderedSFStrings is an ordered list of service flags from highest to
@@ -77,6 +86,7 @@ var orderedSFStrings = []ServiceFlag{
 	SFNodeNetwork,
 	SFNodeGetUTXO,
 	SFNodeBloom,
+	SFNodeWitness,
 }
 
 // String returns the ServiceFlag in human-readable form.
@@ -121,6 +131,9 @@ const (
 	// TestNet3 represents the test network (version 3).
 	TestNet3 BitcoinNet = 0x0709110b
 
+	// SegNet4 represents the segregated witness test network (version 4).
+	SegNet4 BitcoinNet = 0xc4a1abdc
+
 	// SimNet represents the simulation test network.
 	SimNet BitcoinNet = 0x12141c16
 )
@@ -132,6 +145,7 @@ var bnStrings = map[BitcoinNet]string{
 	TestNet:  "TestNet",
 	TestNet3: "TestNet3",
 	SimNet:   "SimNet",
+	SegNet4:  "SegNet4",
 }
 
 // String returns the BitcoinNet in human-readable form.
