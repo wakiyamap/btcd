@@ -13,8 +13,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/limits"
+	"github.com/roasbeef/btcd/blockchain/indexers"
+	"github.com/roasbeef/btcd/limits"
 )
 
 var (

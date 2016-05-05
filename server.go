@@ -20,17 +20,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/addrmgr"
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/bloom"
+	"github.com/roasbeef/btcd/addrmgr"
+	"github.com/roasbeef/btcd/blockchain"
+	"github.com/roasbeef/btcd/blockchain/indexers"
+	"github.com/roasbeef/btcd/chaincfg"
+	"github.com/roasbeef/btcd/database"
+	"github.com/roasbeef/btcd/mining"
+	"github.com/roasbeef/btcd/peer"
+	"github.com/roasbeef/btcd/txscript"
+	"github.com/roasbeef/btcd/wire"
+	"github.com/roasbeef/btcutil"
+	"github.com/roasbeef/btcutil/bloom"
 )
 
 const (

@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/btcsuite/btcd/addrmgr"
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/txscript"
+	"github.com/roasbeef/btcd/addrmgr"
+	"github.com/roasbeef/btcd/blockchain"
+	"github.com/roasbeef/btcd/blockchain/indexers"
+	"github.com/roasbeef/btcd/database"
+	"github.com/roasbeef/btcd/peer"
+	"github.com/roasbeef/btcd/txscript"
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/seelog"
 )

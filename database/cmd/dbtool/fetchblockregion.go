@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/roasbeef/btcd/database"
+	"github.com/roasbeef/btcd/wire"
 )
 
 // blockRegionCmd defines the configuration options for the fetchblockregion
