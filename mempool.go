@@ -55,9 +55,6 @@ type mempoolConfig struct {
 	// SigCache defines a signature cache to use.
 	SigCache *txscript.SigCache
 
-	// TimeSource defines the timesource to use.
-	TimeSource blockchain.MedianTimeSource
-
 	// AddrIndex defines the optional address index instance to use for
 	// indexing the unconfirmed transactions in the memory pool.
 	// This can be nil if the address index is not enabled.
@@ -522,7 +519,7 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// forbid their relaying.
 	if !activeNetParams.RelayNonStdTxs {
 		err := checkTransactionStandard(tx, nextBlockHeight,
-			mp.cfg.TimeSource, mp.cfg.Policy.MinRelayTxFee)
+			mp.cfg.Chain, mp.cfg.Policy.MinRelayTxFee)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
 			// it can be retained.  When not possible, fall back to

@@ -2541,7 +2541,6 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		FetchUtxoView: s.blockManager.chain.FetchUtxoView,
 		Chain:         s.blockManager.chain,
 		SigCache:      s.sigCache,
-		TimeSource:    s.timeSource,
 		AddrIndex:     s.addrIndex,
 	}
 	s.txMemPool = newTxMemPool(&txC)
