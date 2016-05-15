@@ -452,6 +452,13 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcuti
 	minrLog.Debugf("Considering %d transactions for inclusion to new block",
 		len(sourceTxns))
 
+	// Obtain the current median time of the past 11 blocks in order to
+	// evalulate transactions for finality.
+	blockTime, err := blockManager.chain.CalcPastMedianTime()
+	if err != nil {
+		return nil, err
+	}
+
 mempoolLoop:
 	for _, txDesc := range sourceTxns {
 		// A block can't have more than one coinbase or contain
@@ -461,8 +468,9 @@ mempoolLoop:
 			minrLog.Tracef("Skipping coinbase tx %s", tx.Sha())
 			continue
 		}
+
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
-			timeSource.AdjustedTime()) {
+			blockTime) {
 
 			minrLog.Tracef("Skipping non-finalized tx %s", tx.Sha())
 			continue
