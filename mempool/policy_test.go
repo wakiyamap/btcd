@@ -466,11 +466,11 @@ func TestCheckTransactionStandard(t *testing.T) {
 		},
 	}
 
-	timeSource := blockchain.NewMedianTime()
+	pastMedianTime := blockchain.NewMedianTime().AdjustedTime()
 	for _, test := range tests {
 		// Ensure standardness is as expected.
 		err := checkTransactionStandard(btcutil.NewTx(&test.tx),
-			test.height, timeSource, DefaultMinRelayTxFee)
+			test.height, pastMedianTime, DefaultMinRelayTxFee)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a
 			// transaction which is intended to be standard.
