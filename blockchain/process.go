@@ -33,6 +33,14 @@ const (
 	// without modifying the current state.
 	BFDryRun
 
+	// BFMedianTimePast may be set to indciate that when validating
+	// transactions for finality, the median time past of the previous 11
+	// blocks should be used rather than the block's timestamp containing
+	// the transactions. This behavior was introduced as part of
+	// BIP-113: https://github.com/bitcoin/bips/blob/master/bip-0113.mediawiki
+	// TODO(roasbeef): doesn't seem like the right place to add this...
+	BFMedianTimePast
+
 	// BFNone is a convenience value to specifically indicate no flags.
 	BFNone BehaviorFlags = 0
 )
