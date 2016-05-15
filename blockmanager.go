@@ -540,7 +540,8 @@ func (b *blockManager) handleBlockMsg(bmsg *blockMsg) {
 	// since it is needed to verify the next round of headers links
 	// properly.
 	isCheckpointBlock := false
-	behaviorFlags := blockchain.BFNone
+	// TODO(roasbeef): versionbits state check
+	behaviorFlags := blockchain.BFMedianTimePast
 	if b.headersFirstMode {
 		firstNodeEl := b.headerList.Front()
 		if firstNodeEl != nil {
