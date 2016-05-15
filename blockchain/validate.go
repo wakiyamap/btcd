@@ -746,10 +746,20 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		// previous block.
 		blockHeight := prevNode.height + 1
 
+		// TODO(roasbeef): either continue with flag causing the
+		// blockmanager to check the pass through the versionbits
+		// state, or just have the check internally here?
+		var blockTime time.Time
+		if flags&BFMedianTimePast == BFMedianTimePast {
+			blockTime = b.BestSnapshot().MedianTime
+		} else {
+			blockTime = header.Timestamp
+		}
+
 		// Ensure all transactions in the block are finalized.
 		for _, tx := range block.Transactions() {
 			if !IsFinalizedTransaction(tx, blockHeight,
-				header.Timestamp) {
+				blockTime) {
 
 				str := fmt.Sprintf("block contains unfinalized "+
 					"transaction %v", tx.Hash())
