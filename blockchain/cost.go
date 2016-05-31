@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/roasbeef/btcd/txscript"
+	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
 )
 
@@ -49,6 +50,11 @@ func GetTxVirtualSize(tx *btcutil.Tx) int64 {
 		WitnessScaleFactor
 }
 
+// GetMsgTxVirtualSize is the same as GetTxVirtualSize but doesn't use btcutil.Tx
+func GetMsgTxVirtualSize(tx *wire.MsgTx) int64 {
+	return (GetMsgTxCost(tx) + (WitnessScaleFactor - 1)) / WitnessScaleFactor
+}
+
 // GetBlockCost computes the value of the cost metric for a given block.
 // Currently the cost metric is simply the sum of the block's serialized size
 // without any witness data scaled proportionally by the WitnessScaleFactor,
@@ -74,6 +80,14 @@ func GetTransactionCost(tx *btcutil.Tx) int64 {
 	baseSize := msgTx.SerializeSizeStripped()
 	totalSize := msgTx.SerializeSize()
 
+	// (baseSize * 3) + totalSize
+	return int64((baseSize * (WitnessScaleFactor - 1)) + totalSize)
+}
+
+// GetMsgTxCost is the same as GetTransactionCost but doesn't use btctil.Tx
+func GetMsgTxCost(tx *wire.MsgTx) int64 {
+	baseSize := tx.SerializeSizeStripped()
+	totalSize := tx.SerializeSize()
 	// (baseSize * 3) + totalSize
 	return int64((baseSize * (WitnessScaleFactor - 1)) + totalSize)
 }

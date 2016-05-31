@@ -12,10 +12,10 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/wire"
 	"github.com/btcsuite/fastsha256"
 	"github.com/btcsuite/golangcrypto/ripemd160"
+	"github.com/roasbeef/btcd/btcec"
+	"github.com/roasbeef/btcd/wire"
 )
 
 // An opcode defines the information related to a txscript opcode.  opfunc, if
@@ -215,6 +215,7 @@ const (
 	OP_NOP2                = 0xb1 // 177
 	OP_CHECKLOCKTIMEVERIFY = 0xb1 // 177 - AKA OP_NOP2
 	OP_NOP3                = 0xb2 // 178
+	OP_CHECKSEQUENCEVERIFY = 0xb2 // 178 - AKA OP_NOP3
 	OP_NOP4                = 0xb3 // 179
 	OP_NOP5                = 0xb4 // 180
 	OP_NOP6                = 0xb5 // 181
