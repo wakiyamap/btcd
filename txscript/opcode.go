@@ -876,7 +876,7 @@ func opcodeN(op *parsedOpcode, vm *Engine) error {
 // the flag to discourage use of NOPs is set for select opcodes.
 func opcodeNop(op *parsedOpcode, vm *Engine) error {
 	switch op.opcode.value {
-	case OP_NOP1, OP_NOP3, OP_NOP4, OP_NOP5,
+	case OP_NOP1, OP_NOP4, OP_NOP5,
 		OP_NOP6, OP_NOP7, OP_NOP8, OP_NOP9, OP_NOP10:
 		if vm.hasFlag(ScriptDiscourageUpgradableNops) {
 			return fmt.Errorf("OP_NOP%d reserved for soft-fork "+
