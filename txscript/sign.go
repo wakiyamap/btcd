@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/btcsuite/fastsha256"
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcd/chaincfg"
 	"github.com/roasbeef/btcd/wire"
 	"github.com/roasbeef/btcutil"
-	"github.com/btcsuite/fastsha256"
 )
 
 // SigningMode...

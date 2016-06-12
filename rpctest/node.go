@@ -17,7 +17,7 @@ import (
 
 	"github.com/roasbeef/btcd/wire"
 
-	rpc "github.com/btcsuite/btcrpcclient"
+	rpc "github.com/roasbeef/btcrpcclient"
 	"github.com/roasbeef/btcutil"
 )
 

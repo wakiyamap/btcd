@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/btcsuite/btcrpcclient"
+	"github.com/roasbeef/btcrpcclient"
 )
 
 // JoinType is an enum representing a particualr type of "node join". A node

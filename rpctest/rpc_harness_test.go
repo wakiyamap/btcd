@@ -15,7 +15,7 @@ import (
 	"github.com/roasbeef/btcd/chaincfg"
 	"github.com/roasbeef/btcd/txscript"
 	"github.com/roasbeef/btcd/wire"
-	"github.com/btcsuite/btcwallet/waddrmgr"
+	"github.com/roasbeef/btcwallet/waddrmgr"
 )
 
 func TestSetUp(t *testing.T) {

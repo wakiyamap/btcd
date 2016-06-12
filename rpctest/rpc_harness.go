@@ -18,12 +18,12 @@ import (
 	"github.com/roasbeef/btcd/btcec"
 	"github.com/roasbeef/btcd/chaincfg"
 	"github.com/roasbeef/btcd/wire"
-	rpc "github.com/btcsuite/btcrpcclient"
+	rpc "github.com/roasbeef/btcrpcclient"
 	"github.com/roasbeef/btcutil"
-	"github.com/btcsuite/btcwallet/chain"
-	"github.com/btcsuite/btcwallet/waddrmgr"
-	"github.com/btcsuite/btcwallet/wallet"
-	_ "github.com/btcsuite/btcwallet/walletdb/bdb" // Required to register boltdb.
+	"github.com/roasbeef/btcwallet/chain"
+	"github.com/roasbeef/btcwallet/waddrmgr"
+	"github.com/roasbeef/btcwallet/wallet"
+	_ "github.com/roasbeef/btcwallet/walletdb/bdb" // Required to register boltdb.
 )
 
 var (
