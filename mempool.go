@@ -518,8 +518,12 @@ func (mp *txMemPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit boo
 	// Don't allow non-standard transactions if the network parameters
 	// forbid their relaying.
 	if !activeNetParams.RelayNonStdTxs {
-		err := checkTransactionStandard(tx, nextBlockHeight,
-			mp.cfg.Chain, mp.cfg.Policy.MinRelayTxFee)
+		pastMedianTime, err := mp.cfg.Chain.CalcPastMedianTime()
+		if err != nil {
+			return nil, err
+		}
+		err = checkTransactionStandard(tx, nextBlockHeight,
+			pastMedianTime, mp.cfg.Policy.MinRelayTxFee)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
 			// it can be retained.  When not possible, fall back to
