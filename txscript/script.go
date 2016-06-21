@@ -107,13 +107,13 @@ func isWitnessPubKeyHash(pops []parsedOpcode) bool {
 }
 
 // IsWitnessProgram returns true if the passed script is a valid witness
-// program. A witness program must be a small integer (from 0-16), followed
-// 2-32 bytes of pushed data.
+// program. A witness program must be a small integer (from 0-16), followed by
+// 2-40 bytes of pushed data.
 func IsWitnessProgram(script []byte) bool {
-	// The length of the script must be between 4 and 34 byte. The smallest
+	// The length of the script must be between 4 and 42 byte. The smallest
 	// program is the witness version, followed by a data push of 2 bytes.
-	// The largest allowed witness program has a data push of 32-bytes.
-	if len(script) < 4 || len(script) > 34 {
+	// The largest allowed witness program has a data push of 40-bytes.
+	if len(script) < 4 || len(script) > 42 {
 		return false
 	}
 
@@ -130,7 +130,7 @@ func IsWitnessProgram(script []byte) bool {
 func isWitnessProgram(pops []parsedOpcode) bool {
 	return len(pops) == 2 &&
 		isSmallInt(pops[0].opcode) &&
-		(len(pops[1].data) >= 2 && len(pops[1].data) <= 32)
+		(len(pops[1].data) >= 2 && len(pops[1].data) <= 40)
 }
 
 // ExtractWitnessProgramInfo attempts to extract the witness program version,
