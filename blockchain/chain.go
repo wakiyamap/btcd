@@ -694,6 +694,146 @@ func (b *BlockChain) CalcPastMedianTime() (time.Time, error) {
 	return b.calcPastMedianTime(b.bestNode)
 }
 
+// SequenceLock represents the converted absolute lock-times for a transaction
+// input's relative lock-times. According to SequenceLock, after the referenced
+// input has been confirmed within a block, a transaction spending that input
+// can be included into a block either after 'seconds' (according to past
+// median time), or once the 'blockHeight' has been reached.
+type SequenceLock struct {
+	Seconds     int64
+	BlockHeight int32
+}
+
+// CalcSequenceLock computes a relative lock-time SequenceLock for the passed
+// transaction using the passed UtxoViewpoint to obtain the past median time
+// for blocks in which the referenced inputs of the transactions were included
+// within. The generated SequenceLock lock can be used in conjunction to a
+// block height, and adjusted median block time to determine if all the inputs
+// referenced within a transaction have reached sufficient maturity allowing
+// the candidate transaction to be included in a block.
+//
+// This function is safe for concurrent access.
+func (b *BlockChain) CalcSequenceLock(tx *btcutil.Tx, utxoView *UtxoViewpoint,
+	mempool bool) (*SequenceLock, error) {
+
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
+
+	return b.calcSequenceLock(tx, utxoView, mempool)
+}
+
+// calcSequenceLock computes the relative lock-times for the passed
+// transaction. See the exported version, CalcSequenceLock for further details.
+//
+// This function MUST be called with the chain state lock held (for writes).
+func (b *BlockChain) calcSequenceLock(tx *btcutil.Tx, utxoView *UtxoViewpoint,
+	mempool bool) (*SequenceLock, error) {
+
+	mTx := tx.MsgTx()
+
+	// A value of -1 for each relative lock type represents a relative time
+	// lock value that will allow a transaction to be included in a block
+	// at any given height or time. This value is returned as the relative
+	// lock time in the case that BIP 68 is disabled, or has not yet been
+	// activated.
+	sequenceLock := &SequenceLock{Seconds: -1, BlockHeight: -1}
+
+	// If the transaction's version is less than 2, and BIP 68 has not yet
+	// been activated then sequence locks are disabled. Additionally,
+	// sequence locks don't apply to coinbase transactions Therefore, we
+	// return sequence lock values of -1 indicating that this transaction
+	// can be included within a block at any given height or time.
+	// TODO(roasbeef): check version bits state or pass as param
+	// * true should be replaced with a version bits state check
+	sequenceLockActive := mTx.Version >= 2 && (mempool || true)
+	if !sequenceLockActive || IsCoinBase(tx) {
+		return sequenceLock, nil
+	}
+
+	// Grab the next height to use for inputs present in the mempool.
+	nextHeight := b.BestSnapshot().Height + 1
+
+	for _, txIn := range mTx.TxIn {
+		utxo := utxoView.LookupEntry(&txIn.PreviousOutPoint.Hash)
+		if utxo == nil {
+			return sequenceLock, fmt.Errorf("utxo %v not found",
+				txIn.PreviousOutPoint)
+		}
+
+		// If the input height is set to the mempool height, then we
+		// assume the transaction makes it into the next block when
+		// evaluating its sequence blocks.
+		inputHeight := utxo.BlockHeight()
+		if inputHeight == 0x7fffffff {
+			// TODO(roasbeef): export mempoolHeight publicly, or pass
+			// in as param
+			inputHeight = nextHeight
+		}
+
+		// Given a sequence number, we apply the relative time lock
+		// mask in order to obtain the time lock delta required before
+		// this input can be spent.
+		sequenceNum := txIn.Sequence
+		relativeLock := int64(sequenceNum & RelativeLockMask)
+
+		switch {
+		// Relative time locks are disabled for this input, so we can
+		// skip any further calculation.
+		case sequenceNum&RelativeLockTimeDisabled == RelativeLockTimeDisabled:
+			continue
+		case sequenceNum&RelativeLockSeconds == RelativeLockSeconds:
+			// This input requires a relative time lock expressed
+			// in seconds before it can be spent. Therefore, we
+			// need to query for the block in which this input was
+			// included within so we can compute the past median
+			// time for the block prior to the one which included
+			// this referenced output.
+			// TODO: caching should be added to keep this speedy
+			var blockNode *blockNode
+			if err := b.db.View(func(dbTx database.Tx) error {
+				header, err := dbFetchHeaderByHeight(dbTx, inputHeight-1)
+				if err != nil {
+					return err
+				}
+				blockSha := header.BlockHash()
+				blockNode = newBlockNode(header, &blockSha, inputHeight)
+				return nil
+			}); err != nil {
+				return nil, err
+			}
+			adjustedTime, err := b.calcPastMedianTime(blockNode)
+			if err != nil {
+				return sequenceLock, err
+			}
+
+			// Time based relative time-locks as defined by BIP 68
+			// have a time granularity of RelativeLockSeconds, so
+			// we shift left by this amount to convert to the
+			// proper relative time-lock. We also subtract one from
+			// the relative lock to maintain the original lockTime
+			// semantics.
+			timeLockSeconds := (relativeLock << RelativeLockSecondsGranularity) - 1
+			timeLock := adjustedTime.Unix() + timeLockSeconds
+
+			if timeLock > sequenceLock.Seconds {
+				sequenceLock.Seconds = timeLock
+			}
+		default:
+			// The relative lock-time for this input is expressed
+			// in blocks so we calculate the relative offset from
+			// the input's height as its converted absolute
+			// lock-time. We subtract one from the relative lock in
+			// order to maintain the original lockTime semantics.
+			blockHeight := inputHeight + int32(relativeLock-1)
+			if blockHeight > sequenceLock.BlockHeight {
+				sequenceLock.BlockHeight = blockHeight
+			}
+		}
+	}
+
+	return sequenceLock, nil
+}
+
 // getReorganizeNodes finds the fork point between the main chain and the passed
 // node and returns a list of block nodes that would need to be detached from
 // the main chain and a list of block nodes that would need to be attached to
