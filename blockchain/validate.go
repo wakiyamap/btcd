@@ -118,6 +118,40 @@ func IsCoinBase(tx *btcutil.Tx) bool {
 	return IsCoinBaseTx(tx.MsgTx())
 }
 
+// TODO(rosabeef): remove these once PR created
+const (
+	// RelativeLockTimeDisabled ...
+	RelativeLockTimeDisabled = (1 << 31)
+
+	// RelativeLockSeconds ...
+	RelativeLockSeconds = (1 << 22)
+
+	// RelativeLockSecondsGranularity ...
+	RelativeLockSecondsGranularity = 9
+
+	// RelativeLockMask ...
+	RelativeLockMask = 0x0000ffff
+)
+
+// SequenceLockActive determines if a transaction's sequence locks have been
+// met, meaning that all the inputs of a given transaction have reached a
+// height sufficient for their relative lock-time maturity.
+func SequenceLockActive(sequenceLock *SequenceLock, blockHeight int32,
+	medianTimePast time.Time) bool {
+
+	// TODO(roasbeef): add MTP to best snapshot?
+
+	// If either the seconds, or height relative-lock time has not yet
+	// reached, then the transaction is not yet mature according to its
+	// sequence locks.
+	if sequenceLock.Seconds >= medianTimePast.Unix() ||
+		sequenceLock.BlockHeight >= blockHeight {
+		return false
+	}
+
+	return true
+}
+
 // IsFinalizedTransaction determines whether or not a transaction is finalized.
 func IsFinalizedTransaction(tx *btcutil.Tx, blockHeight int32, blockTime time.Time) bool {
 	msgTx := tx.MsgTx()
@@ -742,6 +776,11 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	if !fastAdd {
+		medianTime, err := b.calcPastMedianTime(b.bestNode)
+		if err != nil {
+			return err
+		}
+
 		// The height of this block is one more than the referenced
 		// previous block.
 		blockHeight := prevNode.height + 1
@@ -756,6 +795,16 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 			blockTime = header.Timestamp
 		}
 
+		// Load all of the utxos referenced by the inputs for all
+		// transactions in the block don't already exist in the utxo
+		// view from the database. This view is required in order to
+		// properly evalulate the sequence locks (relative lock-time)
+		// for each input referenced within the block.
+		utxoView := NewUtxoViewpoint()
+		if err := utxoView.fetchInputUtxos(b.db, block); err != nil {
+			return err
+		}
+
 		// Ensure all transactions in the block are finalized.
 		for _, tx := range block.Transactions() {
 			if !IsFinalizedTransaction(tx, blockHeight,
@@ -763,6 +812,18 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 
 				str := fmt.Sprintf("block contains unfinalized "+
 					"transaction %v", tx.Hash())
+				return ruleError(ErrUnfinalizedTx, str)
+			}
+
+			sequenceLock, err := b.calcSequenceLock(tx, utxoView, false)
+			if err != nil {
+				return err
+			}
+			if !SequenceLockActive(sequenceLock, blockHeight,
+				medianTime) {
+				str := fmt.Sprintf("block contains " +
+					"transaction whose input sequence " +
+					"locks are not met")
 				return ruleError(ErrUnfinalizedTx, str)
 			}
 		}

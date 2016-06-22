@@ -33,7 +33,7 @@ const (
 	// without modifying the current state.
 	BFDryRun
 
-	// BFMedianTimePast may be set to indciate that when validating
+	// BFMedianTimePast may be set to indicate that when validating
 	// transactions for finality, the median time past of the previous 11
 	// blocks should be used rather than the block's timestamp containing
 	// the transactions. This behavior was introduced as part of
