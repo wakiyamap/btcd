@@ -451,8 +451,8 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcuti
 		len(sourceTxns))
 
 	// Obtain the current median time of the past 11 blocks in order to
-	// evalulate transactions for finality.
-	blockTime := blockManager.chain.BestSnapshot().MedianTime
+	// evaluate transactions for finality.
+	pastMedianTime := blockManager.chain.BestSnapshot().MedianTime
 
 mempoolLoop:
 	for _, txDesc := range sourceTxns {
@@ -465,7 +465,7 @@ mempoolLoop:
 		}
 
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
-			blockTime) {
+			pastMedianTime) {
 
 			minrLog.Tracef("Skipping non-finalized tx %s", tx.Hash())
 			continue
@@ -650,6 +650,25 @@ mempoolLoop:
 			}
 		}
 
+		// A transaction can only be included within a block once the
+		// relative lock-time (if any) of all its inputs has been met.
+		// Intuitively, a transaction can be included once the input
+		// with the farthest away relative-lock time amongst all inputs
+		// has been met.
+		sequenceLock, err := blockManager.chain.CalcSequenceLock(tx,
+			blockUtxos, false)
+		if err != nil {
+			minrLog.Tracef("Skipping transaction unable to "+
+				"calculate sequence locks: %v", tx.Hash())
+			continue
+		}
+		if !blockchain.SequenceLockActive(sequenceLock, nextBlockHeight,
+			pastMedianTime) {
+			minrLog.Tracef("Skipping transaction with inactive "+
+				"sequence locks: %v", tx.Hash())
+			continue
+		}
+
 		// Ensure the transaction inputs pass all of the necessary
 		// preconditions before allowing it to be added to the block.
 		_, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
@@ -689,7 +708,7 @@ mempoolLoop:
 			prioItem.tx.Hash(), prioItem.priority, prioItem.feePerKB)
 
 		// Add transactions which depend on this one (and also do not
-		// have any other unsatisified dependencies) to the priority
+		// have any other unsatisfied dependencies) to the priority
 		// queue.
 		if deps != nil {
 			for e := deps.Front(); e != nil; e = e.Next() {

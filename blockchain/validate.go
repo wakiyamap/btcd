@@ -776,10 +776,7 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	if !fastAdd {
-		medianTime, err := b.calcPastMedianTime(b.bestNode)
-		if err != nil {
-			return err
-		}
+		medianTime := b.BestSnapshot().MedianTime
 
 		// The height of this block is one more than the referenced
 		// previous block.
