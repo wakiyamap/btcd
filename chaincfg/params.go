@@ -252,6 +252,7 @@ var TestNet3Params = Params{
 	// Checkpoints ordered from oldest to newest.
 	Checkpoints: []Checkpoint{
 		{546, newShaHashFromStr("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")},
+		{892018, newShaHashFromStr("00000000000009fbba3808ebfa128a945cd0c31dad06ae3322940df1d6bd9b6c")},
 	},
 
 	// Enforce current block version once majority of the network has
@@ -372,9 +373,11 @@ var SimNetParams = Params{
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x3f, // starts with S
-	ScriptHashAddrID: 0x7b, // starts with s
-	PrivateKeyID:     0x64, // starts with 4 (uncompressed) or F (compressed)
+	PubKeyHashAddrID:        0x3f, // starts with S
+	ScriptHashAddrID:        0x7b, // starts with s
+	WitnessPubKeyHashAddrID: 0x19, // starts with Gg
+	WitnessScriptHashAddrID: 0x28, // starts with ?
+	PrivateKeyID:            0x64, // starts with 4 (uncompressed) or F (compressed)
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x20, 0xb9, 0x00}, // starts with sprv
