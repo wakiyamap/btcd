@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
+	flags "github.com/btcsuite/go-flags"
+	"github.com/btcsuite/go-socks/socks"
 	"github.com/roasbeef/btcd/blockchain"
 	"github.com/roasbeef/btcd/database"
 	_ "github.com/roasbeef/btcd/database/ffldb"
 	"github.com/roasbeef/btcutil"
-	flags "github.com/btcsuite/go-flags"
-	"github.com/btcsuite/go-socks/socks"
 )
 
 const (
@@ -393,8 +393,7 @@ func loadConfig() (*config, []string, error) {
 	// Load additional config from file.
 	var configFileError error
 	parser := newConfigParser(&cfg, &serviceOpts, flags.Default)
-	if !(preCfg.RegressionTest || preCfg.SimNet) || preCfg.ConfigFile !=
-		defaultConfigFile {
+	if !preCfg.RegressionTest || preCfg.ConfigFile != defaultConfigFile {
 
 		err := flags.NewIniParser(parser).ParseFile(preCfg.ConfigFile)
 		if err != nil {
