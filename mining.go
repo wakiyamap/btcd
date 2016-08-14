@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"container/heap"
 	"container/list"
 	"fmt"
@@ -885,13 +884,13 @@ func UpdateExtraNonce(msgBlock *wire.MsgBlock, blockHeight int32,
 func generateWitnessCommitment(txns []*btcutil.Tx) []byte {
 	witnessMerkles := blockchain.BuildMerkleTreeStore(txns, true)
 	witnessRoot := witnessMerkles[len(witnessMerkles)-1]
-	witnessNonce := make([]byte, 32)
 
-	var b bytes.Buffer
-	b.Write(witnessRoot[:])
-	b.Write(witnessNonce)
+	// Currently, the witness nonce has no consensus meaning therefore we
+	// leave the last 32 bytes of the commitment zeroed out.
+	var commitment [64]byte
+	copy(commitment[:32], witnessRoot[:])
 
-	return wire.DoubleSha256(b.Bytes())
+	return wire.DoubleSha256(commitment[:])
 }
 
 // updateWitnessCommitment places a valid witness commitment, and witness
