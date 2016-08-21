@@ -381,7 +381,7 @@ var SimNetParams = Params{
 	BlockUpgradeNumToCheck:  100,
 
 	// Mempool parameters
-	RelayNonStdTxs: true,
+	RelayNonStdTxs: false,
 
 	// Address encoding magics
 	PubKeyHashAddrID: 0x3f, // starts with S

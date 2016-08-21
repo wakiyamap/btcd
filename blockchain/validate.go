@@ -134,10 +134,14 @@ func IsFinalizedTransaction(tx *btcutil.Tx, blockHeight int32, blockTime time.Ti
 	// threshold it is a block height.
 	blockTimeOrHeight := int64(0)
 	if lockTime < txscript.LockTimeThreshold {
+		log.Infof("block time")
 		blockTimeOrHeight = int64(blockHeight)
 	} else {
+		log.Infof("lock time")
 		blockTimeOrHeight = blockTime.Unix()
 	}
+	log.Infof("lock time %v, now time %v", lockTime, blockTimeOrHeight)
+	log.Infof("is final: ", int64(lockTime) < blockTimeOrHeight)
 	if int64(lockTime) < blockTimeOrHeight {
 		return true
 	}

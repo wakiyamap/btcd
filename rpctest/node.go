@@ -134,7 +134,7 @@ func (n *nodeConfig) arguments() []string {
 	}
 	if n.debugLevel != "" {
 		// --debuglevel
-		args = append(args, fmt.Sprintf("--debuglevel=%s", n.debugLevel))
+		args = append(args, fmt.Sprintf("--debuglevel=%s", "trace"))
 	}
 	args = append(args, n.extra...)
 	return args
@@ -166,7 +166,7 @@ func (n *nodeConfig) String() string {
 // cleanup removes the tmp data and log directories.
 func (n *nodeConfig) cleanup() error {
 	dirs := []string{
-		n.logDir,
+		//n.logDir,
 		n.dataDir,
 	}
 	var err error
@@ -210,6 +210,8 @@ func (n *node) start() error {
 		return err
 	}
 
+	fmt.Println("log dir: ", n.config.logDir)
+
 	pid, err := os.Create(filepath.Join(n.dataDir,
 		fmt.Sprintf("%s.pid", n.config)))
 	if err != nil {
@@ -241,6 +243,7 @@ func (n *node) stop() error {
 	if runtime.GOOS == "windows" {
 		return n.cmd.Process.Signal(os.Kill)
 	}
+
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 

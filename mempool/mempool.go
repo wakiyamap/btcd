@@ -532,6 +532,8 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit bool) 
 	best := mp.cfg.Chain.BestSnapshot()
 	nextBlockHeight := best.Height + 1
 
+	log.Infof("proc tx")
+	log.Infof("non std: %v", mp.cfg.ChainParams.RelayNonStdTxs)
 	// Don't allow non-standard transactions if the network parameters
 	// forbid their relaying.
 	if !mp.cfg.ChainParams.RelayNonStdTxs {
@@ -539,6 +541,8 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit bool) 
 		if err != nil {
 			return nil, err
 		}
+		log.Infof("median time: %v", pastMedianTime.Unix())
+		log.Infof("tx lock time: %v", tx.MsgTx().LockTime)
 		err = checkTransactionStandard(tx, nextBlockHeight,
 			pastMedianTime, mp.cfg.Policy.MinRelayTxFee)
 		if err != nil {
