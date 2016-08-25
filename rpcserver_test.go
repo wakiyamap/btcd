@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpctest"
@@ -239,11 +240,248 @@ func testMedianTimePastLockTime(r *rpctest.Harness, t *testing.T) {
 	t.Fatalf("lock-time transaction not included within block")
 }
 
+func testSequenceLocksValidation(r *rpctest.Harness, t *testing.T) {
+	// We'd like the test proper evaluation and validation of the BIP 68
+	// (sequence locks) rule-set which adds input-age based relative lock
+	// times.
+	t.Log("Running tests for BIP 68")
+
+	harnessAddr, err := r.NewAddress()
+	if err != nil {
+		t.Fatalf("unable to generate new address: %v", err)
+	}
+	harnessScript, err := txscript.PayToAddrScript(harnessAddr)
+	if err != nil {
+		t.Fatalf("unable to generate addr script: %v", err)
+	}
+
+	// Generate a fresh key, then send create a series of outputs spendable
+	// by the key.
+	key, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatalf("unable to generate key: %v", err)
+	}
+	a, err := btcutil.NewAddressPubKey(key.PubKey().SerializeCompressed(), r.ActiveNet)
+	if err != nil {
+		t.Fatalf("unable to create address: %v", err)
+	}
+	testPkScript, err := txscript.PayToAddrScript(a.AddressPubKeyHash())
+	if err != nil {
+		t.Fatalf("unable to generate addr script: %v", err)
+	}
+
+	// Knowing the number of outputs needed for the tests below, create
+	const numTests = 6
+	var spendableInputs [numTests]wire.OutPoint
+	for i := 0; i < numTests; i++ {
+		output := &wire.TxOut{
+			PkScript: testPkScript,
+			Value:    btcutil.SatoshiPerBitcoin,
+		}
+		tx, err := r.CreateTransaction([]*wire.TxOut{output}, 10)
+		if err != nil {
+			t.Fatalf("unable to send transaction: %v", err)
+		}
+
+		if _, err := r.Node.SendRawTransaction(tx, true); err != nil {
+			t.Fatalf("unable to broadcast transaction: %v", err)
+		}
+
+		var outputIndex uint32
+		if bytes.Equal(tx.TxOut[0].PkScript, testPkScript) {
+			outputIndex = 0
+		} else {
+			outputIndex = 1
+		}
+
+		spendableInputs[i] = wire.OutPoint{
+			Hash:  tx.TxHash(),
+			Index: outputIndex,
+		}
+	}
+
+	// Mine a single block including all the transactions generated above.
+	if _, err := r.Node.Generate(1); err != nil {
+		t.Fatalf("unable to generate block: %v", err)
+	}
+
+	// Now mine 5 additional blocks giving the inputs generated above a age
+	// of 5. Space out each block 10 minutes after the previous block.
+	prevBlockHash, err := r.Node.GetBestBlockHash()
+	if err != nil {
+		t.Fatalf("unable to get prior block hash: %v", err)
+	}
+	prevBlock, err := r.Node.GetBlock(prevBlockHash)
+	if err != nil {
+		t.Fatalf("unable to get block: %v", err)
+	}
+	for i := 0; i < 5; i++ {
+		timeStamp := prevBlock.MsgBlock().Header.Timestamp.Add(time.Minute * 10)
+		prevBlock, err = r.GenerateAndSubmitBlock(nil, -1, timeStamp)
+		if err != nil {
+			t.Fatalf("unable to generate block: %v", err)
+		}
+	}
+
+	// A helper function to create fully signed transactions in-line during
+	// the array initialization below.
+	var inputIndex uint32
+	makeTxCase := func(sequenceNum uint32, txVersion int32) *wire.MsgTx {
+		tx := wire.NewMsgTx()
+		tx.Version = txVersion
+		tx.AddTxIn(&wire.TxIn{
+			PreviousOutPoint: spendableInputs[inputIndex],
+			Sequence:         sequenceNum,
+		})
+		tx.AddTxOut(&wire.TxOut{
+			PkScript: harnessScript,
+			Value:    btcutil.SatoshiPerBitcoin - 1000,
+		})
+
+		sigScript, err := txscript.SignatureScript(tx, 0, testPkScript,
+			txscript.SigHashAll, key, true)
+		if err != nil {
+			t.Fatalf("unable to generate sig: %v", err)
+		}
+		tx.TxIn[0].SignatureScript = sigScript
+
+		inputIndex++
+		return tx
+	}
+
+	tests := [numTests]struct {
+		tx *wire.MsgTx
+
+		accept bool
+	}{
+		// A valid transaction with a single input a sequence number
+		// creating a 100 block relative time-lock. This transaction
+		// should be accepted as its version number is 1, and only tx
+		// of version > 2 will trigger the sequence lock behavior.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 100), 1),
+			accept: true,
+		},
+		// A transaction of version 2 spending a single input. The
+		// input has a relative time-lock of 100 blocks, but the
+		// disable bit it set. The transaction should be accepted as a
+		// result.
+		{
+			tx: makeTxCase(
+				blockchain.LockTimeToSequence(false, 100)|blockchain.RelativeLockTimeDisabled,
+				2,
+			),
+			accept: true,
+		},
+		// A v2 transaction with a single input having a 2 lock
+		// relative time lock. The referenced input is 5 blocks old so
+		// the transaction should be accepted.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 2), 2),
+			accept: true,
+		},
+		// A v2 transaction whose input has a 1000 relative time lock.
+		// This should be rejected as the input's age is only 5 blocks.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 1000), 2),
+			accept: false,
+		},
+		// A v2 transaction with a single input having a 512,000 second
+		// relative time-lock. This transaction should be rejected as 6
+		// days worth of blocks haven't yet been mined. The referenced
+		// input doesn't have sufficient age.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(true, 512000), 2),
+			accept: false,
+		},
+		// A v2 transaction whose single input has a 512 second
+		// relative time-lock. This transaction should be accepted as
+		// finalized.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(true, 512), 2),
+			accept: true,
+		},
+	}
+
+	for i, test := range tests {
+		txid, err := r.Node.SendRawTransaction(test.tx, true)
+		switch {
+		// Test case passes, nothing further to report.
+		case test.accept && err == nil:
+
+		// Transaction should have been accepted but we have a non-nil
+		// error.
+		case test.accept && err != nil:
+			t.Fatalf("test #%d, transaction should be accepted, "+
+				"but was rejected: %v", i, err)
+
+		// Transaction should have been rejected, but it was accepted.
+		case !test.accept && err == nil:
+			t.Fatalf("test #%d, transaction should be rejected, "+
+				"but was accepted", i)
+
+		// Transaction was rejected as wanted, but ensure the proper
+		// error message was generated.
+		case !test.accept && err != nil:
+			if !strings.Contains(err.Error(), "sequence lock") {
+				t.Fatalf("test #%d, transaction should be rejected "+
+					"due to inactive sequence locks, "+
+					"instead: %v", i, err)
+			}
+		}
+
+		// If the transaction should be rejected, manually mine a block
+		// with the non-final transaction. It shouold be rejected.
+		if !test.accept {
+			txns := []*btcutil.Tx{btcutil.NewTx(test.tx)}
+			_, err := r.GenerateAndSubmitBlock(txns, -1, time.Time{})
+			if err == nil {
+				t.Fatalf("test #%d, invalid block accepted", i)
+			} else if !strings.Contains(err.Error(), "sequence lock") {
+				t.Fatalf("test #%d, block should be rejected "+
+					"due to inactive sequence locks, "+
+					"instead: %v", i, err)
+			}
+
+			continue
+		}
+
+		// Generate a block, the transaction should be included within
+		// the newly mined block.
+		blockHashes, err := r.Node.Generate(1)
+		if err != nil {
+			t.Fatalf("unable to mine block: %v", err)
+		}
+		block, err := r.Node.GetBlock(blockHashes[0])
+		if err != nil {
+			t.Fatalf("unable to get block: %v", err)
+		}
+		if len(block.Transactions()) < 2 {
+			t.Fatalf("target transaction was not mined")
+		}
+
+		var found bool
+		for _, txn := range block.Transactions() {
+			if txn.Hash().IsEqual(txid) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// If we've reached this point, then the tranasaction wasn't
+			// included the block but should have been.
+			t.Fatalf("test #%d, transation was not included in block", i)
+		}
+	}
+}
+
 var rpcTestCases = []rpctest.HarnessTestCase{
 	testGetBestBlock,
 	testGetBlockCount,
 	testGetBlockHash,
 	testMedianTimePastLockTime,
+	testSequenceLocksValidation,
 }
 
 var primaryHarness *rpctest.Harness
