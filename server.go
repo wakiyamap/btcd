@@ -2525,6 +2525,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			MaxOrphanTxSize:      defaultMaxOrphanTxSize,
 			MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
 			MinRelayTxFee:        cfg.minRelayTxFee,
+			TxVersion:            2,
 		},
 		ChainParams:    chainParams,
 		FetchUtxoView:  s.blockManager.chain.FetchUtxoView,
