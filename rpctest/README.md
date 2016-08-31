@@ -1,38 +1,33 @@
 rpctest
 =======
 
-[![Build Status](https://travis-ci.org/btcsuite/btcd.png?branch=master)]
-(https://travis-ci.org/btcsuite/btcd)
-
-Package rpctests provides a btcd-specific RPC testing harness for excersing 
-regressions via the RPC interface.
-...TODO
-
-## Documentation
-
-[![GoDoc](https://godoc.org/github.com/btcsuite/btcd/rpctest?status.png)]
+[![Build Status](http://img.shields.io/travis/btcsuite/btcd.svg)]
+(https://travis-ci.org/btcsuite/btcd) [![ISC License]
+(http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
 (http://godoc.org/github.com/btcsuite/btcd/rpctest)
 
-Full `go doc` style documentation for the project can be viewed online without
-installing this package by using the GoDoc site
-[here](http://godoc.org/github.com/btcsuite/btcd/rpctest).
+Package rpctest provides a btcd-specific RPC testing harness crafting and
+executing integration tests by driving a `btcd` instance via the `RPC`
+interface. Each instance of an active harness comes equipped with a simple
+in-memory HD wallet capable of properly syncing to the generated chain,
+creating new addresses, and crafting fully signed transactions paying to an
+arbitrary set of outputs. 
 
-You can also view the documentation locally once the package is installed with
-the `godoc` tool by running `godoc -http=":6060"` and pointing your browser to
-http://localhost:6060/pkg/github.com/btcsuite/btcd/rpctest
+This package was designed specifically to act as an RPC testing harness for
+`btcd`. However, the constructs presented are general enough to be adapted to
+any project wishing to programmatically drive a `btcd` instance of its
+systems/integration tests. 
 
-
-## Installation
+## Installation and Updating
 
 ```bash
-$ go get github.com/btcsuite/btcd/rpctest
+$ go get -u github.com/btcsuite/btcd/rpctest
 ```
-
-## Usage
-
-...TODO
 
 ## License
 
-Package coinset is licensed under the [copyfree](http://copyfree.org) ISC
+
+Package rpctest is licensed under the [copyfree](http://copyfree.org) ISC
 License.
+

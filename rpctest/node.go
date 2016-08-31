@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/roasbeef/btcd/wire"
+	"github.com/btcsuite/btcd/wire"
 
-	rpc "github.com/roasbeef/btcrpcclient"
-	"github.com/roasbeef/btcutil"
+	rpc "github.com/btcsuite/btcrpcclient"
+	"github.com/btcsuite/btcutil"
 )
 
 // nodeConfig contains all the args, and data required to launch a btcd process
@@ -86,8 +86,8 @@ func (n *nodeConfig) setDefaults() error {
 	return nil
 }
 
-// arguments returns an array of arguments that be used to launch the
-// btcd process.
+// arguments returns an array of arguments that be used to launch the btcd
+// process.
 func (n *nodeConfig) arguments() []string {
 	args := []string{}
 	// --simnet
@@ -118,6 +118,8 @@ func (n *nodeConfig) arguments() []string {
 	args = append(args, fmt.Sprintf("--rpckey=%s", n.keyFile))
 	// --txindex
 	args = append(args, "--txindex")
+	// --addrindex
+	args = append(args, "--addrindex")
 	if n.dataDir != "" {
 		// --datadir
 		args = append(args, fmt.Sprintf("--datadir=%s", n.dataDir))
@@ -143,8 +145,8 @@ func (n *nodeConfig) command() *exec.Cmd {
 	return exec.Command(n.exe, n.arguments()...)
 }
 
-// rpcConnConfig returns the rpc connection config that can be used
-// to connect to the btcd process that is launched via Start().
+// rpcConnConfig returns the rpc connection config that can be used to connect
+// to the btcd process that is launched via Start().
 func (n *nodeConfig) rpcConnConfig() rpc.ConnConfig {
 	return rpc.ConnConfig{
 		Host:                 n.rpcListen,
@@ -176,8 +178,8 @@ func (n *nodeConfig) cleanup() error {
 	return err
 }
 
-// node houses the neccessary state required to configure, launch, and manaage
-// a btcd process.
+// node houses the necessary state required to configure, launch, and manage a
+// btcd process.
 type node struct {
 	config *nodeConfig
 
@@ -199,10 +201,10 @@ func newNode(config *nodeConfig, dataDir string) (*node, error) {
 }
 
 // start creates a new btcd process, and writes its pid in a file reserved for
-// recording the pid of the launched process. This file can ue used to terminate
-// the procress in case of a hang, or panic. In the case of a failing test case,
-// or panic, it is important that the process be stopped via stop(), otherwise,
-// it will persist unless explicitly killed.
+// recording the pid of the launched process. This file can be used to
+// terminate the process in case of a hang, or panic. In the case of a failing
+// test case, or panic, it is important that the process be stopped via stop(),
+// otherwise, it will persist unless explicitly killed.
 func (n *node) start() error {
 	if err := n.cmd.Start(); err != nil {
 		return err

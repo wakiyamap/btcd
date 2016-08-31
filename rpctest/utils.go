@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/roasbeef/btcrpcclient"
+	"github.com/btcsuite/btcrpcclient"
 )
 
-// JoinType is an enum representing a particualr type of "node join". A node
+// JoinType is an enum representing a particular type of "node join". A node
 // join is a synchronization tool used to wait until a subset of nodes have a
 // consistent state with respect to an attribute.
 type JoinType uint8
@@ -28,10 +28,10 @@ const (
 	Mempools
 )
 
-// JoinNodes is a synchronization tool used to block until all passed nodes
-// are fully synced with resepct to an attribute. This function will block
-// for a period of time, finally returning once all nodes are synced according
-// to the passed JoinType. This function be used to to ensure all active test
+// JoinNodes is a synchronization tool used to block until all passed nodes are
+// fully synced with respect to an attribute. This function will block for a
+// period of time, finally returning once all nodes are synced according to the
+// passed JoinType. This function be used to to ensure all active test
 // harnesses are at a consistent state before proceeding to an assertion or
 // check within rpc tests.
 func JoinNodes(nodes []*Harness, joinType JoinType) error {
@@ -65,7 +65,7 @@ func syncMempools(nodes []*Harness) error {
 			}
 
 			if !reflect.DeepEqual(firstPool, nodePool) {
-				time.Sleep(time.Second)
+				time.Sleep(time.Millisecond * 100)
 				goto retry
 			}
 		}
@@ -92,7 +92,7 @@ func syncBlocks(nodes []*Harness) error {
 
 			blockHeights[blockHeight] = struct{}{}
 			if len(blockHeights) > 1 {
-				time.Sleep(time.Second)
+				time.Sleep(time.Millisecond * 100)
 				goto retry
 			}
 		}
@@ -103,14 +103,13 @@ func syncBlocks(nodes []*Harness) error {
 	return nil
 }
 
-// ConnectNode establishes a new peer-to-peer connection from nodeA to nodeB.
-// The connection made is flagged as persistent, therefore in the case of
-// disconnects, nodeA will attempt to reestablish a connection to nodeB.
+// ConnectNode establishes a new peer-to-peer connection between the "from"
+// harness and the "to" harness.  The connection made is flagged as persistent,
+// therefore in the case of disconnects, "from" will attempt to reestablish a
+// connection to the "to" harness.
 func ConnectNode(from *Harness, to *Harness) error {
-	var err error
-
-	// Calculate the target p2p addr+port for the node to be connected
-	// to. p2p ports uses within the package are always even, so we multiply
+	// Calculate the target p2p addr+port for the node to be connected to.
+	// p2p ports uses within the package are always even, so we multiply
 	// the node number by two before offsetting from the defaultP2pPort.
 	targetPort := defaultP2pPort + (2 * to.nodeNum)
 	targetAddr := net.JoinHostPort("127.0.0.1", strconv.Itoa(targetPort))
@@ -149,16 +148,14 @@ func TearDownAll() error {
 		if err := harness.TearDown(); err != nil {
 			return err
 		}
-
-		delete(testInstances, harness.testNodeDir)
 	}
 
 	return nil
 }
 
 // ActiveHarnesses returns a slice of all currently active test harnesses. A
-// test harness if considered "active" if it has been created, but not yet
-// teared down.
+// test harness if considered "active" if it has been created, but not yet torn
+// down.
 func ActiveHarnesses() []*Harness {
 	harnessStateMtx.RLock()
 	defer harnessStateMtx.RUnlock()
