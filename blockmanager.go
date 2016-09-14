@@ -367,9 +367,11 @@ func (b *blockManager) isSyncCandidate(sp *serverPeer) bool {
 		}
 	} else {
 		// The peer is not a candidate for sync if it's not a full node.
-		// TODO(roasbeef): should also include SFNodeWitness after
-		// segwit soft-fork activation
-		if sp.Services()&wire.SFNodeNetwork != wire.SFNodeNetwork {
+		// TODO(roasbeef): should only include node witness after
+		// soft-fork activation
+		nodeServices := sp.Services()
+		if nodeServices&wire.SFNodeNetwork != wire.SFNodeNetwork ||
+			nodeServices&wire.SFNodeWitness != wire.SFNodeWitness {
 			return false
 		}
 	}
