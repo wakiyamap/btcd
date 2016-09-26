@@ -118,6 +118,38 @@ func IsCoinBase(tx *btcutil.Tx) bool {
 	return IsCoinBaseTx(tx.MsgTx())
 }
 
+// TODO(rosabeef): remove these once PR created
+const (
+	// RelativeLockTimeDisabled ...
+	RelativeLockTimeDisabled = (1 << 31)
+
+	// RelativeLockSeconds ...
+	RelativeLockSeconds = (1 << 22)
+
+	// RelativeLockSecondsGranularity ...
+	RelativeLockSecondsGranularity = 9
+
+	// RelativeLockMask ...
+	RelativeLockMask = 0x0000ffff
+)
+
+// SequenceLockActive determines if a transaction's sequence locks have been
+// met, meaning that all the inputs of a given transaction have reached a
+// height sufficient for their relative lock-time maturity.
+func SequenceLockActive(sequenceLock *SequenceLock, blockHeight int32,
+	medianTimePast time.Time) bool {
+
+	// If either the seconds, or height relative-lock time has not yet
+	// reached, then the transaction is not yet mature according to its
+	// sequence locks.
+	if sequenceLock.Seconds >= medianTimePast.Unix() ||
+		sequenceLock.BlockHeight >= blockHeight {
+		return false
+	}
+
+	return true
+}
+
 // IsFinalizedTransaction determines whether or not a transaction is finalized.
 func IsFinalizedTransaction(tx *btcutil.Tx, blockHeight int32, blockTime time.Time) bool {
 	msgTx := tx.MsgTx()

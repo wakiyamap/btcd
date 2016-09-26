@@ -64,6 +64,11 @@ type Config struct {
 	// chain tip within the best chain.
 	MedianTimePast func() time.Time
 
+	// CalcSequenceLock defines the function to use in order to generate
+	// the current sequence lock for the given transaction using the passed
+	// utxo view.
+	CalcSequenceLock func(*btcutil.Tx, *blockchain.UtxoViewpoint) (*blockchain.SequenceLock, error)
+
 	// SigCache defines a signature cache to use.
 	SigCache *txscript.SigCache
 
@@ -76,6 +81,10 @@ type Config struct {
 // Policy houses the policy (configuration parameters) which is used to
 // control the mempool.
 type Policy struct {
+	// TxVersion is the transaction version that the mempool should accept.
+	// All transactions above this version are rejected as non-standard.
+	TxVersion int32
+
 	// DisableRelayPriority defines whether to relay free or low-fee
 	// transactions that do not have enough priority to be relayed.
 	DisableRelayPriority bool
@@ -543,12 +552,14 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit bool) 
 	bestHeight := mp.cfg.BestHeight()
 	nextBlockHeight := bestHeight + 1
 
+	medianTimePast := mp.cfg.MedianTimePast()
+
 	// Don't allow non-standard transactions if the network parameters
 	// forbid their relaying.
 	if !mp.cfg.Policy.RelayNonStd {
-		medianTimePast := mp.cfg.MedianTimePast()
 		err = checkTransactionStandard(tx, nextBlockHeight,
-			medianTimePast, mp.cfg.Policy.MinRelayTxFee)
+			medianTimePast, mp.cfg.Policy.MinRelayTxFee,
+			mp.cfg.Policy.TxVersion)
 		if err != nil {
 			// Attempt to extract a reject code from the error so
 			// it can be retained.  When not possible, fall back to
@@ -614,6 +625,19 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit bool) 
 	}
 	if len(missingParents) > 0 {
 		return missingParents, nil
+	}
+
+	// Don't allow the transaction into the mempool unless its sequence
+	// lock is active, meaning that it'll be allowed into the next block
+	// with respect to its defined relative lock times.
+	sequenceLock, err := mp.cfg.CalcSequenceLock(tx, utxoView)
+	if err != nil {
+		return nil, err
+	}
+	if !blockchain.SequenceLockActive(sequenceLock, nextBlockHeight,
+		medianTimePast) {
+		return nil, txRuleError(wire.RejectNonstandard,
+			"transaction's sequence locks on inputs not met")
 	}
 
 	// Perform several checks on the transaction inputs using the invariant

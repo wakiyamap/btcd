@@ -2525,13 +2525,17 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			MaxOrphanTxSize:      defaultMaxOrphanTxSize,
 			MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
 			MinRelayTxFee:        cfg.minRelayTxFee,
+			TxVersion:            2,
 		},
 		ChainParams:    chainParams,
 		FetchUtxoView:  s.blockManager.chain.FetchUtxoView,
 		BestHeight:     func() int32 { return bm.chain.BestSnapshot().Height },
 		MedianTimePast: func() time.Time { return bm.chain.BestSnapshot().MedianTime },
-		SigCache:       s.sigCache,
-		AddrIndex:      s.addrIndex,
+		CalcSequenceLock: func(tx *btcutil.Tx, view *blockchain.UtxoViewpoint) (*blockchain.SequenceLock, error) {
+			return bm.chain.CalcSequenceLock(tx, view, true)
+		},
+		SigCache:  s.sigCache,
+		AddrIndex: s.addrIndex,
 	}
 	s.txMemPool = mempool.New(&txC)
 
