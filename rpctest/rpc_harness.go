@@ -30,6 +30,10 @@ const (
 	maxPeerPort = 35000
 	minRPCPort  = maxPeerPort
 	maxRPCPort  = 60000
+
+	// BlockVersion is the default block version used when generating
+	// blocks.
+	BlockVersion = 4
 )
 
 var (
@@ -364,7 +368,7 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*btcutil.Tx, blockVersion int32,
 	defer h.Unlock()
 
 	if blockVersion == -1 {
-		blockVersion = wire.BlockVersion
+		blockVersion = BlockVersion
 	}
 
 	prevBlockHash, prevBlockHeight, err := h.Node.GetBestBlock()
