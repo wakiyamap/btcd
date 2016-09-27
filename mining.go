@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/blockchain"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/mining"
@@ -446,6 +447,24 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcuti
 	minrLog.Debugf("Considering %d transactions for inclusion to new block",
 		len(sourceTxns))
 
+	// Obtain the latest BIP9 version bits state for the CSV-package
+	// soft-fork deployment. The adherence of sequence locks, MTP based
+	// lock-time, and CSV depends on the current soft-fork state.
+	csvState, err := blockManager.chain.ThresholdState(chaincfg.DeploymentCSV)
+	if err != nil {
+		return nil, err
+	}
+
+	// Once the CSV soft-fork is fully active, we'll switch to using the
+	// current median time past of the past block's timestamps for all
+	// lock-time based checks.
+	var blockTime time.Time
+	if csvState == blockchain.ThresholdActive {
+		blockTime = blockManager.chain.BestSnapshot().MedianTime
+	} else {
+		blockTime = timeSource.AdjustedTime()
+	}
+
 mempoolLoop:
 	for _, txDesc := range sourceTxns {
 		// A block can't have more than one coinbase or contain
@@ -456,7 +475,7 @@ mempoolLoop:
 			continue
 		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
-			timeSource.AdjustedTime()) {
+			blockTime) {
 			minrLog.Tracef("Skipping non-finalized tx %s", tx.Hash())
 			continue
 		}
@@ -640,6 +659,27 @@ mempoolLoop:
 			}
 		}
 
+		if csvState == blockchain.ThresholdActive {
+			// A transaction can only be included within a block
+			// once the relative lock-time (if any) of all its
+			// inputs has been met.  Intuitively, a transaction can
+			// be included once the input with the farthest away
+			// relative-lock time amongst all inputs has been met.
+			sequenceLock, err := blockManager.chain.CalcSequenceLock(tx,
+				blockUtxos, false)
+			if err != nil {
+				minrLog.Tracef("Skipping transaction unable to "+
+					"calculate sequence locks: %v", tx.Hash())
+				continue
+			}
+			if !blockchain.SequenceLockActive(sequenceLock,
+				nextBlockHeight, blockTime) {
+				minrLog.Tracef("Skipping transaction with "+
+					"inactive sequence locks: %v", tx.Hash())
+				continue
+			}
+		}
+
 		// Ensure the transaction inputs pass all of the necessary
 		// preconditions before allowing it to be added to the block.
 		_, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
@@ -679,7 +719,7 @@ mempoolLoop:
 			prioItem.tx.Hash(), prioItem.priority, prioItem.feePerKB)
 
 		// Add transactions which depend on this one (and also do not
-		// have any other unsatisified dependencies) to the priority
+		// have any other unsatisfied dependencies) to the priority
 		// queue.
 		if deps != nil {
 			for e := deps.Front(); e != nil; e = e.Next() {
