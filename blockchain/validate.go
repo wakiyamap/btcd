@@ -774,6 +774,26 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	if !fastAdd {
+		medianTime := b.BestSnapshot().MedianTime
+
+		// Obtain the latest state of the deployed CSV soft-fork in
+		// order to properly guard the new validation behavior based on
+		// the current BIP 9 version bits state.
+		csvState, err := b.ThresholdState(chaincfg.DeploymentCSV)
+		if err != nil {
+			return err
+		}
+
+		// Once the CSV soft-fork is fully active, we'll switch to
+		// using the current median time past of the past block's
+		// timestamps for all lock-time based checks.
+		var blockTime time.Time
+		if csvState == ThresholdActive {
+			blockTime = medianTime
+		} else {
+			blockTime = header.Timestamp
+		}
+
 		// The height of this block is one more than the referenced
 		// previous block.
 		blockHeight := prevNode.height + 1
@@ -781,7 +801,7 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		// Ensure all transactions in the block are finalized.
 		for _, tx := range block.Transactions() {
 			if !IsFinalizedTransaction(tx, blockHeight,
-				header.Timestamp) {
+				blockTime) {
 
 				str := fmt.Sprintf("block contains unfinalized "+
 					"transaction %v", tx.Hash())
@@ -801,6 +821,40 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 			err := checkSerializedHeight(coinbaseTx, blockHeight)
 			if err != nil {
 				return err
+			}
+		}
+
+		// If the CSV soft-fork isn't fully active, then we can skip
+		// the sequence locks checks below.
+		if csvState != ThresholdActive {
+			return nil
+		}
+
+		// Load all of the utxos referenced by the inputs for all
+		// transactions in the block don't already exist in the utxo
+		// view from the database. This view is required in order to
+		// properly evalulate the sequence locks (relative lock-time)
+		// for each input referenced within the block.
+		utxoView := NewUtxoViewpoint()
+		if err = utxoView.fetchInputUtxos(b.db, block); err != nil {
+			return err
+		}
+
+		for _, tx := range block.Transactions() {
+			// A transaction can only be included within a block
+			// once the sequence locks of *all* its inputs are
+			// active.
+			sequenceLock, err := b.calcSequenceLock(tx, utxoView,
+				false)
+			if err != nil {
+				return err
+			}
+			if !SequenceLockActive(sequenceLock, blockHeight,
+				medianTime) {
+				str := fmt.Sprintf("block contains " +
+					"transaction whose input sequence " +
+					"locks are not met")
+				return ruleError(ErrUnfinalizedTx, str)
 			}
 		}
 	}
@@ -1163,6 +1217,16 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 		b.chainParams.BlockEnforceNumRequired) {
 
 		scriptFlags |= txscript.ScriptVerifyCheckLockTimeVerify
+	}
+
+	// Enforce CHECKSEQUENCEVERIFY during all block validation checks once
+	// the soft-fork deployment is fully active.
+	csvState, err := b.ThresholdState(chaincfg.DeploymentCSV)
+	if err != nil {
+		return err
+	}
+	if csvState == ThresholdActive {
+		scriptFlags |= txscript.ScriptVerifyCheckSequenceVerify
 	}
 
 	// Now that the inexpensive checks are done and have passed, verify the

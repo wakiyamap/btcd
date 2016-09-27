@@ -798,14 +798,21 @@ func (b *BlockChain) calcSequenceLock(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// activated.
 	sequenceLock := &SequenceLock{Seconds: -1, BlockHeight: -1}
 
+	// Obtain the latest BIP9 version bits state for the CSV-package
+	// soft-fork deployment. The adherence of sequence locks depends on the
+	// current soft-fork state.
+	csvState, err := b.ThresholdState(chaincfg.DeploymentCSV)
+	if err != nil {
+		return nil, err
+	}
+	csvSoftforkActive := csvState == ThresholdActive
+
 	// If the transaction's version is less than 2, and BIP 68 has not yet
 	// been activated then sequence locks are disabled. Additionally,
 	// sequence locks don't apply to coinbase transactions Therefore, we
 	// return sequence lock values of -1 indicating that this transaction
 	// can be included within a block at any given height or time.
-	// TODO(roasbeef): check version bits state or pass as param
-	// * true should be replaced with a version bits state check
-	sequenceLockActive := mTx.Version >= 2 && (mempool || true)
+	sequenceLockActive := mTx.Version >= 2 && (mempool || csvSoftforkActive)
 	if !sequenceLockActive || IsCoinBase(tx) {
 		return sequenceLock, nil
 	}
