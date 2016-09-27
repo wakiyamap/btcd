@@ -75,6 +75,11 @@ const (
 	// purposes.
 	DeploymentTestDummy = iota
 
+	// DeploymentCSV defines the rule change deployment ID for the CSV
+	// soft-fork package. The CSV package includes the depolyment of BIPS
+	// 68, 112, and 113.
+	DeploymentCSV
+
 	// NOTE: MaxDeployments must always come last since it is used to
 	// determine how many defined deployments there currently are.
 
@@ -272,6 +277,11 @@ var MainNetParams = Params{
 			StartTime:  1199145601, // January 1, 2008 UTC
 			ExpireTime: 1230767999, // December 31, 2008 UTC
 		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  1462060800, // March 1st, 2016
+			ExpireTime: 1493596800, // May 1st, 2017
+		},
 	},
 
 	// Mempool parameters
@@ -336,6 +346,11 @@ var RegressionNetParams = Params{
 	Deployments: [MaxDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {
 			BitNumber:  28,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires
+		},
+		DeploymentCSV: {
+			BitNumber:  0,
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires
 		},
@@ -412,6 +427,11 @@ var TestNet3Params = Params{
 			StartTime:  1199145601, // January 1, 2008 UTC
 			ExpireTime: 1230767999, // December 31, 2008 UTC
 		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  1456790400, // March 1st, 2016
+			ExpireTime: 1493596800, // May 1st, 2017
+		},
 	},
 
 	// Mempool parameters
@@ -480,6 +500,11 @@ var SimNetParams = Params{
 	Deployments: [MaxDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {
 			BitNumber:  28,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires
+		},
+		DeploymentCSV: {
+			BitNumber:  0,
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires
 		},
