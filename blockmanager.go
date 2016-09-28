@@ -964,6 +964,15 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 		}
 	}
 
+	// Ignore invs from non-witness enabled peers, as after segwit
+	// activation we only want to download from peers that can provide us
+	// full witness data.
+	//
+	// TODO(roasbeef): only do so after activation
+	if !imsg.peer.witnessEnabled {
+		return
+	}
+
 	// Request the advertised inventory if we don't already have it.  Also,
 	// request parent blocks of orphans if we receive one we already have.
 	// Finally, attempt to detect potential stalls due to long side chains
