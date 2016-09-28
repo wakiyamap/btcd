@@ -1062,9 +1062,14 @@ func (b *BlockChain) createChainState() error {
 	// genesis block, use its timestamp for the median time.
 	numTxns := uint64(len(genesisBlock.MsgBlock().Transactions))
 	blockSize := uint64(genesisBlock.MsgBlock().SerializeSize())
+<<<<<<< HEAD
 	blockCost := uint64(GetBlockCost(genesisBlock))
 	b.stateSnapshot = newBestState(b.bestNode, blockSize, blockCost,
 		numTxns, numTxns, b.bestNode.timestamp)
+=======
+	blockWeight := uint64(GetBlockWeight(genesisBlock))
+	b.stateSnapshot = newBestState(b.bestNode, blockSize, blockWeight, numTxns, numTxns)
+>>>>>>> 8080719... blockchain: rename transaction/block cost to weight
 
 	// Create the initial the database chain state including creating the
 	// necessary index buckets and inserting the genesis block.
@@ -1170,11 +1175,15 @@ func (b *BlockChain) initChainState() error {
 
 		// Initialize the state related to the best block.
 		blockSize := uint64(len(blockBytes))
-		// TODO(roasbeef): versions for both MsgBlock and btcutil.Block
-		blockCost := uint64(GetBlockCost(btcutil.NewBlock(&block)))
+		blockWeight := uint64(GetBlockWeight(btcutil.NewBlock(&block)))
 		numTxns := uint64(len(block.Transactions))
+<<<<<<< HEAD
 		b.stateSnapshot = newBestState(b.bestNode, blockSize, blockCost,
 			numTxns, state.totalTxns, medianTime)
+=======
+		b.stateSnapshot = newBestState(b.bestNode, blockSize, blockWeight,
+			numTxns, state.totalTxns)
+>>>>>>> 8080719... blockchain: rename transaction/block cost to weight
 
 		isStateInitialized = true
 		return nil

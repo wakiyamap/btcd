@@ -587,12 +587,12 @@ func checkBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource Median
 	}
 
 	// Once the witness commitment, witness nonce, and sig op cost have
-	// been validated, we can finally assert that the block's cost doesn't
-	// exceed the current consensus paramter.
-	blockCost := GetBlockCost(block)
-	if blockCost > MaxBlockCost {
-		str := fmt.Sprintf("block's cost metric is too high - got %v, max %v",
-			blockCost, MaxBlockCost)
+	// been validated, we can finally assert that the block's weight
+	// doesn't exceed the current consensus paramter.
+	blockWeight := GetBlockWeight(block)
+	if blockWeight > MaxBlockWeight {
+		str := fmt.Sprintf("block's weight metric is too high - got %v, max %v",
+			blockWeight, MaxBlockWeight)
 		return ruleError(ErrBlockVersionTooOld, str)
 	}
 

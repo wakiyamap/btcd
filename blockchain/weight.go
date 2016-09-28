@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	// MaxBlockCost defines the maximum block cost, where "block cost" is
-	// interpreted as defined in BIP0141. A block's cost is calculated as
-	// the sum of the cost of bytes in the existing transactions and
-	// header, plus the cost of each byte in witness data. The cost of a
-	// "base" byte is 4, while the cost of a witness byte is 1. As a result,
-	// for a block to be valid, the BlockCost MUST be less then, or equal
-	// to MaxBlockCost.
-	MaxBlockCost = 4000000
+	// MaxBlockWeight defines the maximum block weight, where "block
+	// weight" is interpreted as defined in BIP0141. A block's weight is
+	// calculated as the sum of the of bytes in the existing transactions
+	// and header, plus the weight of each byte within a transaction. The
+	// weight of a "base" byte is 4, while the weight of a witness byte is
+	// 1. As a result, for a block to be valid, the BlockWeight MUST be
+	// less then, or equal to MaxBlockWeight.
+	MaxBlockWeight = 4000000
 
 	// MaxBlockBaseSize is the maximum number of bytes within a block
 	// which can be allocated to non-witness data.
@@ -31,29 +31,29 @@ const (
 	MaxBlockSigOpsCost = 80000
 
 	// WitnessScaleFactor determines the level of "discount" witness data
-	// recieves compared to "base" data. A scale factor of 4, denotes that
+	// receives compared to "base" data. A scale factor of 4, denotes that
 	// witness data is 1/4 as cheap as regular non-witness data.
 	WitnessScaleFactor = 4
 )
 
 // TxVirtualSize computes the virtual size of a given transaction. A
-// transaction's virtual is based off it's cost, creating a discount
-// for any witness data it contains, proportional to the current
-// WitnessScaleFactor value.
+// transaction's virtual is based off it's weight, creating a discount for any
+// witness data it contains, proportional to the current WitnessScaleFactor
+// value.
 func GetTxVirtualSize(tx *btcutil.Tx) int64 {
-	// vSize := (cost(tx) + 3) / 4
+	// vSize := (weight(tx) + 3) / 4
 	//       := (((baseSize * 3) + totalSize) + 3) / 4
 	// We add 3 here as a way to compute the ceiling of the prior arithmetic
 	// to 4. The division by 4 creates a discount for wit witness data.
-	return (GetTransactionCost(tx) + (WitnessScaleFactor - 1)) /
+	return (GetTransactionWeight(tx) + (WitnessScaleFactor - 1)) /
 		WitnessScaleFactor
 }
 
-// GetBlockCost computes the value of the cost metric for a given block.
-// Currently the cost metric is simply the sum of the block's serialized size
+// GetBlockWeight computes the value of the weight metric for a given block.
+// Currently the weight metric is simply the sum of the block's serialized size
 // without any witness data scaled proportionally by the WitnessScaleFactor,
 // and the block's serialized size including any witness data.
-func GetBlockCost(blk *btcutil.Block) int64 {
+func GetBlockWeight(blk *btcutil.Block) int64 {
 	msgBlock := blk.MsgBlock()
 
 	baseSize := msgBlock.SerializeSizeStripped()
@@ -63,12 +63,12 @@ func GetBlockCost(blk *btcutil.Block) int64 {
 	return int64((baseSize * (WitnessScaleFactor - 1)) + totalSize)
 }
 
-// GetTransactionCost computes the value of the cost metric for a given
-// transaction. Currently the cost metric is simply the sum of the
-// transactions's serialized size without any witness data scaled proportionally
-// by the WitnessScaleFactor, and the transaction's serialized size including
-// any witness data.
-func GetTransactionCost(tx *btcutil.Tx) int64 {
+// GetTransactionWeight computes the value of the weight metric for a given
+// transaction. Currently the weight metric is simply the sum of the
+// transactions's serialized size without any witness data scaled
+// proportionally by the WitnessScaleFactor, and the transaction's serialized
+// size including any witness data.
+func GetTransactionWeight(tx *btcutil.Tx) int64 {
 	msgTx := tx.MsgTx()
 
 	baseSize := msgTx.SerializeSizeStripped()

@@ -128,26 +128,26 @@ func removeChildNode(children []*blockNode, node *blockNode) []*blockNode {
 // However, the returned snapshot must be treated as immutable since it is
 // shared by all callers.
 type BestState struct {
-	Hash       *chainhash.Hash // The hash of the block.
-	Height     int32           // The height of the block.
-	Bits       uint32          // The difficulty bits of the block.
-	BlockSize  uint64          // The size of the block.
-	BlockCost  uint64          // The cost of the block.
-	NumTxns    uint64          // The number of txns in the block.
-	TotalTxns  uint64          // The total number of txns in the chain.
-	MedianTime time.Time       // Median time as per CalcPastMedianTime.
+	Hash        *chainhash.Hash // The hash of the block.
+	Height      int32           // The height of the block.
+	Bits        uint32          // The difficulty bits of the block.
+	BlockSize   uint64          // The size of the block.
+	BlockWeight uint64          // The weight of the block.
+	NumTxns     uint64          // The number of txns in the block.
+	TotalTxns   uint64          // The total number of txns in the chain.
+	MedianTime  time.Time       // Median time as per CalcPastMedianTime.
 }
 
 // newBestState returns a new best stats instance for the given parameters.
-func newBestState(node *blockNode, blockSize, blockCost, numTxns,
+func newBestState(node *blockNode, blockSize, blockWeight, numTxns,
 	totalTxns uint64, medianTime time.Time) *BestState {
 
 	return &BestState{
-		Hash:       node.hash,
-		Height:     node.height,
-		Bits:       node.bits,
-		BlockSize:  blockSize,
-		BlockCost:  blockCost,
+		Hash:      node.hash,
+		Height:    node.height,
+		Bits:      node.bits,
+		BlockSize: blockSize,
+		BlockWeight, blockWeight,
 		NumTxns:    numTxns,
 		TotalTxns:  totalTxns,
 		MedianTime: medianTime,
@@ -799,8 +799,8 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *U
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(block.MsgBlock().Transactions))
 	blockSize := uint64(block.MsgBlock().SerializeSize())
-	blockCost := uint64(GetBlockCost(block))
-	state := newBestState(node, blockSize, blockCost, numTxns, curTotalTxns+numTxns)
+	blockWeight := uint64(GetBlockWeight(block))
+	state := newBestState(node, blockSize, blockWeight, numTxns, curTotalTxns+numTxns)
 
 	// Atomically insert info into the database.
 	err = b.db.Update(func(dbTx database.Tx) error {
@@ -930,9 +930,9 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 	b.stateLock.RUnlock()
 	numTxns := uint64(len(prevBlock.MsgBlock().Transactions))
 	blockSize := uint64(prevBlock.MsgBlock().SerializeSize())
-	blockCost := uint64(GetBlockCost(prevBlock))
+	blockWeight := uint64(GetBlockWeight(prevBlock))
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
-	state := newBestState(prevNode, blockSize, blockCost, numTxns,
+	state := newBestState(prevNode, blockSize, blockWeight, numTxns,
 		newTotalTxns, medianTime)
 
 	err = b.db.Update(func(dbTx database.Tx) error {

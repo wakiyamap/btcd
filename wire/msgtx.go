@@ -499,7 +499,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 	// If the transaction's flag byte isn't 0x00 at this point, then one
 	// or more of its inputs has accompanying witness data.
 	// TODO(roasabeef): use the free list stuff here?
-	if flag[0] != 0 && pver == WitnessVersion {
+	if flag[0] != 0 && enc == WitnessEncoding {
 		for _, txin := range msg.TxIn {
 			// For each input, the witness is encoded as a stack
 			// with one or more items. Therefore, we first read a
