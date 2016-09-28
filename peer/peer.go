@@ -27,7 +27,7 @@ import (
 
 const (
 	// MaxProtocolVersion is the max protocol version the peer supports.
-	MaxProtocolVersion = wire.WitnessVersion
+	MaxProtocolVersion = wire.SendHeadersVersion
 
 	// outputBufferSize is the number of elements the output channels use.
 	outputBufferSize = 50
@@ -1448,10 +1448,9 @@ out:
 			// able to determine if this peer knows how to encode
 			// witness data over the wire protocol. If so, then
 			// we'll switch to a decoding mode which is prepared
-			// for the new transactino format introduced as part of
+			// for the new transaction format introduced as part of
 			// BIP0144.
-			if p.ProtocolVersion() >= wire.WitnessVersion &&
-				p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
+			if p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
 				encoding = wire.WitnessEncoding
 			}
 
