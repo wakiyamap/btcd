@@ -14,10 +14,12 @@ import (
 )
 
 const (
-	// maxStandardTxCost...
-	maxStandardTxCost = 400000
+	// maxStandardTxCost is the max weight permitted by any transaction
+	// according to the current default policy.
+	maxStandardTxWeight = 400000
 
-	// maxStandardSigOpsCost...
+	// maxStandardSigOpsCost is the max sig op cost any transaction is
+	// permitted to have according to the current default policy.
 	maxStandardSigOpsCost = blockchain.MaxBlockSigOpsCost / 4
 
 	// maxStandardSigScriptSize is the maximum size allowed for a
@@ -324,7 +326,9 @@ func isDust(txOut *wire.TxOut, minRelayTxFee btcutil.Amount) bool {
 // finalized, conforming to more stringent size constraints, having scripts
 // of recognized forms, and not containing "dust" outputs (those that are
 // so small it costs more to process them than they are worth).
-func checkTransactionStandard(tx *btcutil.Tx, height int32, timeSource blockchain.MedianTimeSource, minRelayTxFee btcutil.Amount) error {
+func checkTransactionStandard(tx *btcutil.Tx, height int32,
+	timeSource blockchain.MedianTimeSource, minRelayTxFee btcutil.Amount) error {
+
 	// The transaction must be a currently supported version.
 	msgTx := tx.MsgTx()
 	if msgTx.Version > wire.TxVersion || msgTx.Version < 1 {
@@ -346,10 +350,10 @@ func checkTransactionStandard(tx *btcutil.Tx, height int32, timeSource blockchai
 	// almost as much to process as the sender fees, limit the maximum
 	// size of a transaction.  This also helps mitigate CPU exhaustion
 	// attacks.
-	txCost := blockchain.GetTransactionCost(tx)
-	if txCost > maxStandardTxCost {
-		str := fmt.Sprintf("cost of transaction %v is larger than max "+
-			"allowed cost of %v", txCost, maxStandardTxCost)
+	txWeight := blockchain.GetTransactionWeight(tx)
+	if txWeight > maxStandardTxWeight {
+		str := fmt.Sprintf("weight of transaction %v is larger than max "+
+			"allowed weight of %v", txWeight, maxStandardTxWeight)
 		return txRuleError(wire.RejectNonstandard, str)
 	}
 

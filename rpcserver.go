@@ -1095,7 +1095,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		Height:        int64(blockHeight),
 		Size:          int32(len(blkBytes)),
 		StrippedSize:  int32(blk.MsgBlock().SerializeSizeStripped()),
-		Cost:          int32(blockchain.GetBlockCost(blk)),
+		Weight:        int32(blockchain.GetBlockWeight(blk)),
 		Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
 		Difficulty:    getDifficultyRatio(blockHeader.Bits),
 		NextHash:      nextHashString,
@@ -1569,7 +1569,7 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 			Depends: depends,
 			Fee:     template.Fees[i],
 			SigOps:  template.SigOpCosts[i],
-			Cost:    blockchain.GetTransactionCost(bTx), // TODO(roasbeef): both versions
+			Weight:  blockchain.GetTransactionWeight(bTx),
 		}
 		transactions = append(transactions, resultTx)
 	}
@@ -1585,8 +1585,8 @@ func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld 
 		CurTime:      header.Timestamp.Unix(),
 		Height:       int64(template.Height),
 		PreviousHash: header.PrevBlock.String(),
-		CostLimit:    blockchain.MaxBlockCost,
-		SigOpLimit:   blockchain.MaxBlockSigOpsCost, // TODO(roasbeef): from config
+		WeightLimit:  blockchain.MaxBlockWeight,
+		SigOpLimit:   blockchain.MaxBlockSigOpsCost,
 		SizeLimit:    wire.MaxBlockPayload,
 		Transactions: transactions,
 		Version:      header.Version,
@@ -2091,16 +2091,16 @@ func handleGetMiningInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 
 	best := s.chain.BestSnapshot()
 	result := btcjson.GetMiningInfoResult{
-		Blocks:           int64(best.Height),
-		CurrentBlockCost: best.BlockCost,
-		CurrentBlockTx:   best.NumTxns,
-		Difficulty:       getDifficultyRatio(best.Bits),
-		Generate:         s.server.cpuMiner.IsMining(),
-		GenProcLimit:     s.server.cpuMiner.NumWorkers(),
-		HashesPerSec:     int64(s.server.cpuMiner.HashesPerSecond()),
-		NetworkHashPS:    networkHashesPerSec,
-		PooledTx:         uint64(s.server.txMemPool.Count()),
-		TestNet:          cfg.TestNet3,
+		Blocks:             int64(best.Height),
+		CurrentBlockWeight: best.BlockWeight,
+		CurrentBlockTx:     best.NumTxns,
+		Difficulty:         getDifficultyRatio(best.Bits),
+		Generate:           s.server.cpuMiner.IsMining(),
+		GenProcLimit:       s.server.cpuMiner.NumWorkers(),
+		HashesPerSec:       int64(s.server.cpuMiner.HashesPerSecond()),
+		NetworkHashPS:      networkHashesPerSec,
+		PooledTx:           uint64(s.server.txMemPool.Count()),
+		TestNet:            cfg.TestNet3,
 	}
 	return &result, nil
 }

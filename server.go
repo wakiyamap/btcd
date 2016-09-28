@@ -2580,8 +2580,10 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	// NOTE: The CPU miner relies on the mempool, so the mempool has to be
 	// created before calling the function to create the CPU miner.
 	policy := mining.Policy{
-		BlockMinCost:      cfg.BlockMinSize * blockchain.WitnessScaleFactor,
-		BlockMaxCost:      cfg.BlockMaxSize * blockchain.WitnessScaleFactor,
+		BlockMinWeight:    cfg.BlockMinWeight,
+		BlockMaxWeight:    cfg.BlockMaxWeight,
+		BlockMinSize:      cfg.BlockMinSize,
+		BlockMaxSize:      cfg.BlockMaxSize,
 		BlockPrioritySize: cfg.BlockPrioritySize,
 		TxMinFreeFee:      cfg.minRelayTxFee,
 	}

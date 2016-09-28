@@ -565,8 +565,8 @@ mempoolLoop:
 	// The starting block size is the size of the block header plus the max
 	// possible transaction count size, plus the size of the coinbase
 	// transaction.
-	blockCost := uint32((blockHeaderOverhead * (blockchain.WitnessScaleFactor - 1)) +
-		blockchain.GetTransactionCost(coinbaseTx))
+	blockWeight := uint32((blockHeaderOverhead * (blockchain.WitnessScaleFactor - 1)) +
+		blockchain.GetTransactionWeight(coinbaseTx))
 	blockSigOpCost := coinbaseSigOpCost
 	totalFees := int64(0)
 
@@ -602,11 +602,15 @@ mempoolLoop:
 		delete(dependers, *tx.Hash())
 
 		// Enforce maximum block size.  Also check for overflow.
-		txCost := uint32(blockchain.GetTransactionCost(tx))
-		blockPlusTxCost := uint32(blockCost + txCost)
-		if blockPlusTxCost < blockCost || blockPlusTxCost >= policy.BlockMaxCost {
+		// TODO(roasbeef): do check for block size if size isn't the
+		// default paramter.
+		txWeight := uint32(blockchain.GetTransactionWeight(tx))
+		blockPlusTxWeight := uint32(blockWeight + txWeight)
+		if blockPlusTxWeight < blockWeight ||
+			blockPlusTxWeight >= policy.BlockMaxWeight {
+
 			minrLog.Tracef("Skipping tx %s because it would exceed "+
-				"the max block cost", tx.Hash())
+				"the max block weight", tx.Hash())
 			logSkippedDeps(tx, deps)
 			continue
 		}
@@ -633,13 +637,13 @@ mempoolLoop:
 		// minimum block size.
 		if sortedByFee &&
 			prioItem.feePerKB < int64(policy.TxMinFreeFee) &&
-			blockPlusTxCost >= policy.BlockMinCost {
+			blockPlusTxWeight >= policy.BlockMinWeight {
 
 			minrLog.Tracef("Skipping tx %s with feePerKB %d "+
-				"< TxMinFreeFee %d and block size %d >= "+
-				"minBlockSize %d", tx.Hash(), prioItem.feePerKB,
-				policy.TxMinFreeFee, blockPlusTxCost,
-				policy.BlockMinCost)
+				"< TxMinFreeFee %d and block weight %d >= "+
+				"minBlockWeight %d", tx.Hash(), prioItem.feePerKB,
+				policy.TxMinFreeFee, blockPlusTxWeight,
+				policy.BlockMinWeight)
 			logSkippedDeps(tx, deps)
 			continue
 		}
@@ -653,7 +657,7 @@ mempoolLoop:
 			minrLog.Tracef("Switching to sort by fees per "+
 				"kilobyte blockSize %d >= BlockPrioritySize "+
 				"%d || priority %.2f <= minHighPriority %.2f",
-				blockPlusTxCost, policy.BlockPrioritySize,
+				blockPlusTxWeight, policy.BlockPrioritySize,
 				prioItem.priority, mempool.MinHighPriority)
 
 			sortedByFee = true
@@ -661,11 +665,11 @@ mempoolLoop:
 
 			// Put the transaction back into the priority queue and
 			// skip it so it is re-priortized by fees if it won't
-			// fit into the high-priority section or the priority is
-			// too low.  Otherwise this transaction will be the
+			// fit into the high-priority section or the priority
+			// is too low.  Otherwise this transaction will be the
 			// final one in the high-priority section, so just fall
 			// though to the code below so it is added now.
-			if blockPlusTxCost > policy.BlockPrioritySize ||
+			if blockPlusTxWeight > policy.BlockPrioritySize ||
 				prioItem.priority < mempool.MinHighPriority {
 
 				heap.Push(priorityQueue, prioItem)
@@ -703,7 +707,7 @@ mempoolLoop:
 		// save the fees and signature operation counts to the block
 		// template.
 		blockTxns = append(blockTxns, tx)
-		blockCost += txCost
+		blockWeight += txWeight
 		blockSigOpCost += sigOpCost
 		totalFees += prioItem.fee
 		txFees = append(txFees, prioItem.fee)
@@ -730,9 +734,9 @@ mempoolLoop:
 	}
 
 	// Now that the actual transactions have been selected, update the
-	// block cost for the real transaction count and coinbase value with
+	// block weight for the real transaction count and coinbase value with
 	// the total fees accordingly.
-	blockCost -= wire.MaxVarIntPayload -
+	blockWeight -= wire.MaxVarIntPayload -
 		(uint32(wire.VarIntSerializeSize(uint64(len(blockTxns)))) *
 			(blockchain.WitnessScaleFactor - 1))
 	coinbaseTx.MsgTx().TxOut[0].Value += totalFees
@@ -785,9 +789,9 @@ mempoolLoop:
 	}
 
 	minrLog.Debugf("Created new block template (%d transactions, %d in "+
-		"fees, %d signature operations cost, %d cost, target difficulty "+
+		"fees, %d signature operations cost, %d weight, target difficulty "+
 		"%064x)", len(msgBlock.Transactions), totalFees, blockSigOpCost,
-		blockCost, blockchain.CompactToBig(msgBlock.Header.Bits))
+		blockWeight, blockchain.CompactToBig(msgBlock.Header.Bits))
 
 	return &BlockTemplate{
 		Block:             &msgBlock,

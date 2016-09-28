@@ -10,13 +10,21 @@ import "github.com/btcsuite/btcutil"
 // the generation of block templates.  See the documentation for
 // NewBlockTemplate for more details on each of these parameters are used.
 type Policy struct {
-	// BlockMinCost is the minimum block cost to be used when generating
-	// a block template.
-	BlockMinCost uint32
+	// BlockMinWeight is the minimum block weight to be used when
+	// generating a block template.
+	BlockMinWeight uint32
 
-	// BlockMaxCost is the maximum block cost to be used when generating
+	// BlockMaxWeight is the maximum block weight to be used when
+	// generating a block template.
+	BlockMaxWeight uint32
+
+	// BlockMinWeight is the minimum block size to be used when generating
 	// a block template.
-	BlockMaxCost uint32
+	BlockMinSize uint32
+
+	// BlockMaxSize is the maximum block size to be used when generating a
+	// block template.
+	BlockMaxSize uint32
 
 	// BlockPrioritySize is the size in bytes for high-priority / low-fee
 	// transactions to be used when generating a block template.
