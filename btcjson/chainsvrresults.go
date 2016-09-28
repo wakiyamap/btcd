@@ -31,7 +31,7 @@ type GetBlockVerboseResult struct {
 	Confirmations uint64        `json:"confirmations"`
 	StrippedSize  int32         `json:"strippedsize"`
 	Size          int32         `json:"size"`
-	Cost          int32         `json:"cost"`
+	Weight        int32         `json:"weight"`
 	Height        int64         `json:"height"`
 	Version       int32         `json:"version"`
 	MerkleRoot    string        `json:"merkleroot"`
@@ -95,7 +95,7 @@ type GetBlockTemplateResultTx struct {
 	Depends []int64 `json:"depends"`
 	Fee     int64   `json:"fee"`
 	SigOps  int64   `json:"sigops"`
-	Cost    int64   `json:"cost"`
+	Weight  int64   `json:"weight"`
 }
 
 // GetBlockTemplateResultAux models the coinbaseaux field of the
@@ -115,7 +115,7 @@ type GetBlockTemplateResult struct {
 	PreviousHash  string                     `json:"previousblockhash"`
 	SigOpLimit    int64                      `json:"sigoplimit,omitempty"`
 	SizeLimit     int64                      `json:"sizelimit,omitempty"`
-	CostLimit     int64                      `json:"costlimit,omitempty"`
+	WeightLimit   int64                      `json:"weightlimit,omitempty"`
 	Transactions  []GetBlockTemplateResultTx `json:"transactions"`
 	Version       int32                      `json:"version"`
 	CoinbaseAux   *GetBlockTemplateResultAux `json:"coinbaseaux,omitempty"`
@@ -387,17 +387,17 @@ type Vout struct {
 
 // GetMiningInfoResult models the data from the getmininginfo command.
 type GetMiningInfoResult struct {
-	Blocks           int64   `json:"blocks"`
-	CurrentBlockCost uint64  `json:"currentblockcost"`
-	CurrentBlockTx   uint64  `json:"currentblocktx"`
-	Difficulty       float64 `json:"difficulty"`
-	Errors           string  `json:"errors"`
-	Generate         bool    `json:"generate"`
-	GenProcLimit     int32   `json:"genproclimit"`
-	HashesPerSec     int64   `json:"hashespersec"`
-	NetworkHashPS    int64   `json:"networkhashps"`
-	PooledTx         uint64  `json:"pooledtx"`
-	TestNet          bool    `json:"testnet"`
+	Blocks             int64   `json:"blocks"`
+	CurrentBlockWeight uint64  `json:"currentblockweight"`
+	CurrentBlockTx     uint64  `json:"currentblocktx"`
+	Difficulty         float64 `json:"difficulty"`
+	Errors             string  `json:"errors"`
+	Generate           bool    `json:"generate"`
+	GenProcLimit       int32   `json:"genproclimit"`
+	HashesPerSec       int64   `json:"hashespersec"`
+	NetworkHashPS      int64   `json:"networkhashps"`
+	PooledTx           uint64  `json:"pooledtx"`
+	TestNet            bool    `json:"testnet"`
 }
 
 // GetWorkResult models the data from the getwork command.
