@@ -361,6 +361,14 @@ func (sp *serverPeer) OnVersion(p *peer.Peer, msg *wire.MsgVersion) {
 	// is received.
 	sp.setDisableRelayTx(msg.DisableRelayTx)
 
+	// Determine if the peer would like to receive witness data with
+	// transactions, or not.
+	if p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
+		sp.witnessMtx.Lock()
+		sp.witnessEnabled = true
+		sp.witnessMtx.Unlock()
+	}
+
 	// Update the address manager and request known addresses from the
 	// remote peer for outbound connections.  This is skipped when running
 	// on the simulation test network since it is only intended to connect
@@ -370,6 +378,19 @@ func (sp *serverPeer) OnVersion(p *peer.Peer, msg *wire.MsgVersion) {
 		addrManager := sp.server.addrManager
 		// Outbound connections.
 		if !p.Inbound() {
+			// After soft-fork activation, only make outbound
+			// connection to peers if they flag that they're segwit
+			// enabled.
+			// TODO(roasbeef): check version bits state
+			//  * only D/C if we don't already have X segwit peers?
+			if !sp.witnessEnabled {
+				peerLog.Infof("Disconnecting non-segwit "+
+					"peer %v, segwit has activated and "+
+					"we need more segwit enabled peers", p)
+				p.Disconnect()
+				return
+			}
+
 			// TODO(davec): Only do this if not doing the initial block
 			// download and the local address is routable.
 			if !cfg.DisableListen /* && isCurrent? */ {
@@ -403,14 +424,6 @@ func (sp *serverPeer) OnVersion(p *peer.Peer, msg *wire.MsgVersion) {
 				addrManager.Good(p.NA())
 			}
 		}
-	}
-
-	// Determine if the peer would like to receive witness data with
-	// transactions, or not.
-	if p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
-		sp.witnessMtx.Lock()
-		sp.witnessEnabled = true
-		sp.witnessMtx.Unlock()
 	}
 
 	// Add valid peer to the server.
