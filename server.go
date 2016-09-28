@@ -407,9 +407,7 @@ func (sp *serverPeer) OnVersion(p *peer.Peer, msg *wire.MsgVersion) {
 
 	// Determine if the peer would like to receive witness data with
 	// transactions, or not.
-	if p.ProtocolVersion() >= wire.WitnessVersion &&
-		p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
-
+	if p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
 		sp.witnessMtx.Lock()
 		sp.witnessEnabled = true
 		sp.witnessMtx.Unlock()
@@ -1123,6 +1121,7 @@ func (s *server) pushMerkleBlockMsg(sp *serverPeer, hash *wire.ShaHash,
 
 	// Generate a merkle block by filtering the requested block according
 	// to the filter for the peer.
+	// TODO(roasbeef): pass in encoding
 	merkle, matchedTxIndices := bloom.NewMerkleBlock(blk, sp.filter)
 
 	// Once we have fetched data wait for any previous operation to finish.
@@ -1574,7 +1573,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 		ChainParams:      sp.server.chainParams,
 		Services:         sp.server.services,
 		DisableRelayTx:   cfg.BlocksOnly,
-		ProtocolVersion:  wire.WitnessVersion,
+		ProtocolVersion:  peer.MaxProtocolVersion,
 	}
 }
 
