@@ -11,7 +11,6 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 )
 
@@ -117,14 +116,14 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx, witness bool) []*chainhash
 		// the coinbase's wtxid is all zeroes.
 		switch {
 		case witness && i == 0:
-			var zeroHash wire.ShaHash
+			var zeroHash chainhash.Hash
 			merkles[i] = &zeroHash
 		case witness:
 			// TODO(roasbeef): cache this in btcutil too
 			wSha := tx.MsgTx().WitnessHash()
 			merkles[i] = &wSha
 		default:
-			merkles[i] = tx.Sha()
+			merkles[i] = tx.Hash()
 		}
 
 	}
@@ -245,7 +244,7 @@ func ValidateWitnessCommitment(blk *btcutil.Block) error {
 	copy(witnessPreimage[:], witnessMerkleRoot[:])
 	copy(witnessPreimage[32:], witnessNonce)
 
-	if !bytes.Equal(wire.DoubleSha256(witnessPreimage), witnessCommitment) {
+	if !bytes.Equal(chainhash.DoubleHashB(witnessPreimage), witnessCommitment) {
 		str := "witness commitment does not match"
 		return ruleError(ErrWitnessCommitmentMismatch, str)
 	}

@@ -96,6 +96,7 @@ func GetSigOpCost(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint,
 		numSigOps += (numP2SHSigOps * WitnessScaleFactor)
 	}
 
+	// TODO(roasbeef): check check HasWitness() here?
 	if segWit && !isCoinBaseTx {
 		msgTx := tx.MsgTx()
 		for txInIndex, txIn := range msgTx.TxIn {
@@ -106,7 +107,7 @@ func GetSigOpCost(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint,
 			if txEntry == nil || txEntry.IsOutputSpent(originTxIndex) {
 				str := fmt.Sprintf("unable to find unspent output "+
 					"%v referenced from transaction %s:%d",
-					txIn.PreviousOutPoint, tx.Sha(), txInIndex)
+					txIn.PreviousOutPoint, tx.Hash(), txInIndex)
 				return 0, ruleError(ErrMissingTx, str)
 			}
 

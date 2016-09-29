@@ -143,14 +143,14 @@ func newBestState(node *blockNode, blockSize, blockWeight, numTxns,
 	totalTxns uint64, medianTime time.Time) *BestState {
 
 	return &BestState{
-		Hash:      node.hash,
-		Height:    node.height,
-		Bits:      node.bits,
-		BlockSize: blockSize,
-		BlockWeight, blockWeight,
-		NumTxns:    numTxns,
-		TotalTxns:  totalTxns,
-		MedianTime: medianTime,
+		Hash:        node.hash,
+		Height:      node.height,
+		Bits:        node.bits,
+		BlockSize:   blockSize,
+		BlockWeight: blockWeight,
+		NumTxns:     numTxns,
+		TotalTxns:   totalTxns,
+		MedianTime:  medianTime,
 	}
 }
 
@@ -800,7 +800,8 @@ func (b *BlockChain) connectBlock(node *blockNode, block *btcutil.Block, view *U
 	numTxns := uint64(len(block.MsgBlock().Transactions))
 	blockSize := uint64(block.MsgBlock().SerializeSize())
 	blockWeight := uint64(GetBlockWeight(block))
-	state := newBestState(node, blockSize, blockWeight, numTxns, curTotalTxns+numTxns)
+	state := newBestState(node, blockSize, blockWeight, numTxns,
+		curTotalTxns+numTxns, medianTime)
 
 	// Atomically insert info into the database.
 	err = b.db.Update(func(dbTx database.Tx) error {

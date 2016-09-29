@@ -209,7 +209,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// If the hashcache doesn't yet has the sighash midstate for this
 	// transaction, then we'll compute them now so we can re-use them
 	// amongst all worker validation goroutines.
-	if !hashCache.ContainsHashes(tx.Sha()) {
+	if !hashCache.ContainsHashes(tx.Hash()) {
 		hashCache.AddSigHashes(tx.MsgTx())
 	}
 
@@ -217,7 +217,7 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// re-used amongst all validation goroutines. By pre-computing the
 	// sighash here instead of during validation, we ensure the sighashes
 	// are only computed once.
-	cachedHashes, _ := hashCache.GetSigHashes(tx.Sha())
+	cachedHashes, _ := hashCache.GetSigHashes(tx.Hash())
 
 	// Collect all of the transaction inputs and required information for
 	// validation.
@@ -261,7 +261,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 	}
 	txValItems := make([]*txValidateItem, 0, numInputs)
 	for _, tx := range block.Transactions() {
-		sha := tx.Sha()
+		sha := tx.Hash()
 
 		// If the HashCache is present, and it doesn't yet contain the
 		// partial sighashes for this transaction, then we add the
@@ -297,20 +297,20 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 	}
 
 	// Validate all of the inputs.
-	start := time.Now()
 	validator := newTxValidator(utxoView, scriptFlags, sigCache, hashCache)
+	start := time.Now()
 	if err := validator.Validate(txValItems); err != nil {
 		return err
 	}
 	elapsed := time.Since(start)
-	log.Infof("block %v took %v to verify", block.Sha(), elapsed)
+	log.Infof("block %v took %v to verify", block.Hash(), elapsed)
 
 	// If the HashCache is present, once we have validated the block, we no
 	// longer need the cached hashes for these transactions, so we purge
 	// them from the cache.
 	if hashCache != nil {
 		for _, tx := range block.Transactions() {
-			hashCache.PurgeSigHashes(tx.Sha())
+			hashCache.PurgeSigHashes(tx.Hash())
 		}
 	}
 
