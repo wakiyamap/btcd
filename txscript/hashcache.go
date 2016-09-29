@@ -7,6 +7,7 @@ package txscript
 import (
 	"sync"
 
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
 
@@ -16,9 +17,9 @@ import (
 // for SigHashAll can be reduced by a polynomial factor.
 // TODO(roasbeef): rename to SighashMidState
 type TxSigHashes struct {
-	HashPrevOuts wire.ShaHash
-	HashSequence wire.ShaHash
-	HashOutputs  wire.ShaHash
+	HashPrevOuts chainhash.Hash
+	HashSequence chainhash.Hash
+	HashOutputs  chainhash.Hash
 }
 
 // NewTxSigHashes computes, and returns the cached sighashes a the given
@@ -37,7 +38,7 @@ func NewTxSigHashes(tx *wire.MsgTx) *TxSigHashes {
 // multiple goroutines can safely re-use the pre-computed partial sighashes
 // speeding up validation time amongst all inputs found within a block.
 type HashCache struct {
-	sigHashes map[wire.ShaHash]*TxSigHashes
+	sigHashes map[chainhash.Hash]*TxSigHashes
 
 	sync.RWMutex
 }
@@ -46,7 +47,7 @@ type HashCache struct {
 // of entries which may exist within it at anytime.
 func NewHashCache(maxSize uint) *HashCache {
 	return &HashCache{
-		sigHashes: make(map[wire.ShaHash]*TxSigHashes, maxSize),
+		sigHashes: make(map[chainhash.Hash]*TxSigHashes, maxSize),
 	}
 }
 
@@ -60,7 +61,7 @@ func (h *HashCache) AddSigHashes(tx *wire.MsgTx) {
 
 	sigHashes := NewTxSigHashes(tx)
 
-	txid := tx.TxSha()
+	txid := tx.TxHash()
 	h.sigHashes[txid] = sigHashes
 
 	return
@@ -68,7 +69,7 @@ func (h *HashCache) AddSigHashes(tx *wire.MsgTx) {
 
 // ContainsHashes returns true if the partial sighashes for the passed
 // transaction currently exist within the HashCache, and false otherwise.
-func (h *HashCache) ContainsHashes(txid *wire.ShaHash) bool {
+func (h *HashCache) ContainsHashes(txid *chainhash.Hash) bool {
 	h.RLock()
 	defer h.RUnlock()
 
@@ -80,7 +81,7 @@ func (h *HashCache) ContainsHashes(txid *wire.ShaHash) bool {
 // the passed transaction. This function also returns an additional boolean
 // value indicating if the sighashes for the passed transaction were found to
 // be present within the HashCache.
-func (h *HashCache) GetSigHashes(txid *wire.ShaHash) (*TxSigHashes, bool) {
+func (h *HashCache) GetSigHashes(txid *chainhash.Hash) (*TxSigHashes, bool) {
 	h.RLock()
 	defer h.RUnlock()
 
@@ -90,7 +91,7 @@ func (h *HashCache) GetSigHashes(txid *wire.ShaHash) (*TxSigHashes, bool) {
 
 // PurgeSigHashes removes all partial sighashes from the HashCache belonging to
 // the passed transaction.
-func (h *HashCache) PurgeSigHashes(txid *wire.ShaHash) {
+func (h *HashCache) PurgeSigHashes(txid *chainhash.Hash) {
 	h.Lock()
 	defer h.Unlock()
 

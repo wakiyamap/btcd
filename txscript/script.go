@@ -352,7 +352,7 @@ func removeOpcodeByData(pkscript []parsedOpcode, data []byte) []parsedOpcode {
 // signature hash type of SigHashAll. This allows validation to re-use previous
 // hashing computation, reducing the complexity of validating SigHashAll inputs
 // from  O(N^2) to O(N).
-func calcHashPrevOuts(tx *wire.MsgTx) wire.ShaHash {
+func calcHashPrevOuts(tx *wire.MsgTx) chainhash.Hash {
 	var b bytes.Buffer
 	for _, in := range tx.TxIn {
 		// First write out the 32-byte transaction ID one of whose
@@ -366,7 +366,7 @@ func calcHashPrevOuts(tx *wire.MsgTx) wire.ShaHash {
 		b.Write(buf[:])
 	}
 
-	return wire.DoubleSha256SH(b.Bytes())
+	return chainhash.DoubleHashH(b.Bytes())
 }
 
 // calcHashSequence computes an aggregated hash of each of the sequence numbers
@@ -375,7 +375,7 @@ func calcHashPrevOuts(tx *wire.MsgTx) wire.ShaHash {
 // using the SigHashAll sighash type. This allows validation to re-use previous
 // hashing computation, reducing the complexity of validating SigHashAll inputs
 // from O(N^2) to O(N).
-func calcHashSequence(tx *wire.MsgTx) wire.ShaHash {
+func calcHashSequence(tx *wire.MsgTx) chainhash.Hash {
 	var b bytes.Buffer
 	for _, in := range tx.TxIn {
 		var buf [4]byte
@@ -383,7 +383,7 @@ func calcHashSequence(tx *wire.MsgTx) wire.ShaHash {
 		b.Write(buf[:])
 	}
 
-	return wire.DoubleSha256SH(b.Bytes())
+	return chainhash.DoubleHashH(b.Bytes())
 }
 
 // calcHashOutputs computes a hash digest of all ouputs created by the
@@ -391,13 +391,13 @@ func calcHashSequence(tx *wire.MsgTx) wire.ShaHash {
 // when validating all inputs spending witness programs, which include signatures
 // using the SigHashAll sighash type. This allows computation to be cached,
 // reducing the total hashing complexity from O(N^2) to O(N).
-func calcHashOutputs(tx *wire.MsgTx) wire.ShaHash {
+func calcHashOutputs(tx *wire.MsgTx) chainhash.Hash {
 	var b bytes.Buffer
 	for _, out := range tx.TxOut {
 		wire.WriteTxOut(&b, 0, 0, out)
 	}
 
-	return wire.DoubleSha256SH(b.Bytes())
+	return chainhash.DoubleHashH(b.Bytes())
 }
 
 // calcWitnessSignatureHash computes the sighash digest of a transaction's
@@ -434,7 +434,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	// Next write out the the possibly pre-calculated hashes for the
 	// sequence numbers of all inputs, and the hashes of the previous
 	// outs for all outputs.
-	var zeroHash wire.ShaHash
+	var zeroHash chainhash.Hash
 
 	// If anyone can pay isn't active, then we can use the cached
 	// hashPrevOuts, otherwise we just write zeroes for the prev outs.
@@ -505,7 +505,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	} else if hashType&sigHashMask == SigHashSingle && idx < len(tx.TxOut) {
 		var b bytes.Buffer
 		wire.WriteTxOut(&b, 0, 0, tx.TxOut[idx])
-		sigHash.Write(wire.DoubleSha256(b.Bytes()))
+		sigHash.Write(chainhash.DoubleHashB(b.Bytes()))
 	} else if hashType&sigHashMask == SigHashSingle && idx >= len(tx.TxOut) {
 		sigHash.Write(zeroHash[:])
 	}
@@ -519,7 +519,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	binary.LittleEndian.PutUint32(bHashType[:], uint32(hashType))
 	sigHash.Write(bHashType[:])
 
-	return wire.DoubleSha256(sigHash.Bytes())
+	return chainhash.DoubleHashB(sigHash.Bytes())
 }
 
 // calcSignatureHash will, given a script and hash type for the current script
