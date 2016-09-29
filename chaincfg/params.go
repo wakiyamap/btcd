@@ -358,13 +358,17 @@ var SegNet4Params = Params{
 	DNSSeeds:    []string{"37.34.48.17"},
 
 	// Chain parameters
-	GenesisBlock:           &segNetGenesisBlock,
-	GenesisHash:            &segNetGenesisHash,
-	PowLimit:               segnet4PowLimit,
-	PowLimitBits:           0x1e01ffff,
-	SubsidyHalvingInterval: 210000,
-	ResetMinDifficulty:     true,
-	GenerateSupported:      false,
+	GenesisBlock:             &segNetGenesisBlock,
+	GenesisHash:              &segNetGenesisHash,
+	PowLimit:                 segnet4PowLimit,
+	PowLimitBits:             0x1e01ffff,
+	CoinbaseMaturity:         100,
+	SubsidyReductionInterval: 210000,
+	TargetTimespan:           time.Hour * 24 * 14,
+	RetargetAdjustmentFactor: 4,
+	ReduceMinDifficulty:      true,
+	MinDiffReductionTime:     time.Minute * 20,
+	GenerateSupported:        false,
 
 	// Checkpoints ordered from oldest to newest.
 	// no checkpoints for segnet yet

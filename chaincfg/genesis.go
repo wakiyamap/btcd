@@ -145,7 +145,7 @@ var testNet3GenesisBlock = wire.MsgBlock{
 
 // segNetGenesisHash is the hash of the first block in the block chain for the
 // segwit test network version 4
-var segNetGenesisHash = wire.ShaHash([wire.HashSize]byte{ // Make go vet happy.
+var segNetGenesisHash = chainhash.Hash([chainhash.HashSize]byte{ // Make go vet happy.
 	0xb2, 0x91, 0x21, 0x1d, 0x4b, 0xb2, 0xb7, 0xe1,
 	0xb7, 0xa4, 0x75, 0x82, 0x25, 0xe6, 0x9e, 0x50,
 	0x10, 0x40, 0x91, 0xa6, 0x37, 0x21, 0x3d, 0x03,
@@ -161,7 +161,7 @@ var segNetGenesisMerkleRoot = genesisMerkleRoot
 var segNetGenesisBlock = wire.MsgBlock{
 	Header: wire.BlockHeader{
 		Version:    1,
-		PrevBlock:  wire.ShaHash{},           // 0000000000000000000000000000000000000000000000000000000000000000
+		PrevBlock:  chainhash.Hash{},         // 0000000000000000000000000000000000000000000000000000000000000000
 		MerkleRoot: segNetGenesisMerkleRoot,  // 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
 		Timestamp:  time.Unix(1452831101, 0), // 2016-01-15 04:11:41 +0000 UTC
 		Bits:       0x1e01ffff,               // 503447551 [000001ffff000000000000000000000000000000000000000000000000000000]
