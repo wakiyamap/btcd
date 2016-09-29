@@ -433,10 +433,17 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 	// returns them.
 	returnScriptBuffers := func() {
 		for _, txIn := range msg.TxIn {
-			if txIn == nil || txIn.SignatureScript == nil {
+			if txIn == nil {
 				continue
 			}
-			scriptPool.Return(txIn.SignatureScript)
+
+			if txIn.SignatureScript != nil {
+				scriptPool.Return(txIn.SignatureScript)
+			}
+
+			for _, witnessElem := range txIn.Witness {
+				scriptPool.Return(witnessElem)
+			}
 		}
 		for _, txOut := range msg.TxOut {
 			if txOut == nil || txOut.PkScript == nil {
@@ -516,6 +523,7 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 				str := fmt.Sprintf("too many witness items to fit "+
 					"into max message size [count %d, max %d]",
 					witCount, maxWitnessItemsPerInput)
+				returnScriptBuffers()
 				return messageError("MsgTx.BtcDecode", str)
 			}
 
@@ -524,13 +532,14 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			// item itself.
 			txin.Witness = make([][]byte, witCount)
 			for j := uint64(0); j < witCount; j++ {
-				witPush, err := ReadVarBytes(r, pver, maxWitnessItemSize,
-					"script witness item")
+				witPush, err := readScript(r, pver,
+					maxWitnessItemSize, "script witness item")
 				if err != nil {
 					returnScriptBuffers()
 					return err
 				}
 				txin.Witness[j] = witPush
+				totalScriptSize += uint64(len(witPush))
 			}
 		}
 	}
@@ -555,7 +564,6 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 	// after these blocks of code run because it is already done and the
 	// scripts in the transaction inputs and outputs no longer point to the
 	// buffers.
-	// TODO(roasbeef): includes filling in witness here
 	var offset uint64
 	scripts := make([]byte, totalScriptSize)
 	for i := 0; i < len(msg.TxIn); i++ {
@@ -570,6 +578,24 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 		end := offset + scriptSize
 		msg.TxIn[i].SignatureScript = scripts[offset:end:end]
 		offset += scriptSize
+
+		for j := 0; j < len(msg.TxIn[i].Witness); j++ {
+			// Copy each item within the witness stack for this input
+			// into the contiguous buffer at the appropriate offset.
+			witnessElem := msg.TxIn[i].Witness[j]
+			copy(scripts[offset:], witnessElem)
+
+			// Reset the witness item within the stack to the slice
+			// of the contiguous buffer where the witness lives.
+			witnessElemSize := uint64(len(witnessElem))
+			end := offset + witnessElemSize
+			msg.TxIn[i].Witness[j] = scripts[offset:end:end]
+			offset += witnessElemSize
+
+			// Return the temporary buffer used for the witness stack
+			// item to the pool.
+			scriptPool.Return(witnessElem)
+		}
 
 		// Return the temporary script buffer to the pool.
 		scriptPool.Return(signatureScript)
