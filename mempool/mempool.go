@@ -668,7 +668,6 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit bool) 
 		}
 		return nil, err
 	}
-	//if sigOpCost > maxStandardSigOpsCost {
 	if sigOpCost > mp.cfg.Policy.MaxSigOpCostPerTx {
 		str := fmt.Sprintf("transaction %v sigop cost is too high: %d > %d",
 			txHash, sigOpCost, maxStandardSigOpsCost)
@@ -1038,6 +1037,7 @@ func (mp *TxPool) RawMempoolVerbose() map[string]*btcjson.GetRawMempoolVerboseRe
 
 		mpd := &btcjson.GetRawMempoolVerboseResult{
 			Size:             int32(tx.MsgTx().SerializeSize()),
+			Vsize:            int32(blockchain.GetTxVirtualSize(tx)),
 			Fee:              btcutil.Amount(desc.Fee).ToBTC(),
 			Time:             desc.Added.Unix(),
 			Height:           int64(desc.Height),
