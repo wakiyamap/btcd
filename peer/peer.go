@@ -994,7 +994,7 @@ func (p *Peer) handleRemoteVersionMsg(msg *wire.MsgVersion) error {
 			wire.MultipleAddressVersion)
 		rejectMsg := wire.NewMsgReject(msg.Command(), wire.RejectObsolete,
 			reason)
-		return p.writeMessage(rejectMsg)
+		return p.writeMessage(rejectMsg, wire.LatestEncoding)
 	}
 
 	// Updating a bunch of stats.
@@ -1985,7 +1985,7 @@ func (p *Peer) WaitForDisconnect() {
 func (p *Peer) readRemoteVersionMsg() error {
 
 	// Read their version message.
-	msg, _, err := p.readMessage()
+	msg, _, err := p.readMessage(wire.LatestEncoding)
 	if err != nil {
 		return err
 	}
@@ -1997,7 +1997,7 @@ func (p *Peer) readRemoteVersionMsg() error {
 
 		rejectMsg := wire.NewMsgReject(msg.Command(), wire.RejectMalformed,
 			errStr)
-		return p.writeMessage(rejectMsg)
+		return p.writeMessage(rejectMsg, wire.LatestEncoding)
 	}
 
 	if err := p.handleRemoteVersionMsg(remoteVerMsg); err != nil {
@@ -2018,7 +2018,7 @@ func (p *Peer) writeLocalVersionMsg() error {
 		return err
 	}
 
-	if err := p.writeMessage(localVerMsg); err != nil {
+	if err := p.writeMessage(localVerMsg, wire.LatestEncoding); err != nil {
 		return err
 	}
 

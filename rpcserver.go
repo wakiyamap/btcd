@@ -760,11 +760,10 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 	}
 
 	txReply := &btcjson.TxRawResult{
-		Hex:  mtxHex,
-		Txid: txHash,
-		Hash: mtx.WitnessHash().String(),
-		Size: int32(mtx.SerializeSize()),
-		// TODO(roasbeef): create mtx version
+		Hex:      mtxHex,
+		Txid:     txHash,
+		Hash:     mtx.WitnessHash().String(),
+		Size:     int32(mtx.SerializeSize()),
 		Vsize:    int32(blockchain.GetTxVirtualSize(btcutil.NewTx(mtx))),
 		Vin:      createVinList(mtx),
 		Vout:     createVoutList(mtx, chainParams, nil),
