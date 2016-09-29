@@ -420,6 +420,8 @@ type Peer struct {
 	versionSent          bool
 	verAckReceived       bool
 
+	wireEncoding wire.MessageEncoding
+
 	knownInventory     *mruInventoryMap
 	prevGetBlocksMtx   sync.Mutex
 	prevGetBlocksBegin *chainhash.Hash
@@ -997,11 +999,11 @@ func (p *Peer) handleRemoteVersionMsg(msg *wire.MsgVersion) error {
 		return p.writeMessage(rejectMsg, wire.LatestEncoding)
 	}
 
-	// Updating a bunch of stats.
+	// Updating a bunch of stats including block based stats, and the
+	// peer's time offset.
 	p.statsMtx.Lock()
 	p.lastBlock = msg.LastBlock
 	p.startingHeight = msg.LastBlock
-	// Set the peer's time offset.
 	p.timeOffset = msg.Timestamp.Unix() - time.Now().Unix()
 	p.statsMtx.Unlock()
 
@@ -1011,14 +1013,27 @@ func (p *Peer) handleRemoteVersionMsg(msg *wire.MsgVersion) error {
 	p.versionKnown = true
 	log.Debugf("Negotiated protocol version %d for peer %s",
 		p.protocolVersion, p)
+
 	// Set the peer's ID.
 	p.id = atomic.AddInt32(&nodeCount, 1)
+
 	// Set the supported services for the peer to what the remote peer
 	// advertised.
 	p.services = msg.Services
+
 	// Set the remote peer's user agent.
 	p.userAgent = msg.UserAgent
 	p.flagsMtx.Unlock()
+
+	// Once the version message has been exchanged, we're able to determine
+	// if this peer knows how to encode witness data over the wire
+	// protocol. If so, then we'll switch to a decoding mode which is
+	// prepared for the new transaction format introduced as part of
+	// BIP0144.
+	if p.services&wire.SFNodeWitness == wire.SFNodeWitness {
+		p.wireEncoding = wire.WitnessEncoding
+	}
+
 	return nil
 }
 
@@ -1395,13 +1410,12 @@ func (p *Peer) inHandler() {
 		p.Disconnect()
 	})
 
-	encoding := wire.BaseEncoding
 out:
 	for atomic.LoadInt32(&p.disconnect) == 0 {
 		// Read a message and stop the idle timer as soon as the read
 		// is done.  The timer is reset below for the next iteration if
 		// needed.
-		rmsg, buf, err := p.readMessage(encoding)
+		rmsg, buf, err := p.readMessage(p.wireEncoding)
 		idleTimer.Stop()
 		if err != nil {
 			// In order to allow regression tests with malformed messages, don't
@@ -1443,16 +1457,6 @@ out:
 			p.PushRejectMsg(msg.Command(), wire.RejectDuplicate,
 				"duplicate version message", nil, true)
 			break out
-
-			// Once the version message has been exchanged, we're
-			// able to determine if this peer knows how to encode
-			// witness data over the wire protocol. If so, then
-			// we'll switch to a decoding mode which is prepared
-			// for the new transaction format introduced as part of
-			// BIP0144.
-			if p.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
-				encoding = wire.WitnessEncoding
-			}
 
 		case *wire.MsgVerAck:
 
@@ -2070,6 +2074,7 @@ func newPeerBase(cfg *Config, inbound bool) *Peer {
 
 	p := Peer{
 		inbound:         inbound,
+		wireEncoding:    wire.BaseEncoding,
 		knownInventory:  newMruInventoryMap(maxKnownInventory),
 		stallControl:    make(chan stallControlMsg, 1), // nonblocking sync
 		outputQueue:     make(chan outMsg, outputBufferSize),
