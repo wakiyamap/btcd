@@ -11,8 +11,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Roasbeef/btcd/blockchain"
-	"github.com/Roasbeef/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
 )
@@ -191,13 +189,13 @@ func TestTxHash(t *testing.T) {
 // with witness inputs accurately.
 func TestWTxSha(t *testing.T) {
 	hashStrTxid := "0f167d1385a84d1518cfee208b653fc9163b605ccf1b75347e2850b3e2eb19f3"
-	wantHashTxid, err := NewShaHashFromStr(hashStrTxid)
+	wantHashTxid, err := chainhash.NewHashFromStr(hashStrTxid)
 	if err != nil {
 		t.Errorf("NewShaHashFromStr: %v", err)
 		return
 	}
 	hashStrWTxid := "0858eab78e77b6b033da30f46699996396cf48fcf625a783c85a51403e175e74"
-	wantHashWTxid, err := NewShaHashFromStr(hashStrWTxid)
+	wantHashWTxid, err := chainhash.NewHashFromStr(hashStrWTxid)
 	if err != nil {
 		t.Errorf("NewShaHashFromStr: %v", err)
 		return
@@ -207,7 +205,7 @@ func TestWTxSha(t *testing.T) {
 	msgTx := NewMsgTx()
 	txIn := TxIn{
 		PreviousOutPoint: OutPoint{
-			Hash: ShaHash{
+			Hash: chainhash.Hash{
 				0xa5, 0x33, 0x52, 0xd5, 0x13, 0x57, 0x66, 0xf0,
 				0x30, 0x76, 0x59, 0x74, 0x18, 0x26, 0x3d, 0xa2,
 				0xd9, 0xc9, 0x58, 0x31, 0x59, 0x68, 0xfe, 0xa8,
@@ -252,7 +250,7 @@ func TestWTxSha(t *testing.T) {
 	msgTx.LockTime = 0
 
 	// Ensure the correct txid, and wtxid is produced as expected.
-	txid := msgTx.TxSha()
+	txid := msgTx.TxHash()
 	if !txid.IsEqual(wantHashTxid) {
 		t.Errorf("TxSha: wrong hash - got %v, want %v",
 			spew.Sprint(txid), spew.Sprint(wantHashTxid))
@@ -261,14 +259,6 @@ func TestWTxSha(t *testing.T) {
 	if !wtxid.IsEqual(wantHashWTxid) {
 		t.Errorf("WTxSha: wrong hash - got %v, want %v",
 			spew.Sprint(wtxid), spew.Sprint(wantHashWTxid))
-	}
-
-	// The wtxid of a coinbase transaction should be the zero hash.
-	var zeroHash chainhash.Hash
-	coinbaseWtxID := multiTx.WitnessHash()
-	if !coinbaseWtxID.IsEqual(&zeroHash) {
-		t.Errorf("wtxid for a coinbase transaction should be the zero "+
-			"hash, is instead %v", spew.Sprint(coinbaseWtxID))
 	}
 }
 
@@ -379,14 +369,6 @@ func TestTxWire(t *testing.T) {
 			multiTxEncoded,
 			MultipleAddressVersion,
 			BaseEncoding,
-		},
-		// Protocol version WitnessVersion with a single input, and ouput.
-		{
-			multiWitnessTx,
-			multiWitnessTx,
-			multiWitnessTxEncoded,
-			WitnessVersion,
-			WitnessEncoding,
 		},
 	}
 
@@ -777,29 +759,6 @@ func TestTxSerializeSize(t *testing.T) {
 	}
 }
 
-func TestTxVirtualSize(t *testing.T) {
-	tests := []struct {
-		in   *MsgTx // Tx to encode
-		size int    // Expected virtual size
-	}{
-		// Transaction with an input which includes witness data, and
-		// one output.
-		{multiWitnessTx, 109},
-	}
-	// TODO(roasbeef): more cases
-	// * move this to blockchain
-
-	t.Logf("Running %d tests", len(tests))
-	for i, test := range tests {
-		serializedSize := blockchain.GetTxVirtualSize(btcutil.NewTx(test.in))
-		if serializedSize != test.size {
-			t.Errorf("MsgTx.VirtualSize: #%d got: %d, want: %d", i,
-				serializedSize, test.size)
-			continue
-		}
-	}
-}
-
 func TestTxWitnessSize(t *testing.T) {
 	tests := []struct {
 		in   *MsgTx // Tx to encode
@@ -928,7 +887,7 @@ var multiWitnessTx = &MsgTx{
 	TxIn: []*TxIn{
 		{
 			PreviousOutPoint: OutPoint{
-				Hash: ShaHash{
+				Hash: chainhash.Hash{
 					0xa5, 0x33, 0x52, 0xd5, 0x13, 0x57, 0x66, 0xf0,
 					0x30, 0x76, 0x59, 0x74, 0x18, 0x26, 0x3d, 0xa2,
 					0xd9, 0xc9, 0x58, 0x31, 0x59, 0x68, 0xfe, 0xa8,

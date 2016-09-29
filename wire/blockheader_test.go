@@ -79,11 +79,11 @@ func TestBlockHeaderWire(t *testing.T) {
 	}
 
 	tests := []struct {
-		in   *BlockHeader     // Data to encode
-		out  *BlockHeader     // Expected decoded data
-		buf  []byte           // Wire encoding
-		pver uint32           // Protocol version for wire encoding
-		enc  wMessageEncoding // Message encoding variant to use
+		in   *BlockHeader    // Data to encode
+		out  *BlockHeader    // Expected decoded data
+		buf  []byte          // Wire encoding
+		pver uint32          // Protocol version for wire encoding
+		enc  MessageEncoding // Message encoding variant to use
 	}{
 		// Latest protocol version.
 		{

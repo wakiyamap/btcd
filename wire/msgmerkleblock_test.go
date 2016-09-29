@@ -101,7 +101,7 @@ func TestMerkleBlock(t *testing.T) {
 	// Force too many flag bytes to test maxFlagsPerMerkleBlock.
 	// Reset the number of hashes back to a valid value.
 	msg.Hashes = msg.Hashes[len(msg.Hashes)-1:]
-	msg.Flags = make([]byte, MaxFlagsPerMerkleBlock+1)
+	msg.Flags = make([]byte, maxFlagsPerMerkleBlock+1)
 	err = msg.BtcEncode(&buf, pver, enc)
 	if err == nil {
 		t.Errorf("encode of MsgMerkleBlock succeeded with too many " +

@@ -144,30 +144,19 @@ func TestAddrWire(t *testing.T) {
 	}
 
 	tests := []struct {
-<<<<<<< HEAD
-		in   *MsgAddr // Message to encode
-		out  *MsgAddr // Expected decoded message
-		buf  []byte   // Wire encoding
-		pver uint32   // Protocol version for wire encoding
-=======
-		in   *wire.MsgAddr        // Message to encode
-		out  *wire.MsgAddr        // Expected decoded message
-		buf  []byte               // Wire encoding
-		pver uint32               // Protocol version for wire encoding
-		enc  wire.MessageEncoding // Message encoding format
->>>>>>> 9b474fb... wire: introduce wire.MessageEncoding along with new read/write funcs
+		in   *MsgAddr        // Message to encode
+		out  *MsgAddr        // Expected decoded message
+		buf  []byte          // Wire encoding
+		pver uint32          // Protocol version for wire encoding
+		enc  MessageEncoding // Message encoding format
 	}{
 		// Latest protocol version with no addresses.
 		{
 			noAddr,
 			noAddr,
 			noAddrEncoded,
-<<<<<<< HEAD
 			ProtocolVersion,
-=======
-			wire.ProtocolVersion,
-			wire.BaseEncoding,
->>>>>>> 9b474fb... wire: introduce wire.MessageEncoding along with new read/write funcs
+			BaseEncoding,
 		},
 
 		// Latest protocol version with multiple addresses.
@@ -175,12 +164,8 @@ func TestAddrWire(t *testing.T) {
 			multiAddr,
 			multiAddr,
 			multiAddrEncoded,
-<<<<<<< HEAD
 			ProtocolVersion,
-=======
-			wire.ProtocolVersion,
-			wire.BaseEncoding,
->>>>>>> 9b474fb... wire: introduce wire.MessageEncoding along with new read/write funcs
+			BaseEncoding,
 		},
 
 		// Protocol version MultipleAddressVersion-1 with no addresses.
@@ -188,12 +173,8 @@ func TestAddrWire(t *testing.T) {
 			noAddr,
 			noAddr,
 			noAddrEncoded,
-<<<<<<< HEAD
 			MultipleAddressVersion - 1,
-=======
-			wire.MultipleAddressVersion - 1,
-			wire.BaseEncoding,
->>>>>>> 9b474fb... wire: introduce wire.MessageEncoding along with new read/write funcs
+			BaseEncoding,
 		},
 	}
 
@@ -279,33 +260,24 @@ func TestAddrWireErrors(t *testing.T) {
 	}
 
 	tests := []struct {
-<<<<<<< HEAD
-		in       *MsgAddr // Value to encode
-		buf      []byte   // Wire encoding
-		pver     uint32   // Protocol version for wire encoding
-		max      int      // Max size of fixed buffer to induce errors
-		writeErr error    // Expected write error
-		readErr  error    // Expected read error
-=======
-		in       *wire.MsgAddr        // Value to encode
-		buf      []byte               // Wire encoding
-		pver     uint32               // Protocol version for wire encoding
-		enc      wire.MessageEncoding // Message encoding format
-		max      int                  // Max size of fixed buffer to induce errors
-		writeErr error                // Expected write error
-		readErr  error                // Expected read error
->>>>>>> 9b474fb... wire: introduce wire.MessageEncoding along with new read/write funcs
+		in       *MsgAddr        // Value to encode
+		buf      []byte          // Wire encoding
+		pver     uint32          // Protocol version for wire encoding
+		enc      MessageEncoding // Message encoding format
+		max      int             // Max size of fixed buffer to induce errors
+		writeErr error           // Expected write error
+		readErr  error           // Expected read error
 	}{
 		// Latest protocol version with intentional read/write errors.
 		// Force error in addresses count
-		{baseAddr, baseAddrEncoded, pver, wire.BaseEncoding, 0, io.ErrShortWrite, io.EOF},
+		{baseAddr, baseAddrEncoded, pver, BaseEncoding, 0, io.ErrShortWrite, io.EOF},
 		// Force error in address list.
-		{baseAddr, baseAddrEncoded, pver, wire.BaseEncoding, 1, io.ErrShortWrite, io.EOF},
+		{baseAddr, baseAddrEncoded, pver, BaseEncoding, 1, io.ErrShortWrite, io.EOF},
 		// Force error with greater than max inventory vectors.
-		{maxAddr, maxAddrEncoded, pver, wire.BaseEncoding, 3, wireErr, wireErr},
+		{maxAddr, maxAddrEncoded, pver, BaseEncoding, 3, wireErr, wireErr},
 		// Force error with greater than max inventory vectors for
 		// protocol versions before multiple addresses were allowed.
-		{maxAddr, maxAddrEncoded, pverMA - 1, wire.BaseEncoding, 3, wireErr, wireErr},
+		{maxAddr, maxAddrEncoded, pverMA - 1, BaseEncoding, 3, wireErr, wireErr},
 	}
 
 	t.Logf("Running %d tests", len(tests))

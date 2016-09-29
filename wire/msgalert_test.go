@@ -17,7 +17,6 @@ import (
 func TestMsgAlert(t *testing.T) {
 	pver := ProtocolVersion
 	encoding := BaseEncoding
-	pver := ProtocolVersion
 	serializedpayload := []byte("some message")
 	signature := []byte("some sig")
 
