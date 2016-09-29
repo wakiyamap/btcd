@@ -621,7 +621,7 @@ mempoolLoop:
 			blockUtxos, true, includeWitness)
 		if err != nil {
 			minrLog.Tracef("Skipping tx %s due to error in "+
-				"GetSigOpCost: %v", tx.Sha(), err)
+				"GetSigOpCost: %v", tx.Hash(), err)
 			logSkippedDeps(tx, deps)
 			continue
 		}
@@ -651,7 +651,7 @@ mempoolLoop:
 		// Prioritize by fee per kilobyte once the block is larger than
 		// the priority size or there are no more high-priority
 		// transactions.
-		if !sortedByFee && (blockPlusTxCost >= policy.BlockPrioritySize ||
+		if !sortedByFee && (blockPlusTxWeight >= policy.BlockPrioritySize ||
 			prioItem.priority <= mempool.MinHighPriority) {
 
 			minrLog.Tracef("Switching to sort by fees per "+
@@ -894,7 +894,7 @@ func generateWitnessCommitment(txns []*btcutil.Tx) []byte {
 	var commitment [64]byte
 	copy(commitment[:32], witnessRoot[:])
 
-	return wire.DoubleSha256(commitment[:])
+	return chainhash.DoubleHashB(commitment[:])
 }
 
 // updateWitnessCommitment places a valid witness commitment, and witness
@@ -903,7 +903,7 @@ func generateWitnessCommitment(txns []*btcutil.Tx) []byte {
 // developed. The witness root is placed within an OP_RETURN output whose data
 // is prefixed with blockchain.WitnessMagicBytes.
 func updateWitnessCommitment(coinbaseTx *btcutil.Tx, witnessRoot []byte) {
-	var zeroHash wire.ShaHash
+	var zeroHash chainhash.Hash
 	coinbaseTx.MsgTx().TxIn[0].Witness = [][]byte{zeroHash[:]}
 
 	commitmentScript := make([]byte, 0, blockchain.CoinbaseWitnessPkScriptLength)

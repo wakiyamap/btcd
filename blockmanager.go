@@ -767,8 +767,8 @@ func (b *blockManager) fetchHeaderBlocks() {
 				"fetch: %v", err)
 		}
 		if !haveInv {
-			b.requestedBlocks[*node.sha] = struct{}{}
-			b.syncPeer.requestedBlocks[*node.sha] = struct{}{}
+			b.requestedBlocks[*node.hash] = struct{}{}
+			b.syncPeer.requestedBlocks[*node.hash] = struct{}{}
 
 			b.syncPeer.witnessMtx.Lock()
 			if b.syncPeer.witnessEnabled {
