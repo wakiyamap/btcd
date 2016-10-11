@@ -432,9 +432,9 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	binary.LittleEndian.PutUint32(bVersion[:], uint32(tx.Version))
 	sigHash.Write(bVersion[:])
 
-	// Next write out the the possibly pre-calculated hashes for the
-	// sequence numbers of all inputs, and the hashes of the previous
-	// outs for all outputs.
+	// Next write out the possibly pre-calculated hashes for the sequence
+	// numbers of all inputs, and the hashes of the previous outs for all
+	// outputs.
 	var zeroHash chainhash.Hash
 
 	// If anyone can pay isn't active, then we can use the cached
@@ -445,7 +445,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 		sigHash.Write(zeroHash[:])
 	}
 
-	// If the sig hash isn't anyone can pay, single, or none, the use the
+	// If the sighash isn't anyone can pay, single, or none, the use the
 	// cached hash sequences, otherwise write all zeroes for the
 	// hashSequence.
 	if hashType&SigHashAnyOneCanPay == 0 &&
@@ -462,14 +462,9 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	binary.LittleEndian.PutUint32(bIndex[:], tx.TxIn[idx].PreviousOutPoint.Index)
 	sigHash.Write(bIndex[:])
 
-	// Remove all instances of OP_CODESEPARATOR from the script.
-	// TODO(roasbeef): have removeOpcode return index of last found opcode,
-	// or just create new func?
-	script := removeOpcode(subScript, OP_CODESEPARATOR)
-	rawScript, _ := unparseScript(script)
+	rawScript, _ := unparseScript(subScript)
 
-	// TODO(roasbeef): check before removing code seps?
-	if isWitnessPubKeyHash(script) {
+	if isWitnessPubKeyHash(subScript) {
 		// The script code for a p2wkh is a length prefix varint for
 		// the next 25 bytes, followed by a re-creation of the original
 		// p2pkh pk script.
