@@ -12,10 +12,10 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/fastsha256"
 )
 
 // SigningMode...
+// TODO(roasbeef): remove
 type signingMode uint8
 
 const (
@@ -70,57 +70,6 @@ func WitnessScript(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
 	// A witness script is actually a stack, so we return an array of byte
 	// slices here, rather than a single byte slice.
 	return append([][]byte{sig}, pkData), nil
-}
-
-// RedeemP2SHSquaredOutput...
-// TODO(roasbeef): fin
-func RedeemP2SHSquaredOutput(chainParams *chaincfg.Params, tx *wire.MsgTx,
-	idx int, inputAmt int64, pkScript []byte, hashType SigHashType,
-	privKey *btcec.PrivateKey) ([][]byte, []byte, error) {
-
-	// First we'll generate the scriptSig which is simply the sha256 of the
-	// original script turned into a version 0 script hash witness progrma.
-	// This will serve as the pre-image for the outer 20-byte p2sh.
-	scriptHash256 := fastsha256.Sum256(pkScript)
-	scriptSig, err := payToWitnessScriptHashScript(scriptHash256[:])
-	if err != nil {
-		return nil, nil, err
-	}
-
-	keyDB := func(a btcutil.Address) (*btcec.PrivateKey, bool, error) {
-		return privKey, true, nil
-	}
-
-	// Next we need to generate the witness stack itself, which will be
-	// evaluated after ensuring the hash160 of the scriptSig generated
-	// above matches the 20-byte data push in the p2sh output.
-	// TODO(roasbeef): this doesn't use segwit sighash yet
-	regularScriptSig, _, _, _, err := sign(chainParams, tx,
-		idx, pkScript, hashType, signSegWit, inputAmt, KeyClosure(keyDB), nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO(roasbeef): merge scripts
-
-	scriptPops, err := parseScript(regularScriptSig)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Finally combine the scriptSig, and the original pkscript into a
-	// witness stack used for segwit script validation.
-	var witnessStack [][]byte
-	for _, pop := range scriptPops {
-		popBytes, err := pop.bytes()
-		if err != nil {
-			return nil, nil, err
-		}
-		witnessStack = append(witnessStack, popBytes)
-	}
-	witnessStack = append(witnessStack, pkScript)
-
-	return witnessStack, scriptSig, nil
 }
 
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of
