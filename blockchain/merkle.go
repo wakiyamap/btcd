@@ -186,6 +186,7 @@ func ExtractWitnessCommitment(tx *btcutil.Tx) ([]byte, bool) {
 			// meaning.
 			witnessCommitment = msgTx.TxOut[i].PkScript[6:38]
 			witFound = true
+			break
 		}
 	}
 
