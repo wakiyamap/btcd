@@ -254,7 +254,8 @@ func (v *Vin) IsCoinBase() bool {
 	return len(v.Coinbase) > 0
 }
 
-// HasWitness...
+// HasWitness returns a bool to show if a Vin has any witness data associated
+// with it or not.
 func (v *Vin) HasWitness() bool {
 	return len(v.Witness) > 0
 }
@@ -445,7 +446,7 @@ type TxRawResult struct {
 	Txid          string `json:"txid"`
 	Hash          string `json:"hash"`
 	Size          int32  `json:"size"`
-	Vsize         int32  `json"vsize"`
+	Vsize         int32  `json:"vsize"`
 	Version       int32  `json:"version"`
 	LockTime      uint32 `json:"locktime"`
 	Vin           []Vin  `json:"vin"`
@@ -463,7 +464,7 @@ type SearchRawTransactionsResult struct {
 	Txid          string       `json:"txid"`
 	Hash          string       `json:"hash"`
 	Size          string       `json:"size"`
-	Vsize         string       `json"vsize"`
+	Vsize         string       `json:"vsize"`
 	Version       int32        `json:"version"`
 	LockTime      uint32       `json:"locktime"`
 	Vin           []VinPrevOut `json:"vin"`
