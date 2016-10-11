@@ -3780,8 +3780,8 @@ func TestWitnessSigHash(t *testing.T) {
 	// tx to it.
 	hashCache := NewHashCache(90)
 	hashCache.AddSigHashes(tx)
-	sha := tx.TxSha()
-	txSigHashes, found := hashCache.GetSigHashes(&sha)
+	hash := tx.TxHash()
+	txSigHashes, found := hashCache.GetSigHashes(&hash)
 	if !found {
 		t.Fatalf("unable to find sighashes")
 	}
