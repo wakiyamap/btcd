@@ -130,6 +130,7 @@ func IsWitnessProgram(script []byte) bool {
 func isWitnessProgram(pops []parsedOpcode) bool {
 	return len(pops) == 2 &&
 		isSmallInt(pops[0].opcode) &&
+		canonicalPush(pops[1]) &&
 		(len(pops[1].data) >= 2 && len(pops[1].data) <= 40)
 }
 
