@@ -507,7 +507,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 		var b bytes.Buffer
 		wire.WriteTxOut(&b, 0, 0, tx.TxOut[idx])
 		sigHash.Write(chainhash.DoubleHashB(b.Bytes()))
-	} else if hashType&sigHashMask == SigHashSingle && idx >= len(tx.TxOut) {
+	} else {
 		sigHash.Write(zeroHash[:])
 	}
 
