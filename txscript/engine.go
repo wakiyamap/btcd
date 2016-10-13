@@ -284,6 +284,12 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 	} else if vm.hasFlag(ScriptVerifyDiscourageUpgradeableWitnessProgram) {
 		return fmt.Errorf("new witness program versions invalid: %v",
 			vm.witnessVersion)
+	} else {
+		// If we encounter an unknown witness program version and we
+		// aren't discouraging future unknown witness based soft-forks,
+		// then we de-activate the segwit behavior within the VM for
+		// the remainder of execution.
+		vm.witness = false
 	}
 
 	return nil
@@ -813,6 +819,7 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 				return nil, ErrWitnessUnexpected
 			}
 		}
+
 	}
 
 	if vm.hasFlag(ScriptVerifyMinimalData) {
