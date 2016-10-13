@@ -43,7 +43,8 @@ const (
 	// ScriptVerifyCleanStack defines that the stack must contain only
 	// one stack element after evaluation and that the element must be
 	// true if interpreted as a boolean.  This is rule 6 of BIP0062.
-	// This flag should never be used without the ScriptBip16 flag.
+	// This flag should never be used without the ScriptBip16 flag nor the
+	// ScriptVerifyWitness flag.
 	ScriptVerifyCleanStack
 
 	// ScriptVerifyDERSignatures defines that signatures are required
@@ -216,10 +217,11 @@ func (vm *Engine) curPC() (script int, off int, err error) {
 // verifyWitnessProgram validates the stored witness program using the passed
 // witness as input.
 func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
+	// All elements within the witness stack must not be greater than the
+	// maximum bytes which are allowed to be pushed onto the stack.
 	for _, witElement := range witness {
 		if len(witElement) > MaxScriptElementSize {
-			// TODO(roasbeef): actual error
-			return fmt.Errorf("witness element too large")
+			return ErrStackElementTooBig
 		}
 	}
 
@@ -229,8 +231,7 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			// The witness stack should consist of exactly two
 			// items: the signature, and the pubkey.
 			if len(witness) != 2 {
-				// TODO(roasbeef): actual error
-				return fmt.Errorf("invalid witness for p2wkh")
+				return ErrWitnessScriptMismatch
 			}
 
 			// Now we'll resume execution as if it were a
@@ -250,9 +251,11 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness)
 		case payToWitnessScriptHashDataSize: // P2WSH
-			// The witness stack MUST NOT be empty at this point.
+
+			// Additionally, The witness stack MUST NOT be empty at
+			// this point.
 			if len(witness) == 0 {
-				return fmt.Errorf("witness program empty")
+				return ErrWitnessProgramEmpty
 			}
 
 			// Ensure that the serialized pkScript
@@ -276,10 +279,11 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness[:len(witness)-1])
 		default:
-			return fmt.Errorf("invalid witness program length")
+			return ErrWitnessProgramWrongLength
 		}
 	} else if vm.hasFlag(ScriptVerifyDiscourageUpgradeableWitnessProgram) {
-		return fmt.Errorf("new witness program versions invalid")
+		return fmt.Errorf("new witness program versions invalid: %v",
+			vm.witnessVersion)
 	}
 
 	return nil
@@ -319,6 +323,15 @@ func (vm *Engine) CheckErrorCondition(finalScript bool) error {
 	if vm.scriptIdx < len(vm.scripts) {
 		return ErrStackScriptUnfinished
 	}
+
+	// If we're in witness execution mode, and this was the final script,
+	// then the stack MUST be clean in order to maintain compatibility with
+	// BIP16.
+	if finalScript && vm.witness && vm.dstack.Depth() != 1 {
+		fmt.Println("clean stack err")
+		return ErrStackCleanStack
+	}
+
 	if finalScript && vm.hasFlag(ScriptVerifyCleanStack) &&
 		vm.dstack.Depth() != 1 {
 
@@ -410,7 +423,6 @@ func (vm *Engine) Step() (done bool, err error) {
 			vm.SetStack(vm.savedFirstStack[:len(vm.savedFirstStack)-1])
 		} else if (vm.scriptIdx == 1 && vm.witness) ||
 			(vm.witness && vm.bip16 && vm.scriptIdx == 2) { // Nested P2SH.
-			// TODO(roasbeef): check that sigscript is just a push
 			vm.scriptIdx++
 
 			witness := vm.tx.TxIn[vm.txIdx].Witness
@@ -751,17 +763,38 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	// witness program. For nested p2sh, all the bytes after the first data
 	// push should *exactly* match the witness program template.
 	if vm.hasFlag(ScriptVerifyWitness) {
+		// If witness evaluation is enabled, then P2SH MUST also be
+		// active.
+		if !vm.hasFlag(ScriptBip16) {
+			return nil, ErrInvalidFlags
+		}
+
 		var err error
 		var witProgram []byte
 
 		switch {
 		case IsWitnessProgram(scriptPubKey):
+			// The scriptSig must be *empty* for all native witness
+			// programs, otherwise we introduce malleability.
 			if len(scriptSig) != 0 {
-				// TODO(roasbeef): real errors
-				return nil, fmt.Errorf("sigScript must be empty for witness program")
+				return nil, ErrWitnessMalleated
 			}
+
 			witProgram = scriptPubKey
 		case len(scriptSig) > 1 && IsWitnessProgram(scriptSig[1:]):
+			// The sigScript MUST be *exactly* a single cannonical
+			// data push of the witness program, otherwise we
+			// reintroduce malleability.
+			b := NewScriptBuilder()
+			b.AddData(scriptSig[1:])
+			script, err := b.Script()
+			if err != nil {
+				return nil, err
+			}
+			if !bytes.Equal(scriptSig, script) {
+				return nil, ErrWitnessMalleatedP2SH
+			}
+
 			witProgram = scriptSig[1:]
 		}
 
@@ -770,6 +803,14 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			vm.witnessVersion, vm.witnessProgram, err = ExtractWitnessProgramInfo(witProgram)
 			if err != nil {
 				return nil, err
+			}
+		} else {
+			// If we didn't find a witness program in either the
+			// pkScript or as a datapush within the sigScript, then
+			// there MUST NOT be any witness data associated with
+			// the input being validated.
+			if !vm.witness && len(tx.TxIn[txIdx].Witness) != 0 {
+				return nil, ErrWitnessUnexpected
 			}
 		}
 	}
