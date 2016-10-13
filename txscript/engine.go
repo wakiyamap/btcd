@@ -334,7 +334,6 @@ func (vm *Engine) CheckErrorCondition(finalScript bool) error {
 	// then the stack MUST be clean in order to maintain compatibility with
 	// BIP16.
 	if finalScript && vm.witness && vm.dstack.Depth() != 1 {
-		fmt.Println("clean stack err")
 		return ErrStackCleanStack
 	}
 

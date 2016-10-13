@@ -387,11 +387,11 @@ func calcHashSequence(tx *wire.MsgTx) chainhash.Hash {
 	return chainhash.DoubleHashH(b.Bytes())
 }
 
-// calcHashOutputs computes a hash digest of all ouputs created by the
+// calcHashOutputs computes a hash digest of all outputs created by the
 // transaction encoded using the wire format. This single hash can be re-used
-// when validating all inputs spending witness programs, which include signatures
-// using the SigHashAll sighash type. This allows computation to be cached,
-// reducing the total hashing complexity from O(N^2) to O(N).
+// when validating all inputs spending witness programs, which include
+// signatures using the SigHashAll sighash type. This allows computation to be
+// cached, reducing the total hashing complexity from O(N^2) to O(N).
 func calcHashOutputs(tx *wire.MsgTx) chainhash.Hash {
 	var b bytes.Buffer
 	for _, out := range tx.TxOut {
@@ -409,9 +409,9 @@ func calcHashOutputs(tx *wire.MsgTx) chainhash.Hash {
 // calculating the final digest, reducing the complexity from O(N^2) to O(N).
 // Additionally, signatures now cover the input value of the referenced unspent
 // output. This allows offline, or hardware wallets to compute the exact amount
-// being spent, in addition to the final transaction fee. In the case the wallet
-// if fed an invalid input amount, the real sighash will differ causing the
-// produced signature to be invalid.
+// being spent, in addition to the final transaction fee. In the case the
+// wallet if fed an invalid input amount, the real sighash will differ causing
+// the produced signature to be invalid.
 func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) []byte {
 
