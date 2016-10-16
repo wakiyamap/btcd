@@ -786,8 +786,8 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			}
 
 			witProgram = scriptPubKey
-		case len(scriptSig) > 1 && IsWitnessProgram(scriptSig[1:]):
-			// The sigScript MUST be *exactly* a single cannonical
+		case len(scriptSig) > 1 && vm.bip16 && IsWitnessProgram(scriptSig[1:]):
+			// The sigScript MUST be *exactly* a single canonical
 			// data push of the witness program, otherwise we
 			// reintroduce malleability.
 			b := NewScriptBuilder()
