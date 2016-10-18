@@ -141,10 +141,11 @@ func TestAddrWire(t *testing.T) {
 	}
 
 	tests := []struct {
-		in   *MsgAddr // Message to encode
-		out  *MsgAddr // Expected decoded message
-		buf  []byte   // Wire encoding
-		pver uint32   // Protocol version for wire encoding
+		in   *MsgAddr        // Message to encode
+		out  *MsgAddr        // Expected decoded message
+		buf  []byte          // Wire encoding
+		pver uint32          // Protocol version for wire encoding
+		enc  MessageEncoding // Message encoding format
 	}{
 		// Latest protocol version with no addresses.
 		{
@@ -152,6 +153,7 @@ func TestAddrWire(t *testing.T) {
 			noAddr,
 			noAddrEncoded,
 			ProtocolVersion,
+			BaseEncoding,
 		},
 
 		// Latest protocol version with multiple addresses.
@@ -160,6 +162,7 @@ func TestAddrWire(t *testing.T) {
 			multiAddr,
 			multiAddrEncoded,
 			ProtocolVersion,
+			BaseEncoding,
 		},
 
 		// Protocol version MultipleAddressVersion-1 with no addresses.
@@ -168,6 +171,7 @@ func TestAddrWire(t *testing.T) {
 			noAddr,
 			noAddrEncoded,
 			MultipleAddressVersion - 1,
+			BaseEncoding,
 		},
 	}
 
@@ -175,7 +179,7 @@ func TestAddrWire(t *testing.T) {
 	for i, test := range tests {
 		// Encode the message to wire format.
 		var buf bytes.Buffer
-		err := test.in.BtcEncode(&buf, test.pver)
+		err := test.in.BtcEncode(&buf, test.pver, test.enc)
 		if err != nil {
 			t.Errorf("BtcEncode #%d error %v", i, err)
 			continue
@@ -189,7 +193,7 @@ func TestAddrWire(t *testing.T) {
 		// Decode the message from wire format.
 		var msg MsgAddr
 		rbuf := bytes.NewReader(test.buf)
-		err = msg.BtcDecode(rbuf, test.pver)
+		err = msg.BtcDecode(rbuf, test.pver, test.enc)
 		if err != nil {
 			t.Errorf("BtcDecode #%d error %v", i, err)
 			continue
@@ -253,30 +257,31 @@ func TestAddrWireErrors(t *testing.T) {
 	}
 
 	tests := []struct {
-		in       *MsgAddr // Value to encode
-		buf      []byte   // Wire encoding
-		pver     uint32   // Protocol version for wire encoding
-		max      int      // Max size of fixed buffer to induce errors
-		writeErr error    // Expected write error
-		readErr  error    // Expected read error
+		in       *MsgAddr        // Value to encode
+		buf      []byte          // Wire encoding
+		pver     uint32          // Protocol version for wire encoding
+		enc      MessageEncoding // Message encoding format
+		max      int             // Max size of fixed buffer to induce errors
+		writeErr error           // Expected write error
+		readErr  error           // Expected read error
 	}{
 		// Latest protocol version with intentional read/write errors.
 		// Force error in addresses count
-		{baseAddr, baseAddrEncoded, pver, 0, io.ErrShortWrite, io.EOF},
+		{baseAddr, baseAddrEncoded, pver, BaseEncoding, 0, io.ErrShortWrite, io.EOF},
 		// Force error in address list.
-		{baseAddr, baseAddrEncoded, pver, 1, io.ErrShortWrite, io.EOF},
+		{baseAddr, baseAddrEncoded, pver, BaseEncoding, 1, io.ErrShortWrite, io.EOF},
 		// Force error with greater than max inventory vectors.
-		{maxAddr, maxAddrEncoded, pver, 3, wireErr, wireErr},
+		{maxAddr, maxAddrEncoded, pver, BaseEncoding, 3, wireErr, wireErr},
 		// Force error with greater than max inventory vectors for
 		// protocol versions before multiple addresses were allowed.
-		{maxAddr, maxAddrEncoded, pverMA - 1, 3, wireErr, wireErr},
+		{maxAddr, maxAddrEncoded, pverMA - 1, BaseEncoding, 3, wireErr, wireErr},
 	}
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
 		// Encode to wire format.
 		w := newFixedWriter(test.max)
-		err := test.in.BtcEncode(w, test.pver)
+		err := test.in.BtcEncode(w, test.pver, test.enc)
 		if reflect.TypeOf(err) != reflect.TypeOf(test.writeErr) {
 			t.Errorf("BtcEncode #%d wrong error got: %v, want: %v",
 				i, err, test.writeErr)
@@ -296,7 +301,7 @@ func TestAddrWireErrors(t *testing.T) {
 		// Decode from wire format.
 		var msg MsgAddr
 		r := newFixedReader(test.max, test.buf)
-		err = msg.BtcDecode(r, test.pver)
+		err = msg.BtcDecode(r, test.pver, test.enc)
 		if reflect.TypeOf(err) != reflect.TypeOf(test.readErr) {
 			t.Errorf("BtcDecode #%d wrong error got: %v, want: %v",
 				i, err, test.readErr)
