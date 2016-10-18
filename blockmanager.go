@@ -223,6 +223,24 @@ func (b *blockManager) startSync(peers *list.List) {
 		enext = e.Next()
 		sp := e.Value.(*serverPeer)
 
+		// Once the segwit soft-fork package has activated, we only
+		// want to sync from peers which are witness enabled to ensure
+		// that we fully validate all blockchain data.
+		segwitState, err := b.chain.ThresholdState(chaincfg.DeploymentSegwit)
+		if err != nil {
+			bmgrLog.Errorf("Unable to query for segwit "+
+				"soft-fork state: %v", err)
+			continue
+		}
+		segwitActive := segwitState == blockchain.ThresholdActive
+		sp.witnessMtx.Lock()
+		if segwitActive && !sp.witnessEnabled {
+			bmgrLog.Infof("peer %v not witness enabled, skipping", sp)
+			sp.witnessMtx.Unlock()
+			continue
+		}
+		sp.witnessMtx.Unlock()
+
 		// Remove sync candidate peers that are no longer candidates due
 		// to passing their latest known block.  NOTE: The < is
 		// intentional as opposed to <=.  While techcnically the peer
@@ -309,8 +327,18 @@ func (b *blockManager) isSyncCandidate(sp *serverPeer) bool {
 			return false
 		}
 	} else {
-		// The peer is not a candidate for sync if it's not a full node.
-		if sp.Services()&wire.SFNodeNetwork != wire.SFNodeNetwork {
+		// The peer is not a candidate for sync if it's not a full
+		// node. Additionally, if the segwit soft-fork package has
+		// activated, then the peer must also be upgraded.
+		segwitState, err := b.chain.ThresholdState(chaincfg.DeploymentSegwit)
+		if err != nil {
+			bmgrLog.Errorf("Unable to query for segwit "+
+				"soft-fork state: %v", err)
+		}
+		segwitActive := segwitState == blockchain.ThresholdActive
+		nodeServices := sp.Services()
+		if nodeServices&wire.SFNodeNetwork != wire.SFNodeNetwork ||
+			(segwitActive && nodeServices&wire.SFNodeWitness != wire.SFNodeWitness) {
 			return false
 		}
 	}
@@ -703,6 +731,16 @@ func (b *blockManager) fetchHeaderBlocks() {
 		if !haveInv {
 			b.requestedBlocks[*node.hash] = struct{}{}
 			b.syncPeer.requestedBlocks[*node.hash] = struct{}{}
+
+			// If we're fetching from a witness enabled peer
+			// post-fork, then ensure that we receive all the
+			// witness data in the blocks.
+			b.syncPeer.witnessMtx.Lock()
+			if b.syncPeer.witnessEnabled {
+				iv.Type = wire.InvTypeWitnessBlock
+			}
+			b.syncPeer.witnessMtx.Unlock()
+
 			gdmsg.AddInvVect(iv)
 			numRequested++
 		}
@@ -824,11 +862,15 @@ func (b *blockManager) handleHeadersMsg(hmsg *headersMsg) {
 // are in the memory pool (either the main pool or orphan pool).
 func (b *blockManager) haveInventory(invVect *wire.InvVect) (bool, error) {
 	switch invVect.Type {
+	case wire.InvTypeWitnessBlock:
+		fallthrough
 	case wire.InvTypeBlock:
 		// Ask chain if the block is known to it in any form (main
 		// chain, side chain, or orphan).
 		return b.chain.HaveBlock(&invVect.Hash)
 
+	case wire.InvTypeWitnessTx:
+		fallthrough
 	case wire.InvTypeTx:
 		// Ask the transaction memory pool if the transaction is known
 		// to it in any form (main pool or orphan).
@@ -888,13 +930,22 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 		}
 	}
 
+	// Ignore invs from non-witness enabled peers, as after segwit
+	// activation we only want to download from peers that can provide us
+	// full witness data.
+	if !imsg.peer.witnessEnabled {
+		return
+	}
+
 	// Request the advertised inventory if we don't already have it.  Also,
 	// request parent blocks of orphans if we receive one we already have.
 	// Finally, attempt to detect potential stalls due to long side chains
 	// we already have and request more blocks to prevent them.
 	for i, iv := range invVects {
 		// Ignore unsupported inventory types.
-		if iv.Type != wire.InvTypeBlock && iv.Type != wire.InvTypeTx {
+		if iv.Type != wire.InvTypeBlock && iv.Type != wire.InvTypeTx &&
+			iv.Type != wire.InvTypeWitnessTx &&
+			iv.Type != wire.InvTypeWitnessBlock {
 			continue
 		}
 
@@ -981,6 +1032,8 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 		requestQueue = requestQueue[1:]
 
 		switch iv.Type {
+		case wire.InvTypeWitnessBlock:
+			fallthrough
 		case wire.InvTypeBlock:
 			// Request the block if there is not already a pending
 			// request.
@@ -988,10 +1041,29 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 				b.requestedBlocks[iv.Hash] = struct{}{}
 				b.limitMap(b.requestedBlocks, maxRequestedBlocks)
 				imsg.peer.requestedBlocks[iv.Hash] = struct{}{}
+
+				// If the peer is capable, and segwit has
+				// activated, request the block including all
+				// witness data.
+				segwitState, err := b.chain.ThresholdState(chaincfg.DeploymentSegwit)
+				if err != nil {
+					bmgrLog.Errorf("Unable to query for segwit "+
+						"soft-fork state: %v", err)
+					continue
+				}
+				segwitActive := segwitState == blockchain.ThresholdActive
+				imsg.peer.witnessMtx.Lock()
+				if imsg.peer.witnessEnabled && segwitActive {
+					iv.Type = wire.InvTypeWitnessBlock
+				}
+				imsg.peer.witnessMtx.Unlock()
+
 				gdmsg.AddInvVect(iv)
 				numRequested++
 			}
 
+		case wire.InvTypeWitnessTx:
+			fallthrough
 		case wire.InvTypeTx:
 			// Request the transaction if there is not already a
 			// pending request.
@@ -999,6 +1071,15 @@ func (b *blockManager) handleInvMsg(imsg *invMsg) {
 				b.requestedTxns[iv.Hash] = struct{}{}
 				b.limitMap(b.requestedTxns, maxRequestedTxns)
 				imsg.peer.requestedTxns[iv.Hash] = struct{}{}
+
+				// If the peer is capable, request the txn
+				// including all witness data.
+				imsg.peer.witnessMtx.Lock()
+				if imsg.peer.witnessEnabled {
+					iv.Type = wire.InvTypeWitnessTx
+				}
+				imsg.peer.witnessMtx.Unlock()
+
 				gdmsg.AddInvVect(iv)
 				numRequested++
 			}
