@@ -23,7 +23,8 @@ const defaultTransactionAlloc = 2048
 const MaxBlocksPerMsg = 500
 
 // MaxBlockPayload is the maximum bytes a block message can be in bytes.
-const MaxBlockPayload = 1000000 // Not actually 1MB which would be 1024 * 1024
+// After Segregated Witness, the max block payload has been raised to 4MB.
+const MaxBlockPayload = 4000000
 
 // maxTxPerBlock is the maximum number of transactions that could
 // possibly fit into a block.
@@ -223,7 +224,7 @@ func (msg *MsgBlock) SerializeNoWitness(w io.Writer) error {
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the
-// the block.
+// block, factoring in any witness data within transaction.
 func (msg *MsgBlock) SerializeSize() int {
 	// Block header bytes + Serialized varint size for the number of
 	// transactions.
@@ -231,6 +232,20 @@ func (msg *MsgBlock) SerializeSize() int {
 
 	for _, tx := range msg.Transactions {
 		n += tx.SerializeSize()
+	}
+
+	return n
+}
+
+// SerializeSizeStripped returns the number of bytes it would take to serialize
+// the block, excluding any witness data (if any).
+func (msg *MsgBlock) SerializeSizeStripped() int {
+	// Block header bytes + Serialized varint size for the number of
+	// transactions.
+	n := blockHeaderLen + VarIntSerializeSize(uint64(len(msg.Transactions)))
+
+	for _, tx := range msg.Transactions {
+		n += tx.SerializeSizeStripped()
 	}
 
 	return n
