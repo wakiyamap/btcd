@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/connmgr"
 	"github.com/btcsuite/btcd/database"
 	_ "github.com/btcsuite/btcd/database/ffldb"
 	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	flags "github.com/btcsuite/go-flags"
 	"github.com/btcsuite/go-socks/socks"
@@ -46,8 +46,13 @@ const (
 	defaultFreeTxRelayLimit      = 15.0
 	defaultBlockMinSize          = 0
 	defaultBlockMaxSize          = 750000
+	defaultBlockMinWeight        = 0
+	defaultBlockMaxWeight        = 3000000
 	blockMaxSizeMin              = 1000
-	blockMaxSizeMax              = wire.MaxBlockPayload - 1000
+	blockMaxSizeMax              = blockchain.MaxBlockBaseSize - 1000
+	blockMaxWeightMin            = 4000
+	blockMaxWeightMax            = blockchain.MaxBlockWeight - 4000
+	defaultBlockPrioritySize     = 50000
 	defaultGenerate              = false
 	defaultMaxOrphanTransactions = 100
 	defaultMaxOrphanTxSize       = 100000
@@ -136,6 +141,8 @@ type config struct {
 	MiningAddrs          []string      `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
 	BlockMinSize         uint32        `long:"blockminsize" description:"Mininum block size in bytes to be used when creating a block"`
 	BlockMaxSize         uint32        `long:"blockmaxsize" description:"Maximum block size in bytes to be used when creating a block"`
+	BlockMinWeight       uint32        `long:"blockminweight" description:"Mininum block weight to be used when creating a block"`
+	BlockMaxWeight       uint32        `long:"blockmaxweight" description:"Maximum block weight to be used when creating a block"`
 	BlockPrioritySize    uint32        `long:"blockprioritysize" description:"Size in bytes for high-priority/low-fee transactions when creating a block"`
 	GetWorkKeys          []string      `long:"getworkkey" description:"DEPRECATED -- Use the --miningaddr option instead"`
 	NoPeerBloomFilters   bool          `long:"nopeerbloomfilters" description:"Disable bloom filtering support"`
@@ -355,6 +362,8 @@ func loadConfig() (*config, []string, error) {
 		FreeTxRelayLimit:     defaultFreeTxRelayLimit,
 		BlockMinSize:         defaultBlockMinSize,
 		BlockMaxSize:         defaultBlockMaxSize,
+		BlockMinWeight:       defaultBlockMinWeight,
+		BlockMaxWeight:       defaultBlockMaxWeight,
 		BlockPrioritySize:    mempool.DefaultBlockPrioritySize,
 		MaxOrphanTxs:         defaultMaxOrphanTransactions,
 		SigCacheMaxSize:      defaultSigCacheMaxSize,
@@ -479,8 +488,8 @@ func loadConfig() (*config, []string, error) {
 		cfg.DisableDNSSeed = true
 	}
 	if numNets > 1 {
-		str := "%s: The testnet, regtest, and simnet params can't be " +
-			"used together -- choose one of the three"
+		str := "%s: The testnet, regtest, segnet, and simnet params " +
+			"can't be used together -- choose one of the four"
 		err := fmt.Errorf(str, funcName)
 		fmt.Fprintln(os.Stderr, err)
 		fmt.Fprintln(os.Stderr, usageMessage)
@@ -671,6 +680,19 @@ func loadConfig() (*config, []string, error) {
 		return nil, nil, err
 	}
 
+	// Limit the max block weight to a sane value.
+	if cfg.BlockMaxWeight < blockMaxWeightMin ||
+		cfg.BlockMaxWeight > blockMaxWeightMax {
+
+		str := "%s: The blockmaxweight option must be in between %d " +
+			"and %d -- parsed [%d]"
+		err := fmt.Errorf(str, funcName, blockMaxWeightMin,
+			blockMaxWeightMax, cfg.BlockMaxWeight)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+
 	// Limit the max orphan count to a sane vlue.
 	if cfg.MaxOrphanTxs < 0 {
 		str := "%s: The maxorphantx option may not be less than 0 " +
@@ -684,6 +706,10 @@ func loadConfig() (*config, []string, error) {
 	// Limit the block priority and minimum block sizes to max block size.
 	cfg.BlockPrioritySize = minUint32(cfg.BlockPrioritySize, cfg.BlockMaxSize)
 	cfg.BlockMinSize = minUint32(cfg.BlockMinSize, cfg.BlockMaxSize)
+	cfg.BlockMinWeight = minUint32(cfg.BlockMinWeight, cfg.BlockMaxWeight)
+
+	// TODO(roasbeef): need to do multi-dimensional limiting based on if
+	// both weight AND size are set, or just one.
 
 	// --txindex and --droptxindex do not mix.
 	if cfg.TxIndex && cfg.DropTxIndex {
