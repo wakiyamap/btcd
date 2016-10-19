@@ -5,11 +5,13 @@
 package txscript
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/fastsha256"
 )
 
 // ScriptFlags is a bitmask defining additional operations or tests that will be
@@ -46,7 +48,8 @@ const (
 	// ScriptVerifyCleanStack defines that the stack must contain only
 	// one stack element after evaluation and that the element must be
 	// true if interpreted as a boolean.  This is rule 6 of BIP0062.
-	// This flag should never be used without the ScriptBip16 flag.
+	// This flag should never be used without the ScriptBip16 flag nor the
+	// ScriptVerifyWitness flag.
 	ScriptVerifyCleanStack
 
 	// ScriptVerifyDERSignatures defines that signatures are required
@@ -73,6 +76,14 @@ const (
 	// ScriptVerifyStrictEncoding defines that signature scripts and
 	// public keys must follow the strict encoding requirements.
 	ScriptVerifyStrictEncoding
+
+	// ScriptVerifyWitness defines whether or not to verify a transaction
+	// output using a witness program template.
+	ScriptVerifyWitness
+
+	// ScriptVerifyDiscourageUpgradeableWitnessProgram makes witness
+	// program with versions 2-16 non-standard.
+	ScriptVerifyDiscourageUpgradeableWitnessProgram
 )
 
 const (
@@ -82,6 +93,14 @@ const (
 
 	// MaxScriptSize is the maximum allowed length of a raw script.
 	MaxScriptSize = 10000
+
+	// payToWitnessPubKeyHashDataSize is the size of the witness program's
+	// data push for a pay-to-witness-pub-key-hash output.
+	payToWitnessPubKeyHashDataSize = 20
+
+	// payToWitnessScriptHashDataSize is the size of the witness program's
+	// data push for a pay-to-witness-script-hash output.
+	payToWitnessScriptHashDataSize = 32
 )
 
 // halforder is used to tame ECDSA malleability (see BIP0062).
@@ -101,8 +120,13 @@ type Engine struct {
 	numOps          int
 	flags           ScriptFlags
 	sigCache        *SigCache
+	hashCache       *TxSigHashes
 	bip16           bool     // treat execution as pay-to-script-hash
 	savedFirstStack [][]byte // stack from first script for bip16 scripts
+	witness         bool     // treat execution as a witness program
+	witnessVersion  int
+	witnessProgram  []byte
+	inputAmount     int64
 }
 
 // hasFlag returns whether the script engine instance has the passed flag set.
@@ -209,6 +233,101 @@ func (vm *Engine) curPC() (script int, off int, err error) {
 	return vm.scriptIdx, vm.scriptOff, nil
 }
 
+// verifyWitnessProgram validates the stored witness program using the passed
+// witness as input.
+func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
+	if vm.witnessVersion == 0 {
+		switch len(vm.witnessProgram) {
+		case payToWitnessPubKeyHashDataSize: // P2WKH
+			// The witness stack should consist of exactly two
+			// items: the signature, and the pubkey.
+			if len(witness) != 2 {
+				err := fmt.Sprintf("should have exactly two "+
+					"items in witness, instead have %v", len(witness))
+				return scriptError(ErrWitnessScriptMismatch, err)
+			}
+
+			// Now we'll resume execution as if it were a
+			// regular p2pkh transaction.
+			pkScript, err := payToPubKeyHashScript(vm.witnessProgram)
+			if err != nil {
+				return err
+			}
+			pops, err := parseScript(pkScript)
+			if err != nil {
+				return err
+			}
+
+			// Set the stack to the provided witness
+			// stack, then append the pkScript
+			// generated above as the next script to execute.
+			vm.scripts = append(vm.scripts, pops)
+			vm.SetStack(witness)
+		case payToWitnessScriptHashDataSize: // P2WSH
+
+			// Additionally, The witness stack MUST NOT be empty at
+			// this point.
+			if len(witness) == 0 {
+				return scriptError(ErrWitnessProgramEmpty, "witness "+
+					"program empty passed empty witness")
+
+			}
+
+			// Ensure that the serialized pkScript
+			// at the end of the witness stack
+			// matches the witness program.
+			pkScript := witness[len(witness)-1]
+			witnessHash := fastsha256.Sum256(pkScript)
+			if !bytes.Equal(witnessHash[:], vm.witnessProgram) {
+				return scriptError(ErrWitnessScriptMismatch,
+					"witness program hash mismatch")
+			}
+
+			pops, err := parseScript(pkScript)
+			if err != nil {
+				return err
+			}
+
+			// The hash matched successfully, so
+			// use the witness as the stack, and
+			// set the pkScript to be the next script
+			// executed.
+			vm.scripts = append(vm.scripts, pops)
+			vm.SetStack(witness[:len(witness)-1])
+		default:
+			errStr := fmt.Sprintf("length of witness program "+
+				"must either be 20 or 32 bytes, instead is %v bytes",
+				len(vm.witnessProgram))
+			return scriptError(ErrWitnessProgramWrongLength, errStr)
+		}
+	} else if vm.hasFlag(ScriptVerifyDiscourageUpgradeableWitnessProgram) {
+		return fmt.Errorf("new witness program versions invalid: %v",
+			vm.witnessVersion)
+	} else {
+		// If we encounter an unknown witness program version and we
+		// aren't discouraging future unknown witness based soft-forks,
+		// then we de-activate the segwit behavior within the VM for
+		// the remainder of execution.
+		vm.witness = false
+	}
+
+	if vm.witness {
+		// All elements within the witness stack must not be greater
+		// than the maximum bytes which are allowed to be pushed onto
+		// the stack.
+		for _, witElement := range vm.GetStack() {
+			if len(witElement) > MaxScriptElementSize {
+				str := fmt.Sprintf("element size %d exceeds "+
+					"max allowed size %d", len(witElement),
+					MaxScriptElementSize)
+				return scriptError(ErrElementTooBig, str)
+			}
+		}
+	}
+
+	return nil
+}
+
 // DisasmPC returns the string for the disassembly of the opcode that will be
 // next to execute when Step() is called.
 func (vm *Engine) DisasmPC() (string, error) {
@@ -246,6 +365,14 @@ func (vm *Engine) CheckErrorCondition(finalScript bool) error {
 		return scriptError(ErrScriptUnfinished,
 			"error check when script unfinished")
 	}
+
+	// If we're in witness execution mode, and this was the final script,
+	// then the stack MUST be clean in order to maintain compatibility with
+	// BIP16.
+	if finalScript && vm.witness && vm.dstack.Depth() != 1 {
+		return ErrStackCleanStack
+	}
+
 	if finalScript && vm.hasFlag(ScriptVerifyCleanStack) &&
 		vm.dstack.Depth() != 1 {
 
@@ -343,6 +470,14 @@ func (vm *Engine) Step() (done bool, err error) {
 			// Set stack to be the stack from first script minus the
 			// script itself
 			vm.SetStack(vm.savedFirstStack[:len(vm.savedFirstStack)-1])
+		} else if (vm.scriptIdx == 1 && vm.witness) ||
+			(vm.witness && vm.bip16 && vm.scriptIdx == 2) { // Nested P2SH.
+			vm.scriptIdx++
+
+			witness := vm.tx.TxIn[vm.txIdx].Witness
+			if err := vm.verifyWitnessProgram(witness); err != nil {
+				return false, err
+			}
 		} else {
 			vm.scriptIdx++
 		}
@@ -626,7 +761,9 @@ func (vm *Engine) SetAltStack(data [][]byte) {
 // NewEngine returns a new script engine for the provided public key script,
 // transaction, and input index.  The flags modify the behavior of the script
 // engine according to the description provided by each flag.
-func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags, sigCache *SigCache) (*Engine, error) {
+func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags,
+	sigCache *SigCache, hashCache *TxSigHashes, inputAmount int64) (*Engine, error) {
+
 	// The provided transaction input index must refer to a valid input.
 	if txIdx < 0 || txIdx >= len(tx.TxIn) {
 		str := fmt.Sprintf("transaction input index %d is negative or "+
@@ -652,7 +789,8 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	// allowing the clean stack flag without the P2SH flag would make it
 	// possible to have a situation where P2SH would not be a soft fork when
 	// it should be.
-	vm := Engine{flags: flags, sigCache: sigCache}
+	vm := Engine{flags: flags, sigCache: sigCache, hashCache: hashCache,
+		inputAmount: inputAmount}
 	if vm.hasFlag(ScriptVerifyCleanStack) && !vm.hasFlag(ScriptBip16) {
 		return nil, scriptError(ErrInvalidFlags,
 			"invalid flags combination")
@@ -698,6 +836,7 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 				"pay to script hash is not push only")
 		}
 		vm.bip16 = true
+
 	}
 	if vm.hasFlag(ScriptVerifyMinimalData) {
 		vm.dstack.verifyMinimalData = true
@@ -713,7 +852,8 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 		// If witness evaluation is enabled, then P2SH MUST also be
 		// active.
 		if !vm.hasFlag(ScriptBip16) {
-			return nil, ErrInvalidFlags
+			errStr := "P2SH must be enabled to do witness verification"
+			return nil, scriptError(ErrInvalidFlags, errStr)
 		}
 
 		var err error
@@ -724,7 +864,9 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			// The scriptSig must be *empty* for all native witness
 			// programs, otherwise we introduce malleability.
 			if len(scriptSig) != 0 {
-				return nil, ErrWitnessMalleated
+				errStr := "native witness program cannot " +
+					"also have a signature script"
+				return nil, scriptError(ErrWitnessMalleated, errStr)
 			}
 
 			witProgram = scriptPubKey
@@ -741,7 +883,9 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 				IsWitnessProgram(pops[0].data) {
 				witProgram = pops[0].data
 			} else {
-				return nil, ErrWitnessMalleatedP2SH
+				errStr := "signature script for witness " +
+					"nested p2sh is not canonical"
+				return nil, scriptError(ErrWitnessMalleatedP2SH, errStr)
 			}
 		}
 
@@ -757,7 +901,8 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			// there MUST NOT be any witness data associated with
 			// the input being validated.
 			if !vm.witness && len(tx.TxIn[txIdx].Witness) != 0 {
-				return nil, ErrWitnessUnexpected
+				errStr := "non-witness inputs cannot have a witness"
+				return nil, scriptError(ErrWitnessUnexpected, errStr)
 			}
 		}
 
