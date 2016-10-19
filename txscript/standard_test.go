@@ -951,13 +951,13 @@ var scriptClassTests = []struct {
 		// A pay to witness pub key hash pk script.
 		name:   "Pay To Witness PubkeyHash",
 		script: "0 DATA_20 0x1d0f172a0ecb48aee1be1f2687d2963ae33f71a1",
-		class:  txscript.WitnessPubKeyHashTy,
+		class:  WitnessPubKeyHashTy,
 	},
 	{
 		// A pay to witness scripthash pk script.
 		name:   "Pay To Witness Scripthash",
 		script: "0 DATA_32 0x9f96ade4b41d5433f4eda31e1738ec2b36f6e7d1420d94a6af99801a88f7f7ff",
-		class:  txscript.WitnessScriptHashTy,
+		class:  WitnessScriptHashTy,
 	},
 }
 
@@ -1004,7 +1004,7 @@ func TestStringifyClass(t *testing.T) {
 		},
 		{
 			name:     "witnesspubkeyhash",
-			class:    txscript.WitnessPubKeyHashTy,
+			class:    WitnessPubKeyHashTy,
 			stringed: "witnesspubkeyhash",
 		},
 		{
@@ -1014,7 +1014,7 @@ func TestStringifyClass(t *testing.T) {
 		},
 		{
 			name:     "witnessscripthash",
-			class:    txscript.WitnessScriptHashTy,
+			class:    WitnessScriptHashTy,
 			stringed: "witnessscripthash",
 		},
 		{

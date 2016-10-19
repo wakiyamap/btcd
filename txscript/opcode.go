@@ -2044,12 +2044,30 @@ func opcodeCheckSig(op *parsedOpcode, vm *Engine) error {
 	// Get script starting from the most recent OP_CODESEPARATOR.
 	subScript := vm.subScript()
 
-	// Remove the signature since there is no way for a signature to sign
-	// itself.
-	subScript = removeOpcodeByData(subScript, fullSigBytes)
+	// With BIP 143, Bitcoin Core's 'FindAndDelete' function is no longer
+	// used to remove signature data for the script. Therefore, we only
+	// remove the data if we're not in witness execution mode.
+	if !vm.witness {
+		// Remove the signature since there is no way for a signature
+		// to sign itself.
+		subScript = removeOpcodeByData(subScript, fullSigBytes)
+	}
 
 	// Generate the signature hash based on the signature hash type.
-	hash := calcSignatureHash(subScript, hashType, &vm.tx, vm.txIdx)
+	var hash []byte
+	if vm.witness {
+		var sigHashes *TxSigHashes
+		if vm.hashCache != nil {
+			sigHashes = vm.hashCache
+		} else {
+			sigHashes = NewTxSigHashes(&vm.tx)
+		}
+
+		hash = calcWitnessSignatureHash(subScript, sigHashes, hashType,
+			&vm.tx, vm.txIdx, vm.inputAmount)
+	} else {
+		hash = calcSignatureHash(subScript, hashType, &vm.tx, vm.txIdx)
+	}
 
 	pubKey, err := btcec.ParsePubKey(pkBytes, btcec.S256())
 	if err != nil {
@@ -2215,10 +2233,15 @@ func opcodeCheckMultiSig(op *parsedOpcode, vm *Engine) error {
 	// Get script starting from the most recent OP_CODESEPARATOR.
 	script := vm.subScript()
 
-	// Remove any of the signatures since there is no way for a signature to
-	// sign itself.
-	for _, sigInfo := range signatures {
-		script = removeOpcodeByData(script, sigInfo.signature)
+	// With BIP 143, Bitcoin Core's 'FindAndDelete' function is no longer
+	// used to remove signature data for the script. Therefore, we only
+	// remove the data if we're not in witness execution mode.
+	if !vm.witness {
+		// Remove any of the signatures since there is no way for a
+		// signature to sign itself.
+		for _, sigInfo := range signatures {
+			script = removeOpcodeByData(script, sigInfo.signature)
+		}
 	}
 
 	success := true
@@ -2300,7 +2323,20 @@ func opcodeCheckMultiSig(op *parsedOpcode, vm *Engine) error {
 		}
 
 		// Generate the signature hash based on the signature hash type.
-		hash := calcSignatureHash(script, hashType, &vm.tx, vm.txIdx)
+		var hash []byte
+		if vm.witness {
+			var sigHashes *TxSigHashes
+			if vm.hashCache != nil {
+				sigHashes = vm.hashCache
+			} else {
+				sigHashes = NewTxSigHashes(&vm.tx)
+			}
+
+			hash = calcWitnessSignatureHash(script, sigHashes, hashType,
+				&vm.tx, vm.txIdx, vm.inputAmount)
+		} else {
+			hash = calcSignatureHash(script, hashType, &vm.tx, vm.txIdx)
+		}
 
 		var valid bool
 		if vm.sigCache != nil {

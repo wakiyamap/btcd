@@ -4098,8 +4098,8 @@ func TestIsPayToWitnessScriptHash(t *testing.T) {
 
 	for _, test := range scriptClassTests {
 		script := mustParseShortForm(test.script)
-		shouldBe := (test.class == txscript.WitnessScriptHashTy)
-		p2wsh := txscript.IsPayToWitnessScriptHash(script)
+		shouldBe := (test.class == WitnessScriptHashTy)
+		p2wsh := IsPayToWitnessScriptHash(script)
 		if p2wsh != shouldBe {
 			t.Errorf("%s: expected p2wsh %v, got %v", test.name,
 				shouldBe, p2wsh)
@@ -4114,8 +4114,8 @@ func TestIsPayToWitnessPubKeyHash(t *testing.T) {
 
 	for _, test := range scriptClassTests {
 		script := mustParseShortForm(test.script)
-		shouldBe := (test.class == txscript.WitnessPubKeyHashTy)
-		p2wkh := txscript.IsPayToWitnessPubKeyHash(script)
+		shouldBe := (test.class == WitnessPubKeyHashTy)
+		p2wkh := IsPayToWitnessPubKeyHash(script)
 		if p2wkh != shouldBe {
 			t.Errorf("%s: expected p2wkh %v, got %v", test.name,
 				shouldBe, p2wkh)
