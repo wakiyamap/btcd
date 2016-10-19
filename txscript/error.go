@@ -133,6 +133,37 @@ var (
 	// is set and the script contains push operations that do not use
 	// the minimal opcode required.
 	ErrStackMinimalData = errors.New("non-minimally encoded script number")
+
+	// ErrWitnessProgramEmpty is returned if ScriptVerifyWitness is set and
+	// the witness stack itself is empty.
+	ErrWitnessProgramEmpty = errors.New("witness program empty passed " +
+		"empty witness")
+
+	// ErrWitnessScriptMismatch is returned if ScriptVerifyWitness is set
+	// and the witness itself for a p2wkh witness program isn't *exactly* 2
+	// items.
+	ErrWitnessScriptMismatch = errors.New("witness program hash mismatch")
+
+	// ErrWitnessProgramWrongLength is returned if ScriptVerifyWitness is
+	// set and the length of the witness program violates the length as
+	// dictated by the current witness version.
+	ErrWitnessProgramWrongLength = errors.New("witness program has wrong" +
+		" length")
+
+	// ErrWitnessMalleated is returned if ScriptVerifyWitness is set and a
+	// native p2wsh program is encountered which has a non-empty sigScript.
+	ErrWitnessMalleated = errors.New("witness requires empty sigScript")
+
+	// ErrWitnessMalleatedP2SH is returned if ScriptVerifyWitness if set
+	// and the validation logic for nested p2sh encounters a sigScript
+	// which isn't *exactyl* a datapush of the witness program.
+	ErrWitnessMalleatedP2SH = errors.New("nested witness requires single " +
+		"data-push sigScript")
+
+	// ErrWitnessUnexpected is returned if ScriptVerifyWitness is set and a
+	// transaction includes witness data but doesn't spend an which is a
+	// witness program (nested or native).
+	ErrWitnessUnexpected = errors.New("unexpected witness")
 )
 
 var (
