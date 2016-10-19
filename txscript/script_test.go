@@ -4100,8 +4100,40 @@ func TestIsPayToScriptHash(t *testing.T) {
 		shouldBe := (test.class == ScriptHashTy)
 		p2sh := IsPayToScriptHash(script)
 		if p2sh != shouldBe {
-			t.Errorf("%s: epxected p2sh %v, got %v", test.name,
+			t.Errorf("%s: expected p2sh %v, got %v", test.name,
 				shouldBe, p2sh)
+		}
+	}
+}
+
+// TestIsPayToWitnessScriptHash ensures the IsPayToWitnessScriptHash function
+// returns the expected results for all the scripts in scriptClassTests.
+func TestIsPayToWitnessScriptHash(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range scriptClassTests {
+		script := mustParseShortForm(test.script)
+		shouldBe := (test.class == txscript.WitnessScriptHashTy)
+		p2wsh := txscript.IsPayToWitnessScriptHash(script)
+		if p2wsh != shouldBe {
+			t.Errorf("%s: expected p2wsh %v, got %v", test.name,
+				shouldBe, p2wsh)
+		}
+	}
+}
+
+// TestIsPayToWitnessPubKeyHash ensures the IsPayToWitnessPubKeyHash function
+// returns the expected results for all the scripts in scriptClassTests.
+func TestIsPayToWitnessPubKeyHash(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range scriptClassTests {
+		script := mustParseShortForm(test.script)
+		shouldBe := (test.class == txscript.WitnessPubKeyHashTy)
+		p2wkh := txscript.IsPayToWitnessPubKeyHash(script)
+		if p2wkh != shouldBe {
+			t.Errorf("%s: expected p2wkh %v, got %v", test.name,
+				shouldBe, p2wkh)
 		}
 	}
 }
