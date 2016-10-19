@@ -21,15 +21,17 @@ import (
 )
 
 // testName returns a descriptive test name for the given reference test data.
-func testName(test []string) (string, error) {
+func testName(test []interface{}) (string, error) {
 	var name string
 
-	if len(test) < 3 || len(test) > 4 {
+	if len(test) < 3 || len(test) > 5 {
 		return name, fmt.Errorf("invalid test length %d", len(test))
 	}
 
 	if len(test) == 4 {
 		name = fmt.Sprintf("test (%s)", test[3])
+	} else if len(test) == 5 {
+		name = fmt.Sprintf("test (%s)", test[4])
 	} else {
 		name = fmt.Sprintf("test ([%s, %s, %s])", test[0], test[1],
 			test[2])
@@ -43,6 +45,22 @@ func parseHex(tok string) ([]byte, error) {
 		return nil, errors.New("not a hex number")
 	}
 	return hex.DecodeString(tok[2:])
+}
+
+// parseWitnessStack parses a json array of witness items encoded as hex into a
+// slice of witness elements.
+func parseWitnessStack(elements []interface{}) ([][]byte, error) {
+	witness := make([][]byte, len(elements))
+	for i, e := range elements {
+		witElement, err := hex.DecodeString(e.(string))
+		if err != nil {
+			return nil, err
+		}
+
+		witness[i] = witElement
+	}
+
+	return witness, nil
 }
 
 // shortFormOps holds a map of opcode names to values for use in short form
@@ -154,6 +172,10 @@ func parseScriptFlags(flagStr string) (ScriptFlags, error) {
 			flags |= ScriptVerifySigPushOnly
 		case "STRICTENC":
 			flags |= ScriptVerifyStrictEncoding
+		case "WITNESS":
+			flags |= ScriptVerifyWitness
+		case "DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM":
+			flags |= ScriptVerifyDiscourageUpgradeableWitnessProgram
 		default:
 			return flags, fmt.Errorf("invalid flag: %s", flag)
 		}
@@ -162,26 +184,36 @@ func parseScriptFlags(flagStr string) (ScriptFlags, error) {
 }
 
 // createSpendTx generates a basic spending transaction given the passed
-// signature and public key scripts.
-func createSpendingTx(sigScript, pkScript []byte) *wire.MsgTx {
+// signature, witness and public key scripts.
+func createSpendingTx(witness [][]byte, sigScript, pkScript []byte,
+	outputValue int64) *wire.MsgTx {
+
 	coinbaseTx := wire.NewMsgTx(wire.TxVersion)
 
 	outPoint := wire.NewOutPoint(&chainhash.Hash{}, ^uint32(0))
-	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0})
-	txOut := wire.NewTxOut(0, pkScript)
+	txIn := wire.NewTxIn(outPoint, []byte{OP_0, OP_0}, nil)
+	txOut := wire.NewTxOut(outputValue, pkScript)
 	coinbaseTx.AddTxIn(txIn)
 	coinbaseTx.AddTxOut(txOut)
 
 	spendingTx := wire.NewMsgTx(wire.TxVersion)
-	coinbaseTxHash := coinbaseTx.TxHash()
-	outPoint = wire.NewOutPoint(&coinbaseTxHash, 0)
-	txIn = wire.NewTxIn(outPoint, sigScript)
-	txOut = wire.NewTxOut(0, nil)
+	coinbaseTxSha := coinbaseTx.TxHash()
+	outPoint = wire.NewOutPoint(&coinbaseTxSha, 0)
+	txIn = wire.NewTxIn(outPoint, sigScript, witness)
+	txOut = wire.NewTxOut(outputValue, nil)
 
 	spendingTx.AddTxIn(txIn)
 	spendingTx.AddTxOut(txOut)
 
 	return spendingTx
+}
+
+// scriptWithInputVal wraps a target pkScript with the value of the output in
+// which it is contained. The inputVal is necessary in order to properly
+// validate inputs which spend nested, or native witness programs.
+type scriptWithInputVal struct {
+	inputVal int64
+	pkScript []byte
 }
 
 // TestScriptInvalidTests ensures all of the tests in script_invalid.json fail
@@ -193,7 +225,7 @@ func TestScriptInvalidTests(t *testing.T) {
 		return
 	}
 
-	var tests [][]string
+	var tests [][]interface{}
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindInvalidTests couldn't Unmarshal: %v",
@@ -215,28 +247,61 @@ func TestScriptInvalidTests(t *testing.T) {
 					i)
 				continue
 			}
-			scriptSig, err := parseShortForm(test[0])
+
+			var (
+				witness  [][]byte
+				index    int
+				inputAmt btcutil.Amount
+			)
+			if len(test) == 5 {
+				witTest := test[0].([]interface{})
+
+				// If this is a witness test, then the final
+				// element within the slice is the input
+				// amount, so we ignore all but the last
+				// element in order to parse the witness stack.
+				strWitnesses := witTest[:len(witTest)-1]
+				witness, err = parseWitnessStack(strWitnesses)
+				if err != nil {
+					t.Errorf("%s: can't parse witness; %v", name, err)
+					continue
+				}
+
+				inputAmt, err = btcutil.NewAmount(witTest[len(witTest)-1].(float64))
+				if err != nil {
+					t.Errorf("%s: can't parse input amt: %v",
+						name, err)
+					continue
+				}
+				index += 1
+			}
+
+			scriptSig, err := parseShortForm(test[index].(string))
 			if err != nil {
 				t.Errorf("%s: can't parse scriptSig; %v", name, err)
 				continue
 			}
-			scriptPubKey, err := parseShortForm(test[1])
+			scriptPubKey, err := parseShortForm(test[index+1].(string))
 			if err != nil {
 				t.Errorf("%s: can't parse scriptPubkey; %v", name, err)
 				continue
 			}
-			flags, err := parseScriptFlags(test[2])
+			flags, err := parseScriptFlags(test[index+2].(string))
 			if err != nil {
 				t.Errorf("%s: %v", name, err)
 				continue
 			}
-			tx := createSpendingTx(scriptSig, scriptPubKey)
+
+			tx := createSpendingTx(witness, scriptSig, scriptPubKey,
+				int64(inputAmt))
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0,
+					flags, sigCache, nil, int64(inputAmt))
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0,
+					flags, nil, nil, int64(inputAmt))
 			}
 
 			if err == nil {
@@ -259,7 +324,7 @@ func TestScriptValidTests(t *testing.T) {
 		return
 	}
 
-	var tests [][]string
+	var tests [][]interface{}
 	err = json.Unmarshal(file, &tests)
 	if err != nil {
 		t.Errorf("TestBitcoindValidTests couldn't Unmarshal: %v",
@@ -282,28 +347,62 @@ func TestScriptValidTests(t *testing.T) {
 					i)
 				continue
 			}
-			scriptSig, err := parseShortForm(test[0])
+
+			var (
+				witness  [][]byte
+				index    int
+				inputAmt btcutil.Amount
+			)
+
+			if len(test) == 5 {
+				witTest := test[0].([]interface{})
+
+				// If this is a witness test, then the final
+				// element within the slice is the input
+				// amount, so we ignore all but the last
+				// element in order to parse the witness stack.
+				strWitnesses := witTest[:len(witTest)-1]
+				witness, err = parseWitnessStack(strWitnesses)
+				if err != nil {
+					t.Errorf("%s: can't parse witness; %v", name, err)
+					continue
+				}
+
+				inputAmt, err = btcutil.NewAmount(witTest[len(witTest)-1].(float64))
+				if err != nil {
+					t.Errorf("%s: can't parse input amt: %v",
+						name, err)
+					continue
+				}
+				index += 1
+			}
+
+			scriptSig, err := parseShortForm(test[index].(string))
 			if err != nil {
 				t.Errorf("%s: can't parse scriptSig; %v", name, err)
 				continue
 			}
-			scriptPubKey, err := parseShortForm(test[1])
+			scriptPubKey, err := parseShortForm(test[index+1].(string))
 			if err != nil {
 				t.Errorf("%s: can't parse scriptPubkey; %v", name, err)
 				continue
 			}
-			flags, err := parseScriptFlags(test[2])
+			flags, err := parseScriptFlags(test[index+2].(string))
 			if err != nil {
 				t.Errorf("%s: %v", name, err)
 				continue
 			}
-			tx := createSpendingTx(scriptSig, scriptPubKey)
+
+			tx := createSpendingTx(witness, scriptSig, scriptPubKey,
+				int64(inputAmt))
 
 			var vm *Engine
 			if useSigCache {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, sigCache)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags,
+					sigCache, nil, int64(inputAmt))
 			} else {
-				vm, err = NewEngine(scriptPubKey, tx, 0, flags, nil)
+				vm, err = NewEngine(scriptPubKey, tx, 0, flags,
+					nil, nil, int64(inputAmt))
 			}
 
 			if err != nil {
@@ -395,7 +494,7 @@ testloop:
 			continue
 		}
 
-		prevOuts := make(map[wire.OutPoint][]byte)
+		prevOuts := make(map[wire.OutPoint]scriptWithInputVal)
 		for j, iinput := range inputs {
 			input, ok := iinput.([]interface{})
 			if !ok {
@@ -404,7 +503,7 @@ testloop:
 				continue testloop
 			}
 
-			if len(input) != 3 {
+			if len(input) < 3 || len(input) > 4 {
 				t.Errorf("bad test (%dth input wrong length)"+
 					"%d: %v", j, i, test)
 				continue testloop
@@ -446,11 +545,26 @@ testloop:
 				continue testloop
 			}
 
-			prevOuts[*wire.NewOutPoint(prevhash, idx)] = script
+			var inputValue float64
+			if len(input) == 4 {
+				inputValue, ok = input[3].(float64)
+				if !ok {
+					t.Errorf("bad test (%dth input value not int) "+
+						"%d: %v", j, i, test)
+					continue
+				}
+			}
+
+			v := scriptWithInputVal{
+				inputVal: int64(inputValue),
+				pkScript: script,
+			}
+
+			prevOuts[*wire.NewOutPoint(prevhash, idx)] = v
 		}
 
 		for k, txin := range tx.MsgTx().TxIn {
-			pkScript, ok := prevOuts[txin.PreviousOutPoint]
+			prevOut, ok := prevOuts[txin.PreviousOutPoint]
 			if !ok {
 				t.Errorf("bad test (missing %dth input) %d:%v",
 					k, i, test)
@@ -459,7 +573,8 @@ testloop:
 			// These are meant to fail, so as soon as the first
 			// input fails the transaction has failed. (some of the
 			// test txns have good inputs, too..
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(prevOut.pkScript, tx.MsgTx(), k,
+				flags, nil, nil, prevOut.inputVal)
 			if err != nil {
 				continue testloop
 			}
@@ -493,7 +608,7 @@ func TestTxValidTests(t *testing.T) {
 	// form is either:
 	//   ["this is a comment "]
 	// or:
-	//   [[[previous hash, previous index, previous scriptPubKey]...,]
+	//   [[[previous hash, previous index, previous scriptPubKey, input value]...,]
 	//	serializedTransaction, verifyFlags]
 testloop:
 	for i, test := range tests {
@@ -537,7 +652,7 @@ testloop:
 			continue
 		}
 
-		prevOuts := make(map[wire.OutPoint][]byte)
+		prevOuts := make(map[wire.OutPoint]scriptWithInputVal)
 		for j, iinput := range inputs {
 			input, ok := iinput.([]interface{})
 			if !ok {
@@ -546,7 +661,7 @@ testloop:
 				continue
 			}
 
-			if len(input) != 3 {
+			if len(input) < 3 || len(input) > 4 {
 				t.Errorf("bad test (%dth input wrong length)"+
 					"%d: %v", j, i, test)
 				continue
@@ -588,17 +703,32 @@ testloop:
 				continue
 			}
 
-			prevOuts[*wire.NewOutPoint(prevhash, idx)] = script
+			var inputValue float64
+			if len(input) == 4 {
+				inputValue, ok = input[3].(float64)
+				if !ok {
+					t.Errorf("bad test (%dth input value not int) "+
+						"%d: %v", j, i, test)
+					continue
+				}
+			}
+
+			v := scriptWithInputVal{
+				inputVal: int64(inputValue),
+				pkScript: script,
+			}
+			prevOuts[*wire.NewOutPoint(prevhash, idx)] = v
 		}
 
 		for k, txin := range tx.MsgTx().TxIn {
-			pkScript, ok := prevOuts[txin.PreviousOutPoint]
+			prevOut, ok := prevOuts[txin.PreviousOutPoint]
 			if !ok {
 				t.Errorf("bad test (missing %dth input) %d:%v",
 					k, i, test)
 				continue testloop
 			}
-			vm, err := NewEngine(pkScript, tx.MsgTx(), k, flags, nil)
+			vm, err := NewEngine(prevOut.pkScript, tx.MsgTx(), k,
+				flags, nil, nil, prevOut.inputVal)
 			if err != nil {
 				t.Errorf("test (%d:%v:%d) failed to create "+
 					"script: %v", i, test, k, err)
