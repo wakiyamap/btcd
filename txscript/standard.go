@@ -34,6 +34,7 @@ const (
 		ScriptVerifyCheckLockTimeVerify |
 		ScriptVerifyCheckSequenceVerify |
 		ScriptVerifyLowS |
+		ScriptStrictMultiSig |
 		ScriptVerifyWitness |
 		ScriptVerifyDiscourageUpgradeableWitnessProgram
 )
