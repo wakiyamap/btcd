@@ -458,11 +458,9 @@ func NewBlockTemplate(policy *mining.Policy, server *server, payToAddress btcuti
 	// Once the CSV soft-fork is fully active, we'll switch to using the
 	// current median time past of the past block's timestamps for all
 	// lock-time based checks.
-	var blockTime time.Time
+	blockTime := timeSource.AdjustedTime()
 	if csvState == blockchain.ThresholdActive {
 		blockTime = blockManager.chain.BestSnapshot().MedianTime
-	} else {
-		blockTime = timeSource.AdjustedTime()
 	}
 
 mempoolLoop:
