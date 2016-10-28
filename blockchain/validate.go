@@ -779,7 +779,7 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		// Obtain the latest state of the deployed CSV soft-fork in
 		// order to properly guard the new validation behavior based on
 		// the current BIP 9 version bits state.
-		csvState, err := b.ThresholdState(chaincfg.DeploymentCSV)
+		csvState, err := b.thresholdHoldForDeployment(chaincfg.DeploymentCSV)
 		if err != nil {
 			return err
 		}
@@ -1221,7 +1221,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 
 	// Enforce CHECKSEQUENCEVERIFY during all block validation checks once
 	// the soft-fork deployment is fully active.
-	csvState, err := b.ThresholdState(chaincfg.DeploymentCSV)
+	csvState, err := b.thresholdHoldForDeployment(chaincfg.DeploymentCSV)
 	if err != nil {
 		return err
 	}
