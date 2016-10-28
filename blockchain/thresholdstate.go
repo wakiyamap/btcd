@@ -310,7 +310,7 @@ func (b *BlockChain) thresholdState(prevNode *blockNode, checker thresholdCondit
 // This function is safe for concurrent access.
 func (b *BlockChain) ThresholdState(deploymentID uint32) (ThresholdState, error) {
 	b.chainLock.Lock()
-	state, err := b.thresholdHoldForDeployment(deploymentID)
+	state, err := b.thresholdHoldForDeployment(b.bestNode, deploymentID)
 	b.chainLock.Unlock()
 
 	return state, err
@@ -318,16 +318,19 @@ func (b *BlockChain) ThresholdState(deploymentID uint32) (ThresholdState, error)
 
 // thresholdHoldForDeployment returns the current rule change threshold for a
 // given deploymentID. The threshold is evaluated from the point of view of the
-// tip of the current best chain.
+// blockNode passed in as the first argument to this method.
 //
 // This function MUST be called with the chain state lock held (for writes).
-func (b *BlockChain) thresholdHoldForDeployment(deploymentID uint32) (ThresholdState, error) {
+func (b *BlockChain) thresholdHoldForDeployment(blockNode *blockNode,
+	deploymentID uint32) (ThresholdState, error) {
+
 	if deploymentID > uint32(len(b.chainParams.Deployments)) {
 		return ThresholdFailed, DeploymentError(deploymentID)
 	}
+
 	deployment := &b.chainParams.Deployments[deploymentID]
 	checker := deploymentChecker{deployment: deployment, chain: b}
 	cache := &b.deploymentCaches[deploymentID]
 
-	return b.thresholdState(b.bestNode, checker, cache)
+	return b.thresholdState(blockNode, checker, cache)
 }
