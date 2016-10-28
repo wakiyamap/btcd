@@ -787,11 +787,9 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		// Once the CSV soft-fork is fully active, we'll switch to
 		// using the current median time past of the past block's
 		// timestamps for all lock-time based checks.
-		var blockTime time.Time
+		blockTime := header.Timestamp
 		if csvState == ThresholdActive {
 			blockTime = medianTime
-		} else {
-			blockTime = header.Timestamp
 		}
 
 		// The height of this block is one more than the referenced
