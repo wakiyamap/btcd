@@ -457,80 +457,95 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 		t.Fatalf("unable to generate pkScript: %v", err)
 	}
 
-	const outputAmt = btcutil.SatoshiPerBitcoin
-
-	// Create a trivially spendable output with a CSV lock-time of 10
-	// relative blocks.
-	const relativeBlockLock = 10
-	redeemScript, testUTXO, tx, err := createCSVOutput(r, t, outputAmt,
-		relativeBlockLock, false)
-	if err != nil {
-		t.Fatalf("unable to create CSV encumbered output: %v", err)
-	}
-
-	// As the transaction is p2sh it should be accepted into the mempool
-	// and found within the next generated block.
-	if _, err := r.Node.SendRawTransaction(tx, true); err != nil {
-		t.Fatalf("unable to broadcast tx: %v", err)
-	}
-	blocks, err := r.Node.Generate(1)
-	if err != nil {
-		t.Fatalf("unable to generate blocks: %v", err)
-	}
-	txid := tx.TxHash()
-	assertTxInBlock(r, t, blocks[0], &txid)
+	const (
+		outputAmt         = btcutil.SatoshiPerBitcoin
+		relativeBlockLock = 10
+	)
 
 	sweepOutput := &wire.TxOut{
 		Value:    outputAmt - 5000,
 		PkScript: harnessScript,
 	}
 
-	// Generate a custom transaction which spends the CSV output.
-	sequenceNum := blockchain.LockTimeToSequence(false, 10)
-	spendingTx, err := spendCSVOutput(redeemScript, testUTXO, sequenceNum,
-		sweepOutput, 2)
-	if err != nil {
-		t.Fatalf("unable to spend csv output: %v", err)
+	// As the soft-fork hasn't yet activated _any_ transaction version
+	// which uses the CSV opcode should be accepted. Since at this point,
+	// CSV doesn't actually exist, it's just a NOP.
+	for txVersion := int32(0); txVersion < 3; txVersion++ {
+		// Create a trivially spendable output with a CSV lock-time of
+		// 10 relative blocks.
+		redeemScript, testUTXO, tx, err := createCSVOutput(r, t, outputAmt,
+			relativeBlockLock, false)
+		if err != nil {
+			t.Fatalf("unable to create CSV encumbered output: %v", err)
+		}
+
+		// As the transaction is p2sh it should be accepted into the
+		// mempool and found within the next generated block.
+		if _, err := r.Node.SendRawTransaction(tx, true); err != nil {
+			t.Fatalf("unable to broadcast tx: %v", err)
+		}
+		blocks, err := r.Node.Generate(1)
+		if err != nil {
+			t.Fatalf("unable to generate blocks: %v", err)
+		}
+		txid := tx.TxHash()
+		assertTxInBlock(r, t, blocks[0], &txid)
+
+		// Generate a custom transaction which spends the CSV output.
+		sequenceNum := blockchain.LockTimeToSequence(false, 10)
+		spendingTx, err := spendCSVOutput(redeemScript, testUTXO,
+			sequenceNum, sweepOutput, txVersion)
+		if err != nil {
+			t.Fatalf("unable to spend csv output: %v", err)
+		}
+
+		// This transaction should be rejected from the mempool since
+		// CSV validation is already mempool policy pre-fork.
+		_, err = r.Node.SendRawTransaction(spendingTx, true)
+		if err == nil {
+			t.Fatalf("transaction should have been rejected, but was " +
+				"instead accepted")
+		}
+
+		// However, this transaction should be accepted in a custom
+		// generated block as CSV validation for scripts within blocks
+		// shouldn't yet be active.
+		txns := []*btcutil.Tx{btcutil.NewTx(spendingTx)}
+		block, err := r.GenerateAndSubmitBlock(txns, -1, time.Time{})
+		if err != nil {
+			t.Fatalf("unable to submit block: %v", err)
+		}
+		txid = spendingTx.TxHash()
+		assertTxInBlock(r, t, block.Hash(), &txid)
 	}
 
-	// This transaction should be rejected from the mempool since CSV
-	// validation is already mempool policy pre-fork.
-	_, err = r.Node.SendRawTransaction(spendingTx, true)
-	if err == nil {
-		t.Fatalf("transaction should have been rejected, but was " +
-			"instead accepted")
-	}
-
-	// However, this transaction should be accepted in a custom generated
-	// block as CSV validation for scripts within blocks shouldn't yet be
-	// active.
-	txns := []*btcutil.Tx{btcutil.NewTx(spendingTx)}
-	block, err := r.GenerateAndSubmitBlock(txns, -1, time.Time{})
-	if err != nil {
-		t.Fatalf("unable to submit block: %v", err)
-	}
-	txid = spendingTx.TxHash()
-	assertTxInBlock(r, t, block.Hash(), &txid)
-
-	// At this point, the block height should be 103: we mined 101 blocks
-	// to create a single mature output, then an additional block to create
-	// a new output, and then mined a single block above to include our
-	// transation.
+	// At this point, the block height should be 107: we started at height
+	// 101, then generated 2 blocks in each loop iteration above.
 	_, height, err := r.Node.GetBestBlock()
 	if err != nil {
 		t.Fatalf("unable to get best block: %v", err)
 	}
-	if height != 103 {
-		t.Fatalf("height mismatch: expected %v got %v", 102, height)
+	if height != 107 {
+		t.Fatalf("height mismatch: expected %v got %v", 107, height)
 	}
 
-	// Next, mine ensure blocks to ensure that the soft-fork becomes
-	// active. We're at height 103 and we need 200 blocks to be mined after
-	// the genesis target period, so we mine 197 blocks.
-	numBlocks := (r.ActiveNet.MinerConfirmationWindow * 2) - 3
+	// With the height at 107 we need 200 blocks to be mined after the
+	// genesis target period, so we mine 192 blocks. This'll put us at
+	// height 299. The getblockchaininfo call checks the state for the
+	// block AFTER the current height.
+	numBlocks := (r.ActiveNet.MinerConfirmationWindow * 2) - 8
 	if _, err := r.Node.Generate(numBlocks); err != nil {
 		t.Fatalf("unable to generate blocks: %v", err)
 	}
+
+	_, height, err = r.Node.GetBestBlock()
+	if err != nil {
+		t.Fatalf("unable to get best block: %v", err)
+	}
+	if height != 299 {
+		t.Fatalf("height mismatch: expected %v got %v", 299, height)
+	}
+
 	if !isSoftForkActive(r, t, "csv") {
 		t.Fatalf("csv soft-fork not yet active, but should be!")
 	}
@@ -538,7 +553,7 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 	// Knowing the number of outputs needed for the tests below, create a
 	// fresh output for use within each of the test-cases below.
 	const relativeTimeLock = 512
-	const numTests = 6
+	const numTests = 8
 	type csvOutput struct {
 		RedeemScript []byte
 		Utxo         *wire.OutPoint
@@ -551,7 +566,7 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 	for i := 0; i < numTests; i++ {
 		timeLock := relativeTimeLock
 		isSeconds := true
-		if i < 3 {
+		if i < 7 {
 			timeLock = relativeBlockLock
 			isSeconds = false
 		}
@@ -636,6 +651,14 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 			),
 			accept: false,
 		},
+		// A v2 transaction with a single input having a 9 block
+		// relative time lock. The referenced input is 11 blocks old,
+		// but the CSV output requires a 10 block relative lock-time.
+		// Therefore, the transaction should be rejected.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 9), 2),
+			accept: false,
+		},
 		// A v2 transaction with a single input having a 10 block
 		// relative time lock. The referenced input is 11 blocks old so
 		// the transaction should be accepted.
@@ -643,8 +666,16 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 10), 2),
 			accept: true,
 		},
-		// A v2 transaction whose input has a 1000 relative time lock.
-		// This should be rejected as the input's age is only 11
+		// A v2 transaction with a single input having a 11 block
+		// relative time lock. The input referenced has an input age of
+		// 11 and the CSV op-code requires 10 blocks to have passed, so
+		// this transaction should be accepted.
+		{
+			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 11), 2),
+			accept: true,
+		},
+		// A v2 transaction whose input has a 1000 blck relative time
+		// lock.  This should be rejected as the input's age is only 11
 		// blocks.
 		{
 			tx:     makeTxCase(blockchain.LockTimeToSequence(false, 1000), 2),
