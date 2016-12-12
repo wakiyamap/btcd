@@ -123,7 +123,7 @@ func TestCalcSequenceLock(t *testing.T) {
 	netParams := &chaincfg.SimNetParams
 
 	// Create a new database and chain instance to run tests against.
-	chain, teardownFunc, err := chainSetup("haveblock", netParams)
+	chain, teardownFunc, err := chainSetup("calcseqlock", netParams)
 	if err != nil {
 		t.Errorf("Failed to setup chain instance: %v", err)
 		return
@@ -192,7 +192,8 @@ func TestCalcSequenceLock(t *testing.T) {
 		prevBlock = block
 	}
 
-	// Create with all the utxos within the create created above.
+	// Create a utxo view with all the utxos within the blocks created
+	// above.
 	utxoView := blockchain.NewUtxoViewpoint()
 	for blockHeight, blockWithMTP := range blocksWithMTP {
 		for _, tx := range blockWithMTP.block.Transactions() {
@@ -202,8 +203,9 @@ func TestCalcSequenceLock(t *testing.T) {
 	utxoView.SetBestHash(blocksWithMTP[len(blocksWithMTP)-1].block.Hash())
 
 	// The median time calculated from the PoV of the best block in our
-	// test chain. For unconfirmed inputs, this value will be used since th
-	// MTP will be calculated from the PoV of the yet-to-be-mined block.
+	// test chain. For unconfirmed inputs, this value will be used since
+	// the MTP will be calculated from the PoV of the yet-to-be-mined
+	// block.
 	nextMedianTime := int64(1401292712)
 
 	// We'll refer to this utxo within each input in the transactions
