@@ -24,6 +24,10 @@ import (
 	"github.com/btcsuite/btcutil"
 )
 
+const (
+	csvKey = "csv"
+)
+
 // makeTestOutput creates an on-chain output paying to a freshly generated
 // p2pkh output with the specified amount.
 func makeTestOutput(r *rpctest.Harness, t *testing.T,
@@ -185,13 +189,7 @@ func TestBIP0113Activation(t *testing.T) {
 	// to create a single mature output, then an additional block to create
 	// a new output, and then mined a single block above to include our
 	// transation.
-	_, height, err := r.Node.GetBestBlock()
-	if err != nil {
-		t.Fatalf("unable to get best block: %v", err)
-	}
-	if height != 103 {
-		t.Fatalf("height mismatch: expected %v got %v", 102, height)
-	}
+	assertChainHeight(r, t, 103)
 
 	// Next, mine enough blocks to ensure that the soft-fork becomes
 	// activated. Assert that the block version of the second-to-last block
@@ -207,17 +205,8 @@ func TestBIP0113Activation(t *testing.T) {
 		t.Fatalf("unable to generate blocks: %v", err)
 	}
 
-	_, height, err = r.Node.GetBestBlock()
-	if err != nil {
-		t.Fatalf("unable to get best block: %v", err)
-	}
-	if height != 299 {
-		t.Fatalf("height mismatch: expected %v got %v", 299, height)
-	}
-
-	if !isSoftForkActive(r, t, "csv") {
-		t.Fatal("csv soft-fork not yet active, but should be!")
-	}
+	assertChainHeight(r, t, 299)
+	assertSoftForkStatus(r, t, csvKey, blockchain.ThresholdActive)
 
 	// The timeLockDeltas slice represents a series of deviations from the
 	// current MTP which will be used to test border conditions w.r.t
@@ -372,25 +361,6 @@ func spendCSVOutput(redeemScript []byte, csvUTXO *wire.OutPoint,
 	return tx, nil
 }
 
-// isSoftForkActive returns true if the soft-fork as defined by the passed
-// string is currently active.
-func isSoftForkActive(r *rpctest.Harness, t *testing.T, bip9ForkName string) bool {
-	chainInfo, err := r.Node.GetBlockChainInfo()
-	if err != nil {
-		t.Fatalf("unable to query for chain info: %v", err)
-	}
-
-	csvForkState, ok := chainInfo.Bip9SoftForks[bip9ForkName]
-	if !ok {
-		_, _, line, _ := runtime.Caller(1)
-		t.Fatalf("assertion failed on line %v: soft-fork %v state not "+
-			"found in getblockchaininfo response", line,
-			bip9ForkName)
-	}
-
-	return csvForkState.Status == "active"
-}
-
 // assertTxInBlock asserts a transaction with the specified txid is found
 // within the block with the passed block hash.
 func assertTxInBlock(r *rpctest.Harness, t *testing.T, blockHash *chainhash.Hash,
@@ -444,9 +414,7 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 	}
 	defer r.TearDown()
 
-	if isSoftForkActive(r, t, "csv") {
-		t.Fatal("CSV soft-fork is active, yet shouldn't be")
-	}
+	assertSoftForkStatus(r, t, csvKey, blockchain.ThresholdStarted)
 
 	harnessAddr, err := r.NewAddress()
 	if err != nil {
@@ -521,13 +489,7 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 
 	// At this point, the block height should be 107: we started at height
 	// 101, then generated 2 blocks in each loop iteration above.
-	_, height, err := r.Node.GetBestBlock()
-	if err != nil {
-		t.Fatalf("unable to get best block: %v", err)
-	}
-	if height != 107 {
-		t.Fatalf("height mismatch: expected %v got %v", 107, height)
-	}
+	assertChainHeight(r, t, 107)
 
 	// With the height at 107 we need 200 blocks to be mined after the
 	// genesis target period, so we mine 192 blocks. This'll put us at
@@ -538,17 +500,8 @@ func TestBIP0068AndBIP0112Activation(t *testing.T) {
 		t.Fatalf("unable to generate blocks: %v", err)
 	}
 
-	_, height, err = r.Node.GetBestBlock()
-	if err != nil {
-		t.Fatalf("unable to get best block: %v", err)
-	}
-	if height != 299 {
-		t.Fatalf("height mismatch: expected %v got %v", 299, height)
-	}
-
-	if !isSoftForkActive(r, t, "csv") {
-		t.Fatalf("csv soft-fork not yet active, but should be!")
-	}
+	assertChainHeight(r, t, 299)
+	assertSoftForkStatus(r, t, csvKey, blockchain.ThresholdActive)
 
 	// Knowing the number of outputs needed for the tests below, create a
 	// fresh output for use within each of the test-cases below.
