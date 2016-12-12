@@ -375,10 +375,15 @@ func (b *BlockChain) calcSequenceLock(node *blockNode, tx *btcutil.Tx,
 	// If we're performing block validation, then we need to query the BIP9
 	// state.
 	if !csvSoftforkActive {
+		prevNode, err := b.index.PrevNodeFromNode(node)
+		if err != nil {
+			return nil, err
+		}
+
 		// Obtain the latest BIP9 version bits state for the
 		// CSV-package soft-fork deployment. The adherence of sequence
 		// locks depends on the current soft-fork state.
-		csvState, err := b.deploymentState(node.parent, chaincfg.DeploymentCSV)
+		csvState, err := b.deploymentState(prevNode, chaincfg.DeploymentCSV)
 		if err != nil {
 			return nil, err
 		}
