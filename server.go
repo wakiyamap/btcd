@@ -774,6 +774,17 @@ func (sp *serverPeer) OnGetHeaders(_ *peer.Peer, msg *wire.MsgGetHeaders) {
 	sp.QueueMessage(&wire.MsgHeaders{Headers: blockHeaders}, nil)
 }
 
+// OnGetCBFilter is invoked when a peer receives a getcbfilter bitcoin message.
+func (sp *serverPeer) OnGetCBFilter(_ *peer.Peer, msg *wire.MsgGetCBFilter) {
+	// Ignore getcbfilter requests if not in sync.
+	if !sp.server.blockManager.IsCurrent() {
+		return
+	}
+
+	// XXX pedro: work in progress
+	peerLog.Warnf("received OnGetCBFilter")
+}
+
 // enforceNodeBloomFlag disconnects the peer if the server is not configured to
 // allow bloom filters.  Additionally, if the peer has negotiated to a protocol
 // version  that is high enough to observe the bloom filter service support bit,
@@ -1602,6 +1613,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnGetData:     sp.OnGetData,
 			OnGetBlocks:   sp.OnGetBlocks,
 			OnGetHeaders:  sp.OnGetHeaders,
+			OnGetCBFilter: sp.OnGetCBFilter,
 			OnFeeFilter:   sp.OnFeeFilter,
 			OnFilterAdd:   sp.OnFilterAdd,
 			OnFilterClear: sp.OnFilterClear,
