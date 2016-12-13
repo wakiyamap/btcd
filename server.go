@@ -40,7 +40,7 @@ import (
 const (
 	// defaultServices describes the default services that are supported by
 	// the server.
-	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom
+	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom | wire.SFNodeCBF
 
 	// defaultRequiredServices describes the default services that are
 	// required to be supported by outbound peers.
@@ -2208,6 +2208,9 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	services := defaultServices
 	if cfg.NoPeerBloomFilters {
 		services &^= wire.SFNodeBloom
+	}
+	if cfg.NoCBFilters {
+		services &^= wire.SFNodeCBF
 	}
 
 	amgr := addrmgr.New(cfg.DataDir, btcdLookup)
