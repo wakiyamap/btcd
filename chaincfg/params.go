@@ -85,6 +85,11 @@ const (
 	// purposes.
 	DeploymentTestDummy = iota
 
+	// DeploymentCSV defines the rule change deployment ID for the CSV
+	// soft-fork package. The CSV package includes the depolyment of BIPS
+	// 68, 112, and 113.
+	DeploymentCSV
+
 	// DeploymentSegwit defines the reule change deployment ID for the
 	// Segragated Witness (segwit) soft-fork pckage. The segwit package
 	// includes the depolymnet of BIPS 141, 142, 143, 144, 145 and 147.
@@ -282,6 +287,11 @@ var MainNetParams = Params{
 			StartTime:  1479168000, // November 15, 2016 UTC
 			ExpireTime: 1510704000, // November 15, 2017 UTC.
 		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  1462060800, // May 1st, 2016
+			ExpireTime: 1493596800, // May 1st, 2017
+		},
 	},
 
 	// Mempool parameters
@@ -348,6 +358,11 @@ var RegressionNetParams = Params{
 			BitNumber:  1,
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires.
+		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires
 		},
 	},
 
@@ -421,6 +436,11 @@ var TestNet3Params = Params{
 			StartTime:  1462060800, // May 1, 2016 UTC
 			ExpireTime: 1493596800, // May 1, 2017 UTC.
 		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  1456790400, // March 1st, 2016
+			ExpireTime: 1493596800, // May 1st, 2017
+		},
 	},
 
 	// Mempool parameters
@@ -491,6 +511,11 @@ var SimNetParams = Params{
 			BitNumber:  1,
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires.
+		},
+		DeploymentCSV: {
+			BitNumber:  0,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires
 		},
 	},
 
