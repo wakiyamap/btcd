@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/roasbeef/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcrpcclient"
 )
 

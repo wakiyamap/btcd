@@ -4,7 +4,7 @@
 
 package blockchain
 
-import "github.com/btcsuite/btcutil"
+import "github.com/roasbeef/btcutil"
 
 // maybeAcceptBlock potentially accepts a block into the block chain and, if
 // accepted, returns whether or not it is on the main chain.  It performs
