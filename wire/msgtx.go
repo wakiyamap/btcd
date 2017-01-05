@@ -28,7 +28,7 @@ const (
 	// SequenceLockTimeDisabled is a flag that if set on a transaction
 	// input's sequence number, the sequence number will not be interpreted
 	// as a relative locktime.
-	SequenceLockTimeDisabled = 1 << 31
+	SequenceLockTimeDisabled uint32 = 1 << 31
 
 	// SequenceLockTimeIsSeconds is a flag that if set on a transaction
 	// input's sequence number, the relative locktime has units of 512
