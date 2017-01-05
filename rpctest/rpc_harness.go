@@ -18,7 +18,7 @@ import (
 	"github.com/roasbeef/btcd/chaincfg"
 	"github.com/roasbeef/btcd/chaincfg/chainhash"
 	"github.com/roasbeef/btcd/wire"
-	"github.com/btcsuite/btcrpcclient"
+	"github.com/roasbeef/btcrpcclient"
 	"github.com/roasbeef/btcutil"
 )
 
