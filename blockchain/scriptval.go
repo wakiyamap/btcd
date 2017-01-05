@@ -274,10 +274,12 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 		}
 
 		var cachedHashes *txscript.TxSigHashes
-		if hashCache != nil {
-			cachedHashes, _ = hashCache.GetSigHashes(sha)
-		} else {
-			cachedHashes = txscript.NewTxSigHashes(tx.MsgTx())
+		if segwitActive {
+			if hashCache != nil {
+				cachedHashes, _ = hashCache.GetSigHashes(sha)
+			} else {
+				cachedHashes = txscript.NewTxSigHashes(tx.MsgTx())
+			}
 		}
 
 		for txInIdx, txIn := range tx.MsgTx().TxIn {
