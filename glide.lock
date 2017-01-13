@@ -1,15 +1,22 @@
-hash: ea6e6ffa31517aacb35de06b097975229096253bf658d302f2d6652fde91b3f1
+hash: 11b48d857db0c8c6ae7c52787cc32eaeb4f39c6adbf6dfa64358f649b4ed1ae5
 updated: 2017-01-27T20:06:58.5779336-06:00
 imports:
+- name: github.com/aead/siphash
+  version: c12524e9e0f3f057ac288302833ea82abc583623
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
-  version: abcdfb702a7ca67e4a32c10be380c63216bd69fe
+  version: 5ce0ed600997eafaed25ad4936c1d84ec6ad2b5a
+  repo: ssh://github.com/companyzero/btcrpcclientln
+  vcs: git
 - name: github.com/btcsuite/btcutil
-  version: 86346b5a958c0cf94186b87855469ae991be501c
+  version: 5454b20ac2cb650b9b9aada2247f3c4a624f8c9b
+  repo: ssh://git@github.com/companyzero/btcutilln
+  vcs: git
   subpackages:
   - base58
   - bloom
+  - gcs
   - hdkeychain
 - name: github.com/btcsuite/go-socks
   version: 4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f
@@ -54,4 +61,6 @@ imports:
   - spew
 - name: github.com/jessevdk/go-flags
   version: 1679536dcc895411a9f5848d9a0250be7856448c
+- name: github.com/kkdai/bstream
+  version: f391b8402d23024e7c0f624b31267a89998fca95
 testImports: []
