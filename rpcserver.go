@@ -2103,7 +2103,7 @@ func handleGetCBFilter(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		}
 	}
 
-	return nil, nil
+	return hex.EncodeToString(filterBytes), nil
 }
 
 // handleGetConnectionCount implements the getconnectioncount command.
