@@ -68,9 +68,9 @@ const (
 	// filtering.
 	SFNodeBloom
 
-	// SFNNodeCBF is a flag used to indicate a peer supports committed
-	// bloom filters (CBFs).
-	SFNodeCBF
+	// SFNNodeCF is a flag used to indicate a peer supports committed
+	// filters (CFs).
+	SFNodeCF
 )
 
 // Map of service flags back to their constant names for pretty printing.
@@ -78,7 +78,7 @@ var sfStrings = map[ServiceFlag]string{
 	SFNodeNetwork: "SFNodeNetwork",
 	SFNodeGetUTXO: "SFNodeGetUTXO",
 	SFNodeBloom:   "SFNodeBloom",
-	SFNodeCBF:     "SFNodeCBF",
+	SFNodeCF:      "SFNodeCF",
 }
 
 // orderedSFStrings is an ordered list of service flags from highest to
@@ -87,7 +87,7 @@ var orderedSFStrings = []ServiceFlag{
 	SFNodeNetwork,
 	SFNodeGetUTXO,
 	SFNodeBloom,
-	SFNodeCBF,
+	SFNodeCF,
 }
 
 // String returns the ServiceFlag in human-readable form.
