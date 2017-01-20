@@ -1243,9 +1243,6 @@ func (p *Peer) maybeAddDeadline(pendingResponses map[string]time.Time, msgCmd st
 		// headers.
 		deadline = time.Now().Add(stallResponseTimeout * 3)
 		pendingResponses[wire.CmdHeaders] = deadline
-
-	// XXX pedro: we may need to handle OnCFilter here depending on the
-	// protocol behaviour defined.
 	}
 }
 
