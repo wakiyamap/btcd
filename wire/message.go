@@ -52,6 +52,7 @@ const (
 	CmdSendHeaders = "sendheaders"
 	CmdFeeFilter   = "feefilter"
 	CmdGetCFilter  = "getcfilter"
+	CmdCFilter     = "cfilter"
 )
 
 // Message is an interface that describes a bitcoin message.  A type that
@@ -141,6 +142,9 @@ func makeEmptyMessage(command string) (Message, error) {
 
 	case CmdGetCFilter:
 		msg = &MsgGetCFilter{}
+
+	case CmdCFilter:
+		msg = &MsgCFilter{}
 
 	default:
 		return nil, fmt.Errorf("unhandled command [%s]", command)
