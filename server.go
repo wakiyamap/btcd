@@ -783,13 +783,13 @@ func (sp *serverPeer) OnGetCFilter(_ *peer.Peer, msg *wire.MsgGetCFilter) {
 	}
 
 	filterBytes, err := sp.server.cfIndex.FilterByBlockHash(&msg.BlockHash,
-	    msg.Extended)
+		msg.Extended)
 
 	if len(filterBytes) > 0 {
 		peerLog.Infof("Obtained CB filter for %v", msg.BlockHash)
 	} else {
 		peerLog.Infof("Could not obtain CB filter for %v: %v",
-		    msg.BlockHash, err)
+			msg.BlockHash, err)
 	}
 
 	filterMsg := wire.NewMsgCFilter(filterBytes)
@@ -1624,7 +1624,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnGetData:     sp.OnGetData,
 			OnGetBlocks:   sp.OnGetBlocks,
 			OnGetHeaders:  sp.OnGetHeaders,
-			OnGetCFilter : sp.OnGetCFilter,
+			OnGetCFilter:  sp.OnGetCFilter,
 			OnFeeFilter:   sp.OnFeeFilter,
 			OnFilterAdd:   sp.OnFilterAdd,
 			OnFilterClear: sp.OnFilterClear,
@@ -2409,7 +2409,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	}
 	if !cfg.NoCFilters {
 		indxLog.Info("cf index is enabled")
-		s.cfIndex = indexers.NewCfIndex(db)
+		s.cfIndex = indexers.NewCfIndex(db, chainParams)
 		indexes = append(indexes, s.cfIndex)
 	}
 
