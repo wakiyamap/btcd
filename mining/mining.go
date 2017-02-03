@@ -444,7 +444,6 @@ func NewBlkTmplGenerator(policy *Policy, params *chaincfg.Params,
 func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress btcutil.Address) (*BlockTemplate, error) {
 	// Extend the most recently known best block.
 	best := g.chain.BestSnapshot()
-	prevHash := &best.Hash
 	nextBlockHeight := best.Height + 1
 
 	// Create a standard coinbase transaction paying to the provided
@@ -862,7 +861,7 @@ mempoolLoop:
 	var msgBlock wire.MsgBlock
 	msgBlock.Header = wire.BlockHeader{
 		Version:    nextBlockVersion,
-		PrevBlock:  *prevHash,
+		PrevBlock:  best.Hash,
 		MerkleRoot: *merkles[len(merkles)-1],
 		Timestamp:  ts,
 		Bits:       reqDifficulty,
