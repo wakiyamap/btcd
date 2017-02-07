@@ -10,13 +10,14 @@ imports:
   repo: ssh://git@github.com/companyzero/btcrpcclientln
   vcs: git
 - name: github.com/btcsuite/btcutil
-  version: 4c5194f2a7bafc578ca037fc26fb116ad95081db
+  version: def31d3ea43c40704348dd720f5a255c2cab6b0a
   repo: ssh://git@github.com/companyzero/btcutilln
   vcs: git
   subpackages:
   - base58
   - bloom
   - gcs
+  - gcs/builder
   - hdkeychain
 - name: github.com/btcsuite/go-socks
   version: 4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f
