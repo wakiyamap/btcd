@@ -10,7 +10,7 @@ imports:
   repo: ssh://git@github.com/companyzero/btcrpcclientln
   vcs: git
 - name: github.com/btcsuite/btcutil
-  version: def31d3ea43c40704348dd720f5a255c2cab6b0a
+  version: 3580aecfbd258217967b3e3ffa59d28588056da4
   repo: ssh://git@github.com/companyzero/btcutilln
   vcs: git
   subpackages:
