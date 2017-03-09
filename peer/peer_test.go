@@ -362,13 +362,13 @@ func TestPeerListeners(t *testing.T) {
 			OnGetCFilter: func(p *peer.Peer, msg *wire.MsgGetCFilter) {
 				ok <- msg
 			},
-			OnGetCFHeader: func(p *peer.Peer, msg *wire.MsgGetCFHeader) {
+			OnGetCFHeaders: func(p *peer.Peer, msg *wire.MsgGetCFHeaders) {
 				ok <- msg
 			},
 			OnCFilter: func(p *peer.Peer, msg *wire.MsgCFilter) {
 				ok <- msg
 			},
-			OnCFHeader: func(p *peer.Peer, msg *wire.MsgCFHeader) {
+			OnCFHeaders: func(p *peer.Peer, msg *wire.MsgCFHeaders) {
 				ok <- msg
 			},
 			OnFeeFilter: func(p *peer.Peer, msg *wire.MsgFeeFilter) {
@@ -498,16 +498,16 @@ func TestPeerListeners(t *testing.T) {
 			wire.NewMsgGetCFilter(&chainhash.Hash{}, false),
 		},
 		{
-			"OnGetCFHeader",
-			wire.NewMsgGetCFHeader(&chainhash.Hash{}, false),
+			"OnGetCFHeaders",
+			wire.NewMsgGetCFHeaders(),
 		},
 		{
 			"OnCFilter",
 			wire.NewMsgCFilter([]byte("payload")),
 		},
 		{
-			"OnCFHeader",
-			wire.NewMsgCFHeader([]byte("payload")),
+			"OnCFHeaders",
+			wire.NewMsgCFHeaders(),
 		},
 		{
 			"OnFeeFilter",
