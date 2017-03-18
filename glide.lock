@@ -1,12 +1,12 @@
-hash: 11b48d857db0c8c6ae7c52787cc32eaeb4f39c6adbf6dfa64358f649b4ed1ae5
-updated: 2017-01-27T20:06:58.5779336-06:00
+hash: 460c7d3de605660ededac34870ea8fed99b4622acb2ce5f275cee7028034e785
+updated: 2017-03-17T18:17:03.660666675-06:00
 imports:
 - name: github.com/aead/siphash
   version: c12524e9e0f3f057ac288302833ea82abc583623
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
-  version: 5ce0ed600997eafaed25ad4936c1d84ec6ad2b5a
+  version: e6ffcbc2d206c8871fcfff700e03d1b97393c06d
   repo: ssh://git@github.com/companyzero/btcrpcclientln
   vcs: git
 - name: github.com/btcsuite/btcutil
@@ -19,6 +19,10 @@ imports:
   - gcs
   - gcs/builder
   - hdkeychain
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
+- name: github.com/btcsuite/go-flags
+  version: 1679536dcc895411a9f5848d9a0250be7856448c
 - name: github.com/btcsuite/go-socks
   version: 4720035b7bfd2a9bb130b1c184f8bbe41b6f0d0f
   subpackages:

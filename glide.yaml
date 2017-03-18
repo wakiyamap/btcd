@@ -1,7 +1,6 @@
 package: github.com/btcsuite/btcd
 import:
 - package: github.com/btcsuite/btclog
-- package: github.com/btcsuite/btcrpcclient
 - package: github.com/btcsuite/btcutil
   repo: ssh://git@github.com/companyzero/btcutilln
   vcs: git
@@ -10,7 +9,7 @@ import:
   - bloom
   - hdkeychain
 - package: github.com/btcsuite/btcrpcclient
-  repo: ssh://github.com/companyzero/btcrpcclientln
+  repo: ssh://git@github.com/companyzero/btcrpcclientln
   vcs: git
   version: pedro_cbf
 - package: github.com/btcsuite/fastsha256
