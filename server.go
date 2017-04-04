@@ -875,6 +875,9 @@ func (sp *serverPeer) OnGetCFHeaders(_ *peer.Peer, msg *wire.MsgGetCFHeaders) {
 		peerLog.Warnf("Header lookup failed: %v", err)
 		return
 	}
+	if len(hashList) == 0 {
+		return
+	}
 
 	// Generate cfheaders message and send it.
 	headersMsg := wire.NewMsgCFHeaders()
