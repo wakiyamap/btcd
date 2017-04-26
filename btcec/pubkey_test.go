@@ -282,3 +282,18 @@ func TestPublicKeyIsEqual(t *testing.T) {
 			"equal to %v", pubKey1, pubKey2)
 	}
 }
+
+func TestIsCompressed(t *testing.T) {
+	for _, test := range pubKeyTests {
+		isCompressed := IsCompressedPubKey(test.key)
+
+		switch {
+		case isCompressed && test.format != pubkeyCompressed:
+			t.Fatalf("%s pubkey: incorrectly detected as compressed",
+				spew.Sdump(test))
+		case !isCompressed && test.format == pubkeyCompressed:
+			t.Fatalf("%s pubkey: failed to be detected as compressed",
+				spew.Sdump(test))
+		}
+	}
+}
