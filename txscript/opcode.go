@@ -917,6 +917,31 @@ func opcodeNop(op *parsedOpcode, vm *Engine) error {
 	return nil
 }
 
+// enforceMinimalif enforces the "minimal if" policy during script execution.
+// In order to eliminate an additiona  source of nuisance malleability,
+// post-segwit for version 0 witness programs, we now require the following:
+// for OP_IF and OP_NOT_IF, the top stack item MUST either be an empty byte
+// slice, or [0x01].
+func enforceMinimalif(topStackItem []byte) error {
+	// This top element MUST have a length of one.
+	if len(topStackItem) > 1 {
+		str := fmt.Sprintf("minimal if is active, top "+
+			"element MUST have a length of 1, instead length "+
+			"is %v", len(topStackItem))
+		return scriptError(ErrMinimalIf, str)
+	}
+
+	// Additionally, if the length is one, then the value MUST be 0x01.
+	if len(topStackItem) == 1 && topStackItem[0] != 0x01 {
+		str := fmt.Sprintf("minimal if is active, top stack item MUST "+
+			"be an empty byte array or 0x01, is instead: %v",
+			topStackItem[0])
+		return scriptError(ErrMinimalIf, str)
+	}
+
+	return nil
+}
+
 // opcodeIf treats the top item on the data stack as a boolean and removes it.
 //
 // An appropriate entry is added to the conditional stack depending on whether
@@ -935,9 +960,35 @@ func opcodeNop(op *parsedOpcode, vm *Engine) error {
 func opcodeIf(op *parsedOpcode, vm *Engine) error {
 	condVal := OpCondFalse
 	if vm.isBranchExecuting() {
-		ok, err := vm.dstack.PopBool()
-		if err != nil {
-			return err
+		var (
+			ok  bool
+			err error
+		)
+
+		// If we're in witness execution mode, executing a v0 witness
+		// program, and the minimal if flag is active, then we need to
+		// observe an additional constraint on this value.
+		if vm.witness && vm.hasFlag(ScriptVerifyMinimalIf) {
+			topElem, err := vm.dstack.PopByteArray()
+			if err != nil {
+				return err
+			}
+
+			// Enforce minimal if policy rule, failing the script
+			// if the top element violates the required
+			// constraints.
+			if err := enforceMinimalif(topElem); err != nil {
+				return err
+			}
+
+			ok = asBool(topElem)
+		} else {
+			// Otherwise, we'll pop and perform a type conversion
+			// on the top argument as normal.
+			ok, err = vm.dstack.PopBool()
+			if err != nil {
+				return err
+			}
 		}
 		if ok {
 			condVal = OpCondTrue
@@ -968,9 +1019,35 @@ func opcodeIf(op *parsedOpcode, vm *Engine) error {
 func opcodeNotIf(op *parsedOpcode, vm *Engine) error {
 	condVal := OpCondFalse
 	if vm.isBranchExecuting() {
-		ok, err := vm.dstack.PopBool()
-		if err != nil {
-			return err
+		var (
+			ok  bool
+			err error
+		)
+
+		// If we're in witness execution mode, executing a v0 witness
+		// program, and the minimal if flag is active, then we need to
+		// observe an additional constraint on this value.
+		if vm.witness && vm.hasFlag(ScriptVerifyMinimalIf) {
+			topElem, err := vm.dstack.PopByteArray()
+			if err != nil {
+				return err
+			}
+
+			// Enforce minimal if policy rule, failing the script
+			// if the top element violates the required
+			// constraints.
+			if err := enforceMinimalif(topElem); err != nil {
+				return err
+			}
+
+			ok = asBool(topElem)
+		} else {
+			// Otherwise, we'll pop and perform a type conversion
+			// on the top argument as normal.
+			ok, err = vm.dstack.PopBool()
+			if err != nil {
+				return err
+			}
 		}
 		if !ok {
 			condVal = OpCondTrue
