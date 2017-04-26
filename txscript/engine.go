@@ -253,7 +253,7 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			if len(witness) != 2 {
 				err := fmt.Sprintf("should have exactly two "+
 					"items in witness, instead have %v", len(witness))
-				return scriptError(ErrWitnessScriptMismatch, err)
+				return scriptError(ErrWitnessProgramMismatch, err)
 			}
 
 			// Now we'll resume execution as if it were a
@@ -273,7 +273,6 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness)
 		case payToWitnessScriptHashDataSize: // P2WSH
-
 			// Additionally, The witness stack MUST NOT be empty at
 			// this point.
 			if len(witness) == 0 {
@@ -288,7 +287,7 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			pkScript := witness[len(witness)-1]
 			witnessHash := fastsha256.Sum256(pkScript)
 			if !bytes.Equal(witnessHash[:], vm.witnessProgram) {
-				return scriptError(ErrWitnessScriptMismatch,
+				return scriptError(ErrWitnessProgramMismatch,
 					"witness program hash mismatch")
 			}
 
@@ -310,8 +309,10 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			return scriptError(ErrWitnessProgramWrongLength, errStr)
 		}
 	} else if vm.hasFlag(ScriptVerifyDiscourageUpgradeableWitnessProgram) {
-		return fmt.Errorf("new witness program versions invalid: %v",
-			vm.witnessVersion)
+		errStr := fmt.Sprintf("new witness program versions "+
+			"invalid: %v", vm.witnessProgram)
+
+		return scriptError(ErrDiscourageUpgradableWitnessProgram, errStr)
 	} else {
 		// If we encounter an unknown witness program version and we
 		// aren't discouraging future unknown witness based soft-forks,
@@ -379,7 +380,8 @@ func (vm *Engine) CheckErrorCondition(finalScript bool) error {
 	// then the stack MUST be clean in order to maintain compatibility with
 	// BIP16.
 	if finalScript && vm.witness && vm.dstack.Depth() != 1 {
-		return ErrStackCleanStack
+		return scriptError(ErrEvalFalse, "witness program must "+
+			"have clean stack")
 	}
 
 	if finalScript && vm.hasFlag(ScriptVerifyCleanStack) &&
