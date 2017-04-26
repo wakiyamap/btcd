@@ -88,6 +88,11 @@ const (
 	// ScriptVerifyMinimalIf makes a script with an OP_IF/OP_NOTIF who's
 	// operand is anything either an empty vector or [0x01] non-standard.
 	ScriptVerifyMinimalIf
+
+	// ScriptVerifyWitnessPubKeyType makes a script within a check-sig
+	// operation who's public key isn't serialized in a compressed format
+	// non-standard.
+	ScriptVerifyWitnessPubKeyType
 )
 
 const (
@@ -555,6 +560,13 @@ func (vm *Engine) checkHashTypeEncoding(hashType SigHashType) error {
 // checkPubKeyEncoding returns whether or not the passed public key adheres to
 // the strict encoding requirements if enabled.
 func (vm *Engine) checkPubKeyEncoding(pubKey []byte) error {
+	if vm.hasFlag(ScriptVerifyWitnessPubKeyType) && vm.witness &&
+		!btcec.IsCompressedPubKey(pubKey) {
+
+		str := "only uncompressed keys are accepted post-segwit"
+		return scriptError(ErrWitnessPubKeyType, str)
+	}
+
 	if !vm.hasFlag(ScriptVerifyStrictEncoding) {
 		return nil
 	}
@@ -567,6 +579,7 @@ func (vm *Engine) checkPubKeyEncoding(pubKey []byte) error {
 		// Uncompressed
 		return nil
 	}
+
 	return scriptError(ErrPubKeyType, "unsupported public key type")
 }
 
