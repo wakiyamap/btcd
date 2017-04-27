@@ -6,11 +6,11 @@ imports:
 - name: github.com/btcsuite/btclog
   version: 73889fb79bd687870312b6e40effcecffbd57d30
 - name: github.com/btcsuite/btcrpcclient
-  version: e6ffcbc2d206c8871fcfff700e03d1b97393c06d
+  version: e15bd09b466511d8836c4017bc4cbc2e0ff05f82
   repo: ssh://git@github.com/companyzero/btcrpcclientln
   vcs: git
 - name: github.com/btcsuite/btcutil
-  version: 3580aecfbd258217967b3e3ffa59d28588056da4
+  version: 748bf70feb7e5b79d942d173f70d845a96450723
   repo: ssh://git@github.com/companyzero/btcutilln
   vcs: git
   subpackages:
