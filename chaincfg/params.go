@@ -90,6 +90,11 @@ const (
 	// 68, 112, and 113.
 	DeploymentCSV
 
+	// DeploymentSegwit defines the reule change deployment ID for the
+	// Segragated Witness (segwit) soft-fork pckage. The segwit package
+	// includes the depolymnet of BIPS 141, 142, 143, 144, 145 and 147.
+	DeploymentSegwit
+
 	// NOTE: DefinedDeployments must always come last since it is used to
 	// determine how many defined deployments there currently are.
 
@@ -196,9 +201,11 @@ type Params struct {
 	RelayNonStdTxs bool
 
 	// Address encoding magics
-	PubKeyHashAddrID byte // First byte of a P2PKH address
-	ScriptHashAddrID byte // First byte of a P2SH address
-	PrivateKeyID     byte // First byte of a WIF private key
+	PubKeyHashAddrID        byte // First byte of a P2PKH address
+	ScriptHashAddrID        byte // First byte of a P2SH address
+	PrivateKeyID            byte // First byte of a WIF private key
+	WitnessPubKeyHashAddrID byte // First byte of a P2WPKH address
+	WitnessScriptHashAddrID byte // First byte of a P2WSH address
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID [4]byte
@@ -280,15 +287,22 @@ var MainNetParams = Params{
 			StartTime:  1462060800, // May 1st, 2016
 			ExpireTime: 1493596800, // May 1st, 2017
 		},
+		DeploymentSegwit: {
+			BitNumber:  1,
+			StartTime:  1479168000, // November 15, 2016 UTC
+			ExpireTime: 1510704000, // November 15, 2017 UTC.
+		},
 	},
 
 	// Mempool parameters
 	RelayNonStdTxs: false,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x00, // starts with 1
-	ScriptHashAddrID: 0x05, // starts with 3
-	PrivateKeyID:     0x80, // starts with 5 (uncompressed) or K (compressed)
+	PubKeyHashAddrID:        0x00, // starts with 1
+	ScriptHashAddrID:        0x05, // starts with 3
+	PrivateKeyID:            0x80, // starts with 5 (uncompressed) or K (compressed)
+	WitnessPubKeyHashAddrID: 0x06, // starts with p2
+	WitnessScriptHashAddrID: 0x0A, // starts with 7Xh
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x88, 0xad, 0xe4}, // starts with xprv
@@ -344,6 +358,11 @@ var RegressionNetParams = Params{
 			BitNumber:  0,
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires
+		},
+		DeploymentSegwit: {
+			BitNumber:  1,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires.
 		},
 	},
 
@@ -427,15 +446,22 @@ var TestNet3Params = Params{
 			StartTime:  1456790400, // March 1st, 2016
 			ExpireTime: 1493596800, // May 1st, 2017
 		},
+		DeploymentSegwit: {
+			BitNumber:  1,
+			StartTime:  1462060800, // May 1, 2016 UTC
+			ExpireTime: 1493596800, // May 1, 2017 UTC.
+		},
 	},
 
 	// Mempool parameters
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x6f, // starts with m or n
-	ScriptHashAddrID: 0xc4, // starts with 2
-	PrivateKeyID:     0xef, // starts with 9 (uncompressed) or c (compressed)
+	PubKeyHashAddrID:        0x6f, // starts with m or n
+	ScriptHashAddrID:        0xc4, // starts with 2
+	WitnessPubKeyHashAddrID: 0x03, // starts with QW
+	WitnessScriptHashAddrID: 0x28, // starts with T7n
+	PrivateKeyID:            0xef, // starts with 9 (uncompressed) or c (compressed)
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x35, 0x83, 0x94}, // starts with tprv
@@ -496,15 +522,22 @@ var SimNetParams = Params{
 			StartTime:  0,             // Always available for vote
 			ExpireTime: math.MaxInt64, // Never expires
 		},
+		DeploymentSegwit: {
+			BitNumber:  1,
+			StartTime:  0,             // Always available for vote
+			ExpireTime: math.MaxInt64, // Never expires.
+		},
 	},
 
 	// Mempool parameters
 	RelayNonStdTxs: true,
 
 	// Address encoding magics
-	PubKeyHashAddrID: 0x3f, // starts with S
-	ScriptHashAddrID: 0x7b, // starts with s
-	PrivateKeyID:     0x64, // starts with 4 (uncompressed) or F (compressed)
+	PubKeyHashAddrID:        0x3f, // starts with S
+	ScriptHashAddrID:        0x7b, // starts with s
+	PrivateKeyID:            0x64, // starts with 4 (uncompressed) or F (compressed)
+	WitnessPubKeyHashAddrID: 0x19, // starts with Gg
+	WitnessScriptHashAddrID: 0x28, // starts with ?
 
 	// BIP32 hierarchical deterministic extended key magics
 	HDPrivateKeyID: [4]byte{0x04, 0x20, 0xb9, 0x00}, // starts with sprv

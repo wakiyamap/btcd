@@ -40,7 +40,7 @@ import (
 const (
 	// defaultServices describes the default services that are supported by
 	// the server.
-	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom
+	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom | wire.SFNodeWitness
 
 	// defaultRequiredServices describes the default services that are
 	// required to be supported by outbound peers.
@@ -172,6 +172,7 @@ type server struct {
 	addrManager          *addrmgr.AddrManager
 	connManager          *connmgr.ConnManager
 	sigCache             *txscript.SigCache
+	hashCache            *txscript.HashCache
 	rpcServer            *rpcServer
 	blockManager         *blockManager
 	txMemPool            *mempool.TxPool
@@ -209,6 +210,8 @@ type serverPeer struct {
 
 	connReq         *connmgr.ConnReq
 	server          *server
+	witnessMtx      sync.Mutex
+	witnessEnabled  bool
 	persistent      bool
 	continueHash    *chainhash.Hash
 	relayMtx        sync.Mutex
@@ -350,6 +353,14 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 	// is received.
 	sp.setDisableRelayTx(msg.DisableRelayTx)
 
+	// Determine if the peer would like to receive witness data with
+	// transactions, or not.
+	if sp.Services()&wire.SFNodeWitness == wire.SFNodeWitness {
+		sp.witnessMtx.Lock()
+		sp.witnessEnabled = true
+		sp.witnessMtx.Unlock()
+	}
+
 	// Update the address manager and request known addresses from the
 	// remote peer for outbound connections.  This is skipped when running
 	// on the simulation test network since it is only intended to connect
@@ -357,8 +368,28 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 	// discovered peers.
 	if !cfg.SimNet {
 		addrManager := sp.server.addrManager
+
 		// Outbound connections.
 		if !sp.Inbound() {
+			// After soft-fork activation, only make outbound
+			// connection to peers if they flag that they're segwit
+			// enabled.
+			chain := sp.server.blockManager.chain
+			segwitState, err := chain.ThresholdState(chaincfg.DeploymentSegwit)
+			if err != nil {
+				peerLog.Errorf("Unable to query for segwit "+
+					"soft-fork state: %v", err)
+				return
+			}
+			segwitActive := segwitState == blockchain.ThresholdActive
+			if segwitActive && !sp.witnessEnabled {
+				peerLog.Infof("Disconnecting non-segwit "+
+					"peer %v, isn't segwit segwit enabled and "+
+					"we need more segwit enabled peers", sp)
+				sp.Disconnect()
+				return
+			}
+
 			// TODO(davec): Only do this if not doing the initial block
 			// download and the local address is routable.
 			if !cfg.DisableListen /* && isCurrent? */ {
@@ -567,12 +598,18 @@ func (sp *serverPeer) OnGetData(_ *peer.Peer, msg *wire.MsgGetData) {
 		}
 		var err error
 		switch iv.Type {
+		case wire.InvTypeWitnessTx:
+			err = sp.server.pushTxMsg(sp, &iv.Hash, c, waitChan, wire.WitnessEncoding)
 		case wire.InvTypeTx:
-			err = sp.server.pushTxMsg(sp, &iv.Hash, c, waitChan)
+			err = sp.server.pushTxMsg(sp, &iv.Hash, c, waitChan, wire.BaseEncoding)
+		case wire.InvTypeWitnessBlock:
+			err = sp.server.pushBlockMsg(sp, &iv.Hash, c, waitChan, wire.WitnessEncoding)
 		case wire.InvTypeBlock:
-			err = sp.server.pushBlockMsg(sp, &iv.Hash, c, waitChan)
+			err = sp.server.pushBlockMsg(sp, &iv.Hash, c, waitChan, wire.BaseEncoding)
+		case wire.InvTypeFilteredWitnessBlock:
+			err = sp.server.pushMerkleBlockMsg(sp, &iv.Hash, c, waitChan, wire.WitnessEncoding)
 		case wire.InvTypeFilteredBlock:
-			err = sp.server.pushMerkleBlockMsg(sp, &iv.Hash, c, waitChan)
+			err = sp.server.pushMerkleBlockMsg(sp, &iv.Hash, c, waitChan, wire.BaseEncoding)
 		default:
 			peerLog.Warnf("Unknown type in inventory request %d",
 				iv.Type)
@@ -1049,7 +1086,9 @@ func (s *server) AnnounceNewTransactions(newTxs []*mempool.TxDesc) {
 
 // pushTxMsg sends a tx message for the provided transaction hash to the
 // connected peer.  An error is returned if the transaction hash is not known.
-func (s *server) pushTxMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<- struct{}, waitChan <-chan struct{}) error {
+func (s *server) pushTxMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<- struct{},
+	waitChan <-chan struct{}, encoding wire.MessageEncoding) error {
+
 	// Attempt to fetch the requested transaction from the pool.  A
 	// call could be made to check for existence first, but simply trying
 	// to fetch a missing transaction results in the same behavior.
@@ -1069,14 +1108,16 @@ func (s *server) pushTxMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<-
 		<-waitChan
 	}
 
-	sp.QueueMessage(tx.MsgTx(), doneChan)
+	sp.QueueMessageWithEncoding(tx.MsgTx(), doneChan, encoding)
 
 	return nil
 }
 
 // pushBlockMsg sends a block message for the provided block hash to the
 // connected peer.  An error is returned if the block hash is not known.
-func (s *server) pushBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<- struct{}, waitChan <-chan struct{}) error {
+func (s *server) pushBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<- struct{},
+	waitChan <-chan struct{}, encoding wire.MessageEncoding) error {
+
 	// Fetch the raw block bytes from the database.
 	var blockBytes []byte
 	err := sp.server.db.View(func(dbTx database.Tx) error {
@@ -1120,7 +1161,7 @@ func (s *server) pushBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneChan cha
 	if !sendInv {
 		dc = doneChan
 	}
-	sp.QueueMessage(&msgBlock, dc)
+	sp.QueueMessageWithEncoding(&msgBlock, dc, encoding)
 
 	// When the peer requests the final block that was advertised in
 	// response to a getblocks message which requested more blocks than
@@ -1142,7 +1183,9 @@ func (s *server) pushBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneChan cha
 // the connected peer.  Since a merkle block requires the peer to have a filter
 // loaded, this call will simply be ignored if there is no filter loaded.  An
 // error is returned if the block hash is not known.
-func (s *server) pushMerkleBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneChan chan<- struct{}, waitChan <-chan struct{}) error {
+func (s *server) pushMerkleBlockMsg(sp *serverPeer, hash *chainhash.Hash,
+	doneChan chan<- struct{}, waitChan <-chan struct{}, encoding wire.MessageEncoding) error {
+
 	// Do not send a response if the peer doesn't have a filter loaded.
 	if !sp.filter.IsLoaded() {
 		if doneChan != nil {
@@ -1189,7 +1232,8 @@ func (s *server) pushMerkleBlockMsg(sp *serverPeer, hash *chainhash.Hash, doneCh
 			dc = doneChan
 		}
 		if txIndex < uint32(len(blkTransactions)) {
-			sp.QueueMessage(blkTransactions[txIndex], dc)
+			sp.QueueMessageWithEncoding(blkTransactions[txIndex], dc,
+				encoding)
 		}
 	}
 
@@ -1625,7 +1669,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 		ChainParams:      sp.server.chainParams,
 		Services:         sp.server.services,
 		DisableRelayTx:   cfg.BlocksOnly,
-		ProtocolVersion:  wire.FeeFilterVersion,
+		ProtocolVersion:  peer.MaxProtocolVersion,
 	}
 }
 
@@ -2353,6 +2397,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		timeSource:           blockchain.NewMedianTime(),
 		services:             services,
 		sigCache:             txscript.NewSigCache(cfg.SigCacheMaxSize),
+		hashCache:            txscript.NewHashCache(cfg.SigCacheMaxSize),
 	}
 
 	// Create the transaction and address indexes if needed.
@@ -2400,7 +2445,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			FreeTxRelayLimit:     cfg.FreeTxRelayLimit,
 			MaxOrphanTxs:         cfg.MaxOrphanTxs,
 			MaxOrphanTxSize:      defaultMaxOrphanTxSize,
-			MaxSigOpsPerTx:       blockchain.MaxSigOpsPerBlock / 5,
+			MaxSigOpCostPerTx:    blockchain.MaxBlockSigOpsCost / 4,
 			MinRelayTxFee:        cfg.minRelayTxFee,
 			MaxTxVersion:         2,
 		},
@@ -2412,6 +2457,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 			return bm.chain.CalcSequenceLock(tx, view, true)
 		},
 		SigCache:  s.sigCache,
+		HashCache: s.hashCache,
 		AddrIndex: s.addrIndex,
 	}
 	s.txMemPool = mempool.New(&txC)
@@ -2422,6 +2468,8 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	// NOTE: The CPU miner relies on the mempool, so the mempool has to be
 	// created before calling the function to create the CPU miner.
 	policy := mining.Policy{
+		BlockMinWeight:    cfg.BlockMinWeight,
+		BlockMaxWeight:    cfg.BlockMaxWeight,
 		BlockMinSize:      cfg.BlockMinSize,
 		BlockMaxSize:      cfg.BlockMaxSize,
 		BlockPrioritySize: cfg.BlockPrioritySize,
@@ -2429,7 +2477,7 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	}
 	blockTemplateGenerator := mining.NewBlkTmplGenerator(&policy,
 		s.chainParams, s.txMemPool, s.blockManager.chain, s.timeSource,
-		s.sigCache)
+		s.sigCache, s.hashCache)
 	s.cpuMiner = cpuminer.New(&cpuminer.Config{
 		ChainParams:            chainParams,
 		BlockTemplateGenerator: blockTemplateGenerator,

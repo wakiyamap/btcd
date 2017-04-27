@@ -54,6 +54,24 @@ const (
 	pubkeyHybrid       byte = 0x6 // y_bit + x coord + y coord
 )
 
+// IsCompressedPubKey returns true the the passed serialized public key has
+// been encoded in compressed format, and false otherwise.
+func IsCompressedPubKey(pubKey []byte) bool {
+	// If the length of the public key isn't 33-bytes, then we can rule it
+	// out early.
+	if len(pubKey) != PubKeyBytesLenCompressed {
+		return false
+	}
+
+	// Next, extract the format that's encoded within the first byte of the
+	// serialized pubkey.
+	format := pubKey[0]
+
+	// With the format isoluated it MUST be of a compressed key type,
+	// otherwise, the isn't a compressed public key.
+	return format == 0x02 || format == 0x03
+}
+
 // ParsePubKey parses a public key for a koblitz curve from a bytestring into a
 // ecdsa.Publickey, verifying that it is valid. It supports compressed,
 // uncompressed and hybrid signature formats.
