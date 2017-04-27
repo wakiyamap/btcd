@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// XXX pedro: we will probably need to bump this.
 const (
 	// ProtocolVersion is the latest protocol version this package supports.
 	ProtocolVersion uint32 = 70013
@@ -63,13 +64,17 @@ const (
 	// getutxos and utxos commands (BIP0064).
 	SFNodeGetUTXO
 
-	// SFNodeBloom is a flag used to indiciate a peer supports bloom
+	// SFNodeBloom is a flag used to indicate a peer supports bloom
 	// filtering.
 	SFNodeBloom
 
 	// SFNodeWitness is a flag used to indicate a peer supports blocks
 	// and transactions including witness data (BIP0144).
 	SFNodeWitness
+
+	// SFNNodeCF is a flag used to indicate a peer supports committed
+	// filters (CFs).
+	SFNodeCF
 )
 
 // Map of service flags back to their constant names for pretty printing.
@@ -78,6 +83,7 @@ var sfStrings = map[ServiceFlag]string{
 	SFNodeGetUTXO: "SFNodeGetUTXO",
 	SFNodeBloom:   "SFNodeBloom",
 	SFNodeWitness: "SFNodeWitness",
+	SFNodeCF:      "SFNodeCF",
 }
 
 // orderedSFStrings is an ordered list of service flags from highest to
@@ -87,6 +93,7 @@ var orderedSFStrings = []ServiceFlag{
 	SFNodeGetUTXO,
 	SFNodeBloom,
 	SFNodeWitness,
+	SFNodeCF,
 }
 
 // String returns the ServiceFlag in human-readable form.

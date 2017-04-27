@@ -202,7 +202,7 @@ func TestWTxSha(t *testing.T) {
 	}
 
 	// From block 23157 in a past version of segnet.
-	msgTx := NewMsgTx()
+	msgTx := NewMsgTx(1)
 	txIn := TxIn{
 		PreviousOutPoint: OutPoint{
 			Hash: chainhash.Hash{

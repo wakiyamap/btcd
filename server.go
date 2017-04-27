@@ -40,7 +40,8 @@ import (
 const (
 	// defaultServices describes the default services that are supported by
 	// the server.
-	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom | wire.SFNodeWitness
+	defaultServices = wire.SFNodeNetwork | wire.SFNodeBloom |
+		wire.SFNodeWitness | wire.SFNodeCF
 
 	// defaultRequiredServices describes the default services that are
 	// required to be supported by outbound peers.
@@ -198,6 +199,7 @@ type server struct {
 	// do not need to be protected for concurrent access.
 	txIndex   *indexers.TxIndex
 	addrIndex *indexers.AddrIndex
+	cfIndex   *indexers.CfIndex
 }
 
 // serverPeer extends the peer to maintain state shared by the server and
@@ -809,6 +811,140 @@ func (sp *serverPeer) OnGetHeaders(_ *peer.Peer, msg *wire.MsgGetHeaders) {
 		blockHeaders = blockHeaders[:wire.MaxBlockHeaderPayload]
 	}
 	sp.QueueMessage(&wire.MsgHeaders{Headers: blockHeaders}, nil)
+}
+
+// OnGetCFilter is invoked when a peer receives a getcfilter bitcoin message.
+func (sp *serverPeer) OnGetCFilter(_ *peer.Peer, msg *wire.MsgGetCFilter) {
+	// Ignore getcfilter requests if not in sync.
+	if !sp.server.blockManager.IsCurrent() {
+		return
+	}
+
+	filterBytes, err := sp.server.cfIndex.FilterByBlockHash(&msg.BlockHash,
+		msg.Extended)
+
+	if len(filterBytes) > 0 {
+		peerLog.Infof("Obtained CF for %v", msg.BlockHash)
+	} else {
+		peerLog.Infof("Could not obtain CF for %v: %v", msg.BlockHash,
+			err)
+	}
+
+	filterMsg := wire.NewMsgCFilter(&msg.BlockHash, msg.Extended,
+		filterBytes)
+	sp.QueueMessage(filterMsg, nil)
+}
+
+// OnGetCFHeaders is invoked when a peer receives a getcfheader bitcoin message.
+func (sp *serverPeer) OnGetCFHeaders(_ *peer.Peer, msg *wire.MsgGetCFHeaders) {
+	// Ignore getcfilterheader requests if not in sync.
+	if !sp.server.blockManager.IsCurrent() {
+		return
+	}
+
+	// Attempt to look up the height of the provided stop hash.
+	chain := sp.server.blockManager.chain
+	endIdx := int32(math.MaxInt32)
+	height, err := chain.BlockHeightByHash(&msg.HashStop)
+	if err == nil {
+		endIdx = height + 1
+	}
+
+	// There are no block locators so a specific header is being requested
+	// as identified by the stop hash.
+	if len(msg.BlockLocatorHashes) == 0 {
+		// No blocks with the stop hash were found so there is nothing
+		// to do.  Just return.  This behavior mirrors the reference
+		// implementation.
+		if endIdx == math.MaxInt32 {
+			return
+		}
+
+		// Fetch the raw committed filter header bytes from the
+		// database.
+		headerBytes, err := sp.server.cfIndex.FilterHeaderByBlockHash(
+			&msg.HashStop, msg.Extended)
+		if (err != nil) || (len(headerBytes) == 0) {
+			peerLog.Warnf("Could not obtain CF header for %v: %v",
+				msg.HashStop, err)
+			return
+		}
+
+		// Deserialize the hash.
+		var header chainhash.Hash
+		err = header.SetBytes(headerBytes)
+		if err != nil {
+			peerLog.Warnf("Committed filter header deserialize "+
+				"failed: %v", err)
+			return
+		}
+
+		headersMsg := wire.NewMsgCFHeaders()
+		headersMsg.AddCFHeader(&header)
+		headersMsg.StopHash = msg.HashStop
+		headersMsg.Extended = msg.Extended
+		sp.QueueMessage(headersMsg, nil)
+		return
+	}
+
+	// Find the most recent known block based on the block locator.
+	// Use the block after the genesis block if no other blocks in the
+	// provided locator are known.  This does mean the client will start
+	// over with the genesis block if unknown block locators are provided.
+	// This mirrors the behavior in the reference implementation.
+	startIdx := int32(1)
+	for _, hash := range msg.BlockLocatorHashes {
+		height, err := chain.BlockHeightByHash(hash)
+		if err == nil {
+			// Start with the next hash since we know this one.
+			startIdx = height + 1
+			break
+		}
+	}
+
+	// Don't attempt to fetch more than we can put into a single message.
+	if endIdx-startIdx > wire.MaxBlockHeadersPerMsg {
+		endIdx = startIdx + wire.MaxBlockHeadersPerMsg
+	}
+
+	// Fetch the inventory from the block database.
+	hashList, err := chain.HeightRange(startIdx, endIdx)
+	if err != nil {
+		peerLog.Warnf("Header lookup failed: %v", err)
+		return
+	}
+	if len(hashList) == 0 {
+		return
+	}
+
+	// Generate cfheaders message and send it.
+	headersMsg := wire.NewMsgCFHeaders()
+	for i := range hashList {
+		// Fetch the raw committed filter header bytes from the
+		// database.
+		headerBytes, err := sp.server.cfIndex.FilterHeaderByBlockHash(
+			&hashList[i], msg.Extended)
+		if (err != nil) || (len(headerBytes) == 0) {
+			peerLog.Warnf("Could not obtain CF header for %v: %v",
+				hashList[i], err)
+			return
+		}
+
+		// Deserialize the hash.
+		var header chainhash.Hash
+		err = header.SetBytes(headerBytes)
+		if err != nil {
+			peerLog.Warnf("Committed filter header deserialize "+
+				"failed: %v", err)
+			return
+		}
+
+		headersMsg.AddCFHeader(&header)
+	}
+
+	headersMsg.Extended = msg.Extended
+	headersMsg.StopHash = hashList[len(hashList)-1]
+	sp.QueueMessage(headersMsg, nil)
 }
 
 // enforceNodeBloomFlag disconnects the peer if the server is not configured to
@@ -1637,23 +1773,25 @@ func disconnectPeer(peerList map[int32]*serverPeer, compareFunc func(*serverPeer
 func newPeerConfig(sp *serverPeer) *peer.Config {
 	return &peer.Config{
 		Listeners: peer.MessageListeners{
-			OnVersion:     sp.OnVersion,
-			OnMemPool:     sp.OnMemPool,
-			OnTx:          sp.OnTx,
-			OnBlock:       sp.OnBlock,
-			OnInv:         sp.OnInv,
-			OnHeaders:     sp.OnHeaders,
-			OnGetData:     sp.OnGetData,
-			OnGetBlocks:   sp.OnGetBlocks,
-			OnGetHeaders:  sp.OnGetHeaders,
-			OnFeeFilter:   sp.OnFeeFilter,
-			OnFilterAdd:   sp.OnFilterAdd,
-			OnFilterClear: sp.OnFilterClear,
-			OnFilterLoad:  sp.OnFilterLoad,
-			OnGetAddr:     sp.OnGetAddr,
-			OnAddr:        sp.OnAddr,
-			OnRead:        sp.OnRead,
-			OnWrite:       sp.OnWrite,
+			OnVersion:      sp.OnVersion,
+			OnMemPool:      sp.OnMemPool,
+			OnTx:           sp.OnTx,
+			OnBlock:        sp.OnBlock,
+			OnInv:          sp.OnInv,
+			OnHeaders:      sp.OnHeaders,
+			OnGetData:      sp.OnGetData,
+			OnGetBlocks:    sp.OnGetBlocks,
+			OnGetHeaders:   sp.OnGetHeaders,
+			OnGetCFilter:   sp.OnGetCFilter,
+			OnGetCFHeaders: sp.OnGetCFHeaders,
+			OnFeeFilter:    sp.OnFeeFilter,
+			OnFilterAdd:    sp.OnFilterAdd,
+			OnFilterClear:  sp.OnFilterClear,
+			OnFilterLoad:   sp.OnFilterLoad,
+			OnGetAddr:      sp.OnGetAddr,
+			OnAddr:         sp.OnAddr,
+			OnRead:         sp.OnRead,
+			OnWrite:        sp.OnWrite,
 
 			// Note: The reference client currently bans peers that send alerts
 			// not signed with its key.  We could verify against their key, but
@@ -2253,6 +2391,9 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 	if cfg.NoPeerBloomFilters {
 		services &^= wire.SFNodeBloom
 	}
+	if cfg.NoCFilters {
+		services &^= wire.SFNodeCF
+	}
 
 	amgr := addrmgr.New(cfg.DataDir, btcdLookup)
 
@@ -2425,6 +2566,11 @@ func newServer(listenAddrs []string, db database.DB, chainParams *chaincfg.Param
 		indxLog.Info("Address index is enabled")
 		s.addrIndex = indexers.NewAddrIndex(db, chainParams)
 		indexes = append(indexes, s.addrIndex)
+	}
+	if !cfg.NoCFilters {
+		indxLog.Info("cf index is enabled")
+		s.cfIndex = indexers.NewCfIndex(db, chainParams)
+		indexes = append(indexes, s.cfIndex)
 	}
 
 	// Create an index manager if any of the optional indexes are enabled.
