@@ -2134,9 +2134,7 @@ func handleGetCFilter(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	}
 
 	filterBytes, err := s.server.cfIndex.FilterByBlockHash(hash, c.Extended)
-	if len(filterBytes) > 0 {
-		rpcsLog.Debugf("Found committed filter for %v", hash)
-	} else {
+	if err != nil {
 		rpcsLog.Debugf("Could not find committed filter for %v: %v",
 			hash, err)
 		return nil, &btcjson.RPCError{
@@ -2145,6 +2143,7 @@ func handleGetCFilter(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 		}
 	}
 
+	rpcsLog.Debugf("Found committed filter for %v", hash)
 	return hex.EncodeToString(filterBytes), nil
 }
 
