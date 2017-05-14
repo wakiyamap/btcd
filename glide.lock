@@ -49,7 +49,7 @@ imports:
   subpackages:
   - spew
 - name: github.com/roasbeef/btcrpcclient
-  version: 38480d7c28ff1882772e35d903bfe84aad925153
+  version: dee1f888e35688b4f7514bbc6a054efde48abf65
 - name: github.com/roasbeef/btcutil
   version: d347e49b656d2a7f6d06cc9e2daebc5acded5728
   subpackages:
