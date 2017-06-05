@@ -708,7 +708,7 @@ func (b *BlockChain) disconnectBlock(node *blockNode, block *btcutil.Block, view
 	blockWeight := uint64(GetBlockWeight(prevBlock))
 	newTotalTxns := curTotalTxns - uint64(len(block.MsgBlock().Transactions))
 	state := newBestState(prevNode, blockSize, blockWeight, numTxns,
-		newTotalTxns, medianTime)
+		newTotalTxns, node.CalcPastMedianTime())
 
 	err = b.db.Update(func(dbTx database.Tx) error {
 		// Update best block state.
