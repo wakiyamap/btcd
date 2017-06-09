@@ -256,8 +256,8 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 				return scriptError(ErrWitnessProgramMismatch, err)
 			}
 
-			// Now we'll resume execution as if it were a
-			// regular p2pkh transaction.
+			// Now we'll resume execution as if it were a regular
+			// p2pkh transaction.
 			pkScript, err := payToPubKeyHashScript(vm.witnessProgram)
 			if err != nil {
 				return err
@@ -267,9 +267,9 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 				return err
 			}
 
-			// Set the stack to the provided witness
-			// stack, then append the pkScript
-			// generated above as the next script to execute.
+			// Set the stack to the provided witness stack, then
+			// append the pkScript generated above as the next
+			// script to execute.
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness)
 		case payToWitnessScriptHashDataSize: // P2WSH
@@ -278,28 +278,38 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			if len(witness) == 0 {
 				return scriptError(ErrWitnessProgramEmpty, "witness "+
 					"program empty passed empty witness")
-
 			}
 
-			// Ensure that the serialized pkScript
-			// at the end of the witness stack
-			// matches the witness program.
-			pkScript := witness[len(witness)-1]
-			witnessHash := fastsha256.Sum256(pkScript)
+			// Obtain the witness script which should be the last
+			// element in the passed stack. The size of the script
+			// MUST NOT exceed the max script size.
+			witnessScript := witness[len(witness)-1]
+			if len(witnessScript) > MaxScriptSize {
+				str := fmt.Sprintf("witnessScript size %d "+
+					"is larger than max allowed size %d",
+					len(witnessScript), MaxScriptSize)
+				return scriptError(ErrScriptTooBig, str)
+			}
+
+			// Ensure that the serialized pkScript at the end of
+			// the witness stack matches the witness program.
+			witnessHash := fastsha256.Sum256(witnessScript)
 			if !bytes.Equal(witnessHash[:], vm.witnessProgram) {
 				return scriptError(ErrWitnessProgramMismatch,
 					"witness program hash mismatch")
 			}
 
-			pops, err := parseScript(pkScript)
+			// With all the validity checks passed, parse the
+			// script into individual op-codes so w can execute it
+			// as the next script.
+			pops, err := parseScript(witnessScript)
 			if err != nil {
 				return err
 			}
 
-			// The hash matched successfully, so
-			// use the witness as the stack, and
-			// set the pkScript to be the next script
-			// executed.
+			// The hash matched successfully, so use the witness as
+			// the stack, and set the witnessScript to be the next
+			// script executed.
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness[:len(witness)-1])
 		default:
