@@ -108,10 +108,10 @@ func (msg *MsgBlock) Deserialize(r io.Reader) error {
 	// at protocol version 0 and the stable long-term storage format.  As
 	// a result, make use of BtcDecode.
 	//
-	// Passing an encoding type of WitnessEncoding to BtcEncode for
-	// indicates that the transactions within the block are expected to be
-	// serialized according to the new serialization structure defined in
-	// BIP0141.
+	// Passing an encoding type of WitnessEncoding to BtcEncode for the
+	// MessageEncoding parameter indicates that the transactions within the
+	// block are expected to be serialized according to the new
+	// serialization structure defined in BIP0141.
 	return msg.BtcDecode(r, 0, WitnessEncoding)
 }
 

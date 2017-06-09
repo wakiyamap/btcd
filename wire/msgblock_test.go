@@ -327,8 +327,6 @@ func TestBlockSerialize(t *testing.T) {
 	}
 }
 
-// TODO(roasbeef): tests for SerializeSizeWitness
-
 // TestBlockSerializeErrors performs negative tests against wire encode and
 // decode of MsgBlock to confirm error paths work correctly.
 func TestBlockSerializeErrors(t *testing.T) {
