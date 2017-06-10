@@ -1863,10 +1863,10 @@ func (p *Peer) QueueMessage(msg wire.Message, doneChan chan<- struct{}) {
 	p.QueueMessageWithEncoding(msg, doneChan, wire.BaseEncoding)
 }
 
-// QueueMessage adds the passed bitcoin message to the peer send queue. This
-// function is identical to QueueMessage, however it allows the caller to
-// specify the wire encoding type that should be used when encoding/decoding
-// blocks and transactions.
+// QueueMessageWithEncoding adds the passed bitcoin message to the peer send
+// queue. This function is identical to QueueMessage, however it allows the
+// caller to specify the wire encoding type that should be used when
+// encoding/decoding blocks and transactions.
 //
 // This function is safe for concurrent access.
 func (p *Peer) QueueMessageWithEncoding(msg wire.Message, doneChan chan<- struct{},
