@@ -35,7 +35,6 @@ func TestTx(t *testing.T) {
 	}
 
 	// Ensure max payload is expected value for latest protocol version.
-	// Num addresses (varInt) + max allowed addresses.
 	wantPayload := uint32(1000 * 4000)
 	maxPayload := msg.MaxPayloadLength(pver)
 	if maxPayload != wantPayload {
@@ -518,8 +517,7 @@ func TestTxSerialize(t *testing.T) {
 	for i, test := range tests {
 		// Serialize the transaction.
 		var buf bytes.Buffer
-		var err error
-		err = test.in.Serialize(&buf)
+		err := test.in.Serialize(&buf)
 		if err != nil {
 			t.Errorf("Serialize #%d error %v", i, err)
 			continue
@@ -725,9 +723,9 @@ func TestTxOverflowErrors(t *testing.T) {
 	}
 }
 
-// TestTxSerializeSize performs tests to ensure the serialize size for various
-// transactions is accurate.
-func TestTxSerializeSize(t *testing.T) {
+// TestTxSerializeSizeStripped performs tests to ensure the serialize size for
+// various transactions is accurate.
+func TestTxSerializeSizeStripped(t *testing.T) {
 	// Empty tx message.
 	noTx := NewMsgTx(1)
 	noTx.Version = 1
@@ -752,13 +750,15 @@ func TestTxSerializeSize(t *testing.T) {
 	for i, test := range tests {
 		serializedSize := test.in.SerializeSizeStripped()
 		if serializedSize != test.size {
-			t.Errorf("MsgTx.SerializeSize: #%d got: %d, want: %d", i,
+			t.Errorf("MsgTx.SerializeSizeStripped: #%d got: %d, want: %d", i,
 				serializedSize, test.size)
 			continue
 		}
 	}
 }
 
+// TestTxWitnessSize performs tests to ensure that the serialized size for
+// various types of transactions that include witness data is accurate.
 func TestTxWitnessSize(t *testing.T) {
 	tests := []struct {
 		in   *MsgTx // Tx to encode
@@ -768,13 +768,12 @@ func TestTxWitnessSize(t *testing.T) {
 		// one output.
 		{multiWitnessTx, 190},
 	}
-	// TODO(roasbeef): more cases
 
 	t.Logf("Running %d tests", len(tests))
 	for i, test := range tests {
 		serializedSize := test.in.SerializeSize()
 		if serializedSize != test.size {
-			t.Errorf("MsgTx.SerializeSizeWitness: #%d got: %d, want: %d", i,
+			t.Errorf("MsgTx.SerializeSize: #%d got: %d, want: %d", i,
 				serializedSize, test.size)
 			continue
 		}

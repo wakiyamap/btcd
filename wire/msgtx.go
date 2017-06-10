@@ -109,6 +109,15 @@ const (
 	maxWitnessItemSize = 11000
 )
 
+// witessMarkerBytes are a pair of bytes specific to the witness encoding. If
+// this sequence is encoutered, then it indicates a transaction has iwtness
+// data.The first byte is an always 0x00 marker byte, which allows decoders to
+// distinguish a serialized transaction with witnesses from a regular (legacy)
+// one. The second byte is the Flag field, which at the moment is always 0x01,
+// but may be extended in the future to accommodate auxiliary non-committed
+// fields.
+var witessMarkerBytes = []byte{0x00, 0x01}
+
 // scriptFreeList defines a free list of byte slices (up to the maximum number
 // defined by the freeListMaxItems constant) that have a cap according to the
 // freeListMaxScriptSize constant.  It is used to provide temporary buffers for
@@ -234,7 +243,7 @@ type TxWitness [][]byte
 // SerializeSize returns the number of bytes it would take to serialize the the
 // transaction input's witness.
 func (t TxWitness) SerializeSize() int {
-	// A varint to signal the number of element the witness has.
+	// A varint to signal the number of elements the witness has.
 	n := VarIntSerializeSize(uint64(len(t)))
 
 	// For each element in the witness, we'll need a varint to signal the
@@ -461,7 +470,9 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			}
 
 			for _, witnessElem := range txIn.Witness {
-				scriptPool.Return(witnessElem)
+				if witnessElem != nil {
+					scriptPool.Return(witnessElem)
+				}
 			}
 		}
 		for _, txOut := range msg.TxOut {
@@ -538,10 +549,10 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			// Prevent a possible memory exhaustion attack by
 			// limiting the witCount value to a sane upper bound.
 			if witCount > maxWitnessItemsPerInput {
+				returnScriptBuffers()
 				str := fmt.Sprintf("too many witness items to fit "+
 					"into max message size [count %d, max %d]",
 					witCount, maxWitnessItemsPerInput)
-				returnScriptBuffers()
 				return messageError("MsgTx.BtcDecode", str)
 			}
 
@@ -550,14 +561,13 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			// item itself.
 			txin.Witness = make([][]byte, witCount)
 			for j := uint64(0); j < witCount; j++ {
-				witPush, err := readScript(r, pver,
+				txin.Witness[j], err = readScript(r, pver,
 					maxWitnessItemSize, "script witness item")
 				if err != nil {
 					returnScriptBuffers()
 					return err
 				}
-				txin.Witness[j] = witPush
-				totalScriptSize += uint64(len(witPush))
+				totalScriptSize += uint64(len(txin.Witness[j]))
 			}
 		}
 	}
@@ -597,6 +607,9 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 		msg.TxIn[i].SignatureScript = scripts[offset:end:end]
 		offset += scriptSize
 
+		// Return the temporary script buffer to the pool.
+		scriptPool.Return(signatureScript)
+
 		for j := 0; j < len(msg.TxIn[i].Witness); j++ {
 			// Copy each item within the witness stack for this
 			// input into the contiguous buffer at the appropriate
@@ -615,9 +628,6 @@ func (msg *MsgTx) BtcDecode(r io.Reader, pver uint32, enc MessageEncoding) error
 			// item to the pool.
 			scriptPool.Return(witnessElem)
 		}
-
-		// Return the temporary script buffer to the pool.
-		scriptPool.Return(signatureScript)
 	}
 	for i := 0; i < len(msg.TxOut); i++ {
 		// Copy the public key script into the contiguous buffer at the
@@ -678,15 +688,16 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32, enc MessageEncoding) error
 	// field for the MsgTx aren't 0x00, then this indicates the transaction
 	// is to be encoded using the new witness inclusionary structure
 	// defined in BIP0144.
-	if enc == WitnessEncoding && msg.HasWitness() {
+	doWitness := enc == WitnessEncoding && msg.HasWitness()
+	if doWitness {
 		// After the txn's Version field, we include two additional
 		// bytes specific to the witness encoding. The first byte is an
 		// always 0x00 marker byte, which allows decoders to
 		// distinguish a serialized transaction with witnesses from a
 		// regular (legacy) one. The second byte is the Flag field,
-		// which at the moment is always 0x01, but way be extended in
+		// which at the moment is always 0x01, but may be extended in
 		// the future to accommodate auxiliary non-committed fields.
-		if _, err := w.Write([]byte{0x00, 0x01}); err != nil {
+		if _, err := w.Write(witessMarkerBytes); err != nil {
 			return err
 		}
 	}
@@ -720,7 +731,7 @@ func (msg *MsgTx) BtcEncode(w io.Writer, pver uint32, enc MessageEncoding) error
 	// If this transaction is a witness transaction, and the witness
 	// encoded is desired, then encode the witness for each of the inputs
 	// within the transaction.
-	if enc == WitnessEncoding && msg.HasWitness() {
+	if doWitness {
 		for _, ti := range msg.TxIn {
 			err = writeTxWitness(w, pver, msg.Version, ti.Witness)
 			if err != nil {
@@ -850,7 +861,7 @@ func (msg *MsgTx) PkScriptLocs() []int {
 
 	// If this transaction has a witness input, the an additional two bytes
 	// for the marker, and flag byte need to be taken into account.
-	if msg.TxIn[0].Witness != nil {
+	if len(msg.TxIn) > 0 && msg.TxIn[0].Witness != nil {
 		n += 2
 	}
 
