@@ -885,11 +885,10 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			return nil, scriptError(ErrInvalidFlags, errStr)
 		}
 
-		var err error
 		var witProgram []byte
 
 		switch {
-		case IsWitnessProgram(scriptPubKey):
+		case isWitnessProgram(vm.scripts[1]):
 			// The scriptSig must be *empty* for all native witness
 			// programs, otherwise we introduce malleability.
 			if len(scriptSig) != 0 {
@@ -900,17 +899,14 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 
 			witProgram = scriptPubKey
 		case len(tx.TxIn[txIdx].Witness) != 0 && vm.bip16:
-			pops, err := parseScript(scriptSig)
-			if err != nil {
-				return nil, err
-			}
-
 			// The sigScript MUST be *exactly* a single canonical
 			// data push of the witness program, otherwise we
 			// reintroduce malleability.
-			if len(pops) == 1 && canonicalPush(pops[0]) &&
-				IsWitnessProgram(pops[0].data) {
-				witProgram = pops[0].data
+			dataPush := vm.scripts[0][0]
+			if len(vm.scripts[0]) == 1 && canonicalPush(dataPush) &&
+				IsWitnessProgram(dataPush.data) {
+
+				witProgram = dataPush.data
 			} else {
 				errStr := "signature script for witness " +
 					"nested p2sh is not canonical"
@@ -919,11 +915,12 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 		}
 
 		if witProgram != nil {
-			vm.witness = true
+			var err error
 			vm.witnessVersion, vm.witnessProgram, err = ExtractWitnessProgramInfo(witProgram)
 			if err != nil {
 				return nil, err
 			}
+			vm.witness = true
 		} else {
 			// If we didn't find a witness program in either the
 			// pkScript or as a datapush within the sigScript, then

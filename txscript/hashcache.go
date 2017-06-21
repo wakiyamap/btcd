@@ -21,7 +21,7 @@ type TxSigHashes struct {
 	HashOutputs  chainhash.Hash
 }
 
-// NewTxSigHashes computes, and returns the cached sighashes a the given
+// NewTxSigHashes computes, and returns the cached sighashes of the given
 // transaction.
 func NewTxSigHashes(tx *wire.MsgTx) *TxSigHashes {
 	return &TxSigHashes{
@@ -54,23 +54,17 @@ func NewHashCache(maxSize uint) *HashCache {
 // transaction.
 func (h *HashCache) AddSigHashes(tx *wire.MsgTx) {
 	h.Lock()
-	defer h.Unlock()
-
-	sigHashes := NewTxSigHashes(tx)
-
-	txid := tx.TxHash()
-	h.sigHashes[txid] = sigHashes
-
-	return
+	h.sigHashes[tx.TxHash()] = NewTxSigHashes(tx)
+	h.Unlock()
 }
 
 // ContainsHashes returns true if the partial sighashes for the passed
 // transaction currently exist within the HashCache, and false otherwise.
 func (h *HashCache) ContainsHashes(txid *chainhash.Hash) bool {
 	h.RLock()
-	defer h.RUnlock()
-
 	_, found := h.sigHashes[*txid]
+	h.RUnlock()
+
 	return found
 }
 
@@ -80,9 +74,9 @@ func (h *HashCache) ContainsHashes(txid *chainhash.Hash) bool {
 // be present within the HashCache.
 func (h *HashCache) GetSigHashes(txid *chainhash.Hash) (*TxSigHashes, bool) {
 	h.RLock()
-	defer h.RUnlock()
-
 	item, found := h.sigHashes[*txid]
+	h.RUnlock()
+
 	return item, found
 }
 
@@ -90,7 +84,6 @@ func (h *HashCache) GetSigHashes(txid *chainhash.Hash) (*TxSigHashes, bool) {
 // the passed transaction.
 func (h *HashCache) PurgeSigHashes(txid *chainhash.Hash) {
 	h.Lock()
-	defer h.Unlock()
-
 	delete(h.sigHashes, *txid)
+	h.Unlock()
 }

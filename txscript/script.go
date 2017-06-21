@@ -430,14 +430,12 @@ func calcHashOutputs(tx *wire.MsgTx) chainhash.Hash {
 // wallet if fed an invalid input amount, the real sighash will differ causing
 // the produced signature to be invalid.
 func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
-	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) []byte {
+	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) ([]byte, error) {
 
 	// As a sanity check, ensure the passed input index for the transaction
 	// is valid.
 	if idx > len(tx.TxIn)-1 {
-		fmt.Printf("calcWitnessSignatureHash error: idx %d but %d txins",
-			idx, len(tx.TxIn))
-		return nil
+		return nil, fmt.Errorf("idx %d but %d txins", idx, len(tx.TxIn))
 	}
 
 	// We'll utilize this buffer throughout to incrementally calculate
@@ -473,13 +471,13 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 		sigHash.Write(zeroHash[:])
 	}
 
-	// Next, write the outpoint being spent.
-	sigHash.Write(tx.TxIn[idx].PreviousOutPoint.Hash[:])
-	var bIndex [4]byte
-	binary.LittleEndian.PutUint32(bIndex[:], tx.TxIn[idx].PreviousOutPoint.Index)
-	sigHash.Write(bIndex[:])
+	txIn := tx.TxIn[idx]
 
-	rawScript, _ := unparseScript(subScript)
+	// Next, write the outpoint being spent.
+	sigHash.Write(txIn.PreviousOutPoint.Hash[:])
+	var bIndex [4]byte
+	binary.LittleEndian.PutUint32(bIndex[:], txIn.PreviousOutPoint.Index)
+	sigHash.Write(bIndex[:])
 
 	if isWitnessPubKeyHash(subScript) {
 		// The script code for a p2wkh is a length prefix varint for
@@ -489,13 +487,14 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 		sigHash.Write([]byte{OP_DUP})
 		sigHash.Write([]byte{OP_HASH160})
 		sigHash.Write([]byte{OP_DATA_20})
-		sigHash.Write(rawScript[2:22])
+		sigHash.Write(subScript[1].data)
 		sigHash.Write([]byte{OP_EQUALVERIFY})
 		sigHash.Write([]byte{OP_CHECKSIG})
 	} else {
-		// For p2wsh outputs, and future outputs, the script code is the
-		// original script, with all code separators removed, serialized
-		// with a var int length prefix.
+		// For p2wsh outputs, and future outputs, the script code is
+		// the original script, with all code separators removed,
+		// serialized with a var int length prefix.
+		rawScript, _ := unparseScript(subScript)
 		wire.WriteVarBytes(&sigHash, 0, rawScript)
 	}
 
@@ -505,7 +504,7 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	binary.LittleEndian.PutUint64(bAmount[:], uint64(amt))
 	sigHash.Write(bAmount[:])
 	var bSequence [4]byte
-	binary.LittleEndian.PutUint32(bSequence[:], tx.TxIn[idx].Sequence)
+	binary.LittleEndian.PutUint32(bSequence[:], txIn.Sequence)
 	sigHash.Write(bSequence[:])
 
 	// If the current signature mode isn't single, or none, then we can
@@ -532,7 +531,21 @@ func calcWitnessSignatureHash(subScript []parsedOpcode, sigHashes *TxSigHashes,
 	binary.LittleEndian.PutUint32(bHashType[:], uint32(hashType))
 	sigHash.Write(bHashType[:])
 
-	return chainhash.DoubleHashB(sigHash.Bytes())
+	return chainhash.DoubleHashB(sigHash.Bytes()), nil
+}
+
+// CalcWitnessSigHash computes the sighash digest for the specified input of
+// the target transaction observing the desired sig hash type.
+func CalcWitnessSigHash(script []byte, sigHashes *TxSigHashes, hType SigHashType,
+	tx *wire.MsgTx, idx int, amt int64) ([]byte, error) {
+
+	parsedScript, err := parseScript(script)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse output script: %v", err)
+	}
+
+	return calcWitnessSignatureHash(parsedScript, sigHashes, hType, tx, idx,
+		amt)
 }
 
 // calcSignatureHash will, given a script and hash type for the current script
@@ -625,9 +638,9 @@ func calcSignatureHash(script []parsedOpcode, hashType SigHashType, tx *wire.Msg
 	// The final hash is the double sha256 of both the serialized modified
 	// transaction and the hash type (encoded as a 4-byte little-endian
 	// value) appended.
-	var wbuf bytes.Buffer
-	txCopy.SerializeNoWitness(&wbuf)
-	binary.Write(&wbuf, binary.LittleEndian, hashType)
+	wbuf := bytes.NewBuffer(make([]byte, 0, txCopy.SerializeSizeStripped()+4))
+	txCopy.SerializeNoWitness(wbuf)
+	binary.Write(wbuf, binary.LittleEndian, hashType)
 	return chainhash.DoubleHashB(wbuf.Bytes())
 }
 

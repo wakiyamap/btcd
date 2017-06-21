@@ -27,8 +27,12 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 		return nil, fmt.Errorf("cannot parse output script: %v", err)
 	}
 
-	hash := calcWitnessSignatureHash(parsedScript, sigHashes, hashType, tx,
+	hash, err := calcWitnessSignatureHash(parsedScript, sigHashes, hashType, tx,
 		idx, amt)
+	if err != nil {
+		return nil, err
+	}
+
 	signature, err := key.Sign(hash)
 	if err != nil {
 		return nil, fmt.Errorf("cannot sign tx input: %s", err)
@@ -37,14 +41,14 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	return append(signature.Serialize(), byte(hashType)), nil
 }
 
-// WitnessSignatureScript creates an input witness stack for tx to spend BTC
-// sent from a previous output to the owner of privKey using the p2wkh script
+// WitnessSignature creates an input witness stack for tx to spend BTC sent
+// from a previous output to the owner of privKey using the p2wkh script
 // template. The passed transaction must contain all the inputs and outputs as
 // dictated by the passed hashType. The signature generated observes the new
 // transaction digest algorithm defined within BIP0143.
-func WitnessScript(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
-	subscript []byte, hashType SigHashType,
-	privKey *btcec.PrivateKey, compress bool) ([][]byte, error) {
+func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
+	subscript []byte, hashType SigHashType, privKey *btcec.PrivateKey,
+	compress bool) (wire.TxWitness, error) {
 
 	sig, err := RawTxInWitnessSignature(tx, sigHashes, idx, amt, subscript,
 		hashType, privKey)
@@ -62,7 +66,7 @@ func WitnessScript(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
 
 	// A witness script is actually a stack, so we return an array of byte
 	// slices here, rather than a single byte slice.
-	return append([][]byte{sig}, pkData), nil
+	return wire.TxWitness{sig, pkData}, nil
 }
 
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of
