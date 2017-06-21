@@ -245,6 +245,17 @@ func newServerPeer(s *server, isPersistent bool) *serverPeer {
 	}
 }
 
+// IsWitnessEnabled returns true if the target serverPeer has signalled that it
+// supports segregated witness.
+//
+// This function is safe for concurrent access.
+func (sp *serverPeer) IsWitnessEnabled() bool {
+	sp.witnessMtx.Lock()
+	enabled := sp.witnessEnabled
+	sp.witnessMtx.Unlock()
+	return enabled
+}
+
 // newestBlock returns the current best block hash and height using the format
 // required by the configuration for the peer package.
 func (sp *serverPeer) newestBlock() (*chainhash.Hash, int32, error) {
@@ -375,14 +386,14 @@ func (sp *serverPeer) OnVersion(_ *peer.Peer, msg *wire.MsgVersion) {
 			// connection to peers if they flag that they're segwit
 			// enabled.
 			chain := sp.server.blockManager.chain
-			segwitState, err := chain.ThresholdState(chaincfg.DeploymentSegwit)
+			segwitActive, err := chain.IsDeploymentActive(chaincfg.DeploymentSegwit)
 			if err != nil {
 				peerLog.Errorf("Unable to query for segwit "+
 					"soft-fork state: %v", err)
 				return
 			}
-			segwitActive := segwitState == blockchain.ThresholdActive
-			if segwitActive && !sp.witnessEnabled {
+
+			if segwitActive && !sp.IsWitnessEnabled() {
 				peerLog.Infof("Disconnecting non-segwit "+
 					"peer %v, isn't segwit segwit enabled and "+
 					"we need more segwit enabled peers", sp)
