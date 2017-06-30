@@ -209,6 +209,15 @@ const (
 	// operations.
 	ErrNullFail
 
+	// ErrWitnessMalleated is returned if ScriptVerifyWitness is set and a
+	// native p2wsh program is encountered which has a non-empty sigScript.
+	ErrWitnessMalleated
+
+	// ErrWitnessMalleatedP2SH is returned if ScriptVerifyWitness if set
+	// and the validation logic for nested p2sh encounters a sigScript
+	// which isn't *exactyl* a datapush of the witness program.
+	ErrWitnessMalleatedP2SH
+
 	// -------------------------------
 	// Failures related to soft forks.
 	// -------------------------------
@@ -227,6 +236,21 @@ const (
 	// reached.
 	ErrUnsatisfiedLockTime
 
+	// ErrMinimalIf is returned if ScriptVerifyWitness is set and the
+	// operand of an OP_IF/OP_NOF_IF are not either an empty vector or
+	// [0x01].
+	ErrMinimalIf
+
+	// ErrDiscourageUpgradableWitnessProgram is returned if
+	// ScriptVerifyWitness is set and the versino of an executing witness
+	// program is outside the set of currently defined witness program
+	// vesions.
+	ErrDiscourageUpgradableWitnessProgram
+
+	// ----------------------------------------
+	// Failures related to segregated witness.
+	// ----------------------------------------
+
 	// ErrWitnessProgramEmpty is returned if ScriptVerifyWitness is set and
 	// the witness stack itself is empty.
 	ErrWitnessProgramEmpty
@@ -242,35 +266,15 @@ const (
 	// dictated by the current witness version.
 	ErrWitnessProgramWrongLength
 
-	// ErrWitnessMalleated is returned if ScriptVerifyWitness is set and a
-	// native p2wsh program is encountered which has a non-empty sigScript.
-	ErrWitnessMalleated
-
-	// ErrWitnessMalleatedP2SH is returned if ScriptVerifyWitness if set
-	// and the validation logic for nested p2sh encounters a sigScript
-	// which isn't *exactyl* a datapush of the witness program.
-	ErrWitnessMalleatedP2SH
-
 	// ErrWitnessUnexpected is returned if ScriptVerifyWitness is set and a
 	// transaction includes witness data but doesn't spend an which is a
 	// witness program (nested or native).
 	ErrWitnessUnexpected
 
-	// ErrMinimalIf is returned if ScriptVerifyWitness is set and the
-	// operand of an OP_IF/OP_NOF_IF are not either an empty vector or
-	// [0x01].
-	ErrMinimalIf
-
 	// ErrWitnessPubKeyType is returned if ScriptVerifyWitness is set and
 	// the public key used in either a check-sig or check-multi-sig isn't
 	// serialized in a compressed format.
 	ErrWitnessPubKeyType
-
-	// ErrDiscourageUpgradableWitnessProgram is returned if
-	// ScriptVerifyWitness is set and the versino of an executing witness
-	// program is outside the set of currently defined witness program
-	// vesions.
-	ErrDiscourageUpgradableWitnessProgram
 
 	// numErrorCodes is the maximum error code number used in tests.  This
 	// entry MUST be the last entry in the enum.

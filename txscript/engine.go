@@ -332,7 +332,6 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 	} else if vm.hasFlag(ScriptVerifyDiscourageUpgradeableWitnessProgram) {
 		errStr := fmt.Sprintf("new witness program versions "+
 			"invalid: %v", vm.witnessProgram)
-
 		return scriptError(ErrDiscourageUpgradableWitnessProgram, errStr)
 	} else {
 		// If we encounter an unknown witness program version and we
