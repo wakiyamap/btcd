@@ -63,13 +63,10 @@ func IsCompressedPubKey(pubKey []byte) bool {
 		return false
 	}
 
-	// Next, extract the format that's encoded within the first byte of the
-	// serialized pubkey.
-	format := pubKey[0]
-
-	// With the format isoluated it MUST be of a compressed key type,
-	// otherwise, the isn't a compressed public key.
-	return format == 0x02 || format == 0x03
+	// The public key is only compressed if it is the correct length and
+	// the format (first byte) is one of the compressed pubkey values.
+	return len(pubKey) == PubKeyBytesLenCompressed &&
+		(pubKey[0]&^byte(0x1) == pubkeyCompressed)
 }
 
 // ParsePubKey parses a public key for a koblitz curve from a bytestring into a
