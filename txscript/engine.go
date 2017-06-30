@@ -86,8 +86,8 @@ const (
 	// program with versions 2-16 non-standard.
 	ScriptVerifyDiscourageUpgradeableWitnessProgram
 
-	// ScriptVerifyMinimalIf makes a script with an OP_IF/OP_NOTIF who's
-	// operand is anything either an empty vector or [0x01] non-standard.
+	// ScriptVerifyMinimalIf makes a script with an OP_IF/OP_NOTIF whose
+	// operand is anything other than empty vector or [0x01] non-standard.
 	ScriptVerifyMinimalIf
 
 	// ScriptVerifyWitnessPubKeyType makes a script within a check-sig
