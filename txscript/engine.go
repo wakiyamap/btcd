@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"crypto/sha256"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/fastsha256"
 )
 
 // ScriptFlags is a bitmask defining additional operations or tests that will be
@@ -272,6 +273,7 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			// script to execute.
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness)
+
 		case payToWitnessScriptHashDataSize: // P2WSH
 			// Additionally, The witness stack MUST NOT be empty at
 			// this point.
@@ -293,7 +295,7 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 
 			// Ensure that the serialized pkScript at the end of
 			// the witness stack matches the witness program.
-			witnessHash := fastsha256.Sum256(witnessScript)
+			witnessHash := sha256.Sum256(witnessScript)
 			if !bytes.Equal(witnessHash[:], vm.witnessProgram) {
 				return scriptError(ErrWitnessProgramMismatch,
 					"witness program hash mismatch")
@@ -312,9 +314,12 @@ func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
 			// script executed.
 			vm.scripts = append(vm.scripts, pops)
 			vm.SetStack(witness[:len(witness)-1])
+
 		default:
 			errStr := fmt.Sprintf("length of witness program "+
-				"must either be 20 or 32 bytes, instead is %v bytes",
+				"must either be %v or %v bytes, instead is %v bytes",
+				payToWitnessPubKeyHashDataSize,
+				payToWitnessScriptHashDataSize,
 				len(vm.witnessProgram))
 			return scriptError(ErrWitnessProgramWrongLength, errStr)
 		}
@@ -492,7 +497,7 @@ func (vm *Engine) Step() (done bool, err error) {
 			// script itself
 			vm.SetStack(vm.savedFirstStack[:len(vm.savedFirstStack)-1])
 		} else if (vm.scriptIdx == 1 && vm.witness) ||
-			(vm.witness && vm.bip16 && vm.scriptIdx == 2) { // Nested P2SH.
+			(vm.scriptIdx == 2 && vm.witness && vm.bip16) { // Nested P2SH.
 			vm.scriptIdx++
 
 			witness := vm.tx.TxIn[vm.txIdx].Witness
@@ -868,7 +873,6 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 				"pay to script hash is not push only")
 		}
 		vm.bip16 = true
-
 	}
 	if vm.hasFlag(ScriptVerifyMinimalData) {
 		vm.dstack.verifyMinimalData = true

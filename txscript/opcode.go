@@ -2122,15 +2122,6 @@ func opcodeCheckSig(op *parsedOpcode, vm *Engine) error {
 	// Get script starting from the most recent OP_CODESEPARATOR.
 	subScript := vm.subScript()
 
-	// With BIP 143, Bitcoin Core's 'FindAndDelete' function is no longer
-	// used to remove signature data for the script. Therefore, we only
-	// remove the data if we're not in witness execution mode.
-	if !vm.witness {
-		// Remove the signature since there is no way for a signature
-		// to sign itself.
-		subScript = removeOpcodeByData(subScript, fullSigBytes)
-	}
-
 	// Generate the signature hash based on the signature hash type.
 	var hash []byte
 	if vm.witness {
@@ -2147,6 +2138,10 @@ func opcodeCheckSig(op *parsedOpcode, vm *Engine) error {
 			return err
 		}
 	} else {
+		// Remove the signature since there is no way for a signature
+		// to sign itself.
+		subScript = removeOpcodeByData(subScript, fullSigBytes)
+
 		hash = calcSignatureHash(subScript, hashType, &vm.tx, vm.txIdx)
 	}
 
@@ -2314,12 +2309,9 @@ func opcodeCheckMultiSig(op *parsedOpcode, vm *Engine) error {
 	// Get script starting from the most recent OP_CODESEPARATOR.
 	script := vm.subScript()
 
-	// With BIP 143, Bitcoin Core's 'FindAndDelete' function is no longer
-	// used to remove signature data for the script. Therefore, we only
-	// remove the data if we're not in witness execution mode.
+	// Remove the signature in pre-segwit scripts since there is no way for
+	// a signature to sign itself.
 	if !vm.witness {
-		// Remove any of the signatures since there is no way for a
-		// signature to sign itself.
 		for _, sigInfo := range signatures {
 			script = removeOpcodeByData(script, sigInfo.signature)
 		}
