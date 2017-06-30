@@ -811,16 +811,19 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 	}
 
 	// The clean stack flag (ScriptVerifyCleanStack) is not allowed without
-	// the pay-to-script-hash (P2SH) evaluation (ScriptBip16) flag.
+	// either the the pay-to-script-hash (P2SH) evaluation (ScriptBip16)
+	// flag or the Segregated Witness (ScriptVerifyWitness) flag.
 	//
 	// Recall that evaluating a P2SH script without the flag set results in
-	// non-P2SH evaluation which leaves the P2SH inputs on the stack.  Thus,
-	// allowing the clean stack flag without the P2SH flag would make it
-	// possible to have a situation where P2SH would not be a soft fork when
-	// it should be.
+	// non-P2SH evaluation which leaves the P2SH inputs on the stack.
+	// Thus, allowing the clean stack flag without the P2SH flag would make
+	// it possible to have a situation where P2SH would not be a soft fork
+	// when it should be. The same goes for segwit which will pull in
+	// additional scripts for execution from the witness stack.
 	vm := Engine{flags: flags, sigCache: sigCache, hashCache: hashCache,
 		inputAmount: inputAmount}
-	if vm.hasFlag(ScriptVerifyCleanStack) && !vm.hasFlag(ScriptBip16) {
+	if vm.hasFlag(ScriptVerifyCleanStack) && (!vm.hasFlag(ScriptBip16) &&
+		!vm.hasFlag(ScriptVerifyWitness)) {
 		return nil, scriptError(ErrInvalidFlags,
 			"invalid flags combination")
 	}
