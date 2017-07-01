@@ -18,7 +18,7 @@ const (
 	// and header, plus the weight of each byte within a transaction. The
 	// weight of a "base" byte is 4, while the weight of a witness byte is
 	// 1. As a result, for a block to be valid, the BlockWeight MUST be
-	// less then, or equal to MaxBlockWeight.
+	// less than, or equal to MaxBlockWeight.
 	MaxBlockWeight = 4000000
 
 	// MaxBlockBaseSize is the maximum number of bytes within a block
@@ -35,19 +35,6 @@ const (
 	// witness data is 1/4 as cheap as regular non-witness data.
 	WitnessScaleFactor = 4
 )
-
-// TxVirtualSize computes the virtual size of a given transaction. A
-// transaction's virtual is based off it's weight, creating a discount for any
-// witness data it contains, proportional to the current WitnessScaleFactor
-// value.
-func GetTxVirtualSize(tx *btcutil.Tx) int64 {
-	// vSize := (weight(tx) + 3) / 4
-	//       := (((baseSize * 3) + totalSize) + 3) / 4
-	// We add 3 here as a way to compute the ceiling of the prior arithmetic
-	// to 4. The division by 4 creates a discount for wit witness data.
-	return (GetTransactionWeight(tx) + (WitnessScaleFactor - 1)) /
-		WitnessScaleFactor
-}
 
 // GetBlockWeight computes the value of the weight metric for a given block.
 // Currently the weight metric is simply the sum of the block's serialized size
@@ -113,7 +100,6 @@ func GetSigOpCost(tx *btcutil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint,
 			witness := txIn.Witness
 			sigScript := txIn.SignatureScript
 			pkScript := txEntry.PkScriptByIndex(originTxIndex)
-
 			numSigOps += txscript.GetWitnessSigOpCount(sigScript, pkScript, witness)
 		}
 
