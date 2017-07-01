@@ -41,7 +41,7 @@ const (
 	// maximum allowed size.
 	ErrBlockTooBig
 
-	// ErrBlockWeightTooHigh indicates that the block's computed eight
+	// ErrBlockWeightTooHigh indicates that the block's computed weight
 	// metric exceeds the maximum allowed value.
 	ErrBlockWeightTooHigh
 
@@ -213,7 +213,7 @@ const (
 	ErrInvalidWitnessCommitment
 
 	// ErrWitnessCommitmentMismatch indicates that the witness commitment
-	// included in the block's  coinbase transaction doesn't match the
+	// included in the block's coinbase transaction doesn't match the
 	// manually computed witness commitment.
 	ErrWitnessCommitmentMismatch
 )
@@ -223,6 +223,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrDuplicateBlock:            "ErrDuplicateBlock",
 	ErrBlockTooBig:               "ErrBlockTooBig",
 	ErrBlockVersionTooOld:        "ErrBlockVersionTooOld",
+	ErrBlockWeightTooHigh:        "ErrBlockWeightTooHigh",
 	ErrInvalidTime:               "ErrInvalidTime",
 	ErrTimeTooOld:                "ErrTimeTooOld",
 	ErrTimeTooNew:                "ErrTimeTooNew",
@@ -261,7 +262,6 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrUnexpectedWitness:         "ErrUnexpectedWitness",
 	ErrInvalidWitnessCommitment:  "ErrInvalidWitnessCommitment",
 	ErrWitnessCommitmentMismatch: "ErrWitnessCommitmentMismatch",
-	ErrBlockWeightTooHigh:        "ErrBlockWeightTooHigh",
 }
 
 // String returns the ErrorCode as a human-readable name.

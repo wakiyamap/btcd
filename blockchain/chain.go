@@ -1339,7 +1339,7 @@ type Config struct {
 	IndexManager IndexManager
 
 	// HashCache defines a transaction hash mid-state cache to use when
-	// validating transactions. This cache has the potentil to greatly
+	// validating transactions. This cache has the potential to greatly
 	// speed up transaction validation as re-using the pre-calculated
 	// mid-state eliminates the O(N^2) validation complexity due to the
 	// SigHashAll flag.

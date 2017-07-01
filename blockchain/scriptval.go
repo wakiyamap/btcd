@@ -94,7 +94,7 @@ out:
 			if err != nil {
 				str := fmt.Sprintf("failed to parse input "+
 					"%s:%d which references output %s:%d - "+
-					"%v (input witness %v, input script "+
+					"%v (input witness %x, input script "+
 					"bytes %x, prev output script bytes %x)",
 					txVI.tx.Hash(), txVI.txInIndex, originTxHash,
 					originTxIndex, err, witness, sigScript,
@@ -108,7 +108,7 @@ out:
 			if err := vm.Execute(); err != nil {
 				str := fmt.Sprintf("failed to validate input "+
 					"%s:%d which references output %s:%d - "+
-					"%v (input witness %v, input script "+
+					"%v (input witness %x, input script "+
 					"bytes %x, prev output script bytes %x)",
 					txVI.tx.Hash(), txVI.txInIndex,
 					originTxHash, originTxIndex, err,
@@ -270,7 +270,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 	}
 	txValItems := make([]*txValidateItem, 0, numInputs)
 	for _, tx := range block.Transactions() {
-		sha := tx.Hash()
+		hash := tx.Hash()
 
 		// If the HashCache is present, and it doesn't yet contain the
 		// partial sighashes for this transaction, then we add the
@@ -278,7 +278,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 		// advantage of the potential speed savings due to the new
 		// digest algorithm (BIP0143).
 		if segwitActive && tx.MsgTx().HasWitness() && hashCache != nil &&
-			!hashCache.ContainsHashes(sha) {
+			!hashCache.ContainsHashes(hash) {
 
 			hashCache.AddSigHashes(tx.MsgTx())
 		}
@@ -286,7 +286,7 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 		var cachedHashes *txscript.TxSigHashes
 		if segwitActive && tx.MsgTx().HasWitness() {
 			if hashCache != nil {
-				cachedHashes, _ = hashCache.GetSigHashes(sha)
+				cachedHashes, _ = hashCache.GetSigHashes(hash)
 			} else {
 				cachedHashes = txscript.NewTxSigHashes(tx.MsgTx())
 			}
