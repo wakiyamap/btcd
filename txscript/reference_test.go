@@ -354,6 +354,7 @@ func testScripts(t *testing.T, tests [][]interface{}, useSigCache bool) {
 		// witness data and everything else is offset by 1 as a result.
 		witnessOffset := 0
 		if witnessData, ok := test[0].([]interface{}); ok {
+			witnessOffset++
 
 			// If this is a witness test, then the final element
 			// within the slice is the input amount, so we ignore
@@ -373,7 +374,6 @@ func testScripts(t *testing.T, tests [][]interface{}, useSigCache bool) {
 				continue
 			}
 
-			witnessOffset++
 		}
 
 		// Extract and parse the signature script from the test fields.
@@ -445,6 +445,9 @@ func testScripts(t *testing.T, tests [][]interface{}, useSigCache bool) {
 
 		// Ensure there were no errors when the expected result is OK.
 		if resultStr == "OK" {
+			if err != nil {
+				t.Errorf("%s failed to execute: %v", name, err)
+			}
 			continue
 		}
 
@@ -628,7 +631,6 @@ testloop:
 				inputVal: int64(inputValue),
 				pkScript: script,
 			}
-
 			prevOuts[*wire.NewOutPoint(prevhash, idx)] = v
 		}
 
