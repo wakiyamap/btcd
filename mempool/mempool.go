@@ -73,6 +73,12 @@ type Config struct {
 	// utxo view.
 	CalcSequenceLock func(*btcutil.Tx, *blockchain.UtxoViewpoint) (*blockchain.SequenceLock, error)
 
+	// IsDeploymentActive returns true if the target deploymentID is
+	// active, and false otherwise. The mempool uses this function to gauge
+	// if transactions using new to be soft-forked rules should be allowed
+	// into the mempool or not.
+	IsDeploymentActive func(deploymentID uint32) (bool, error)
+
 	// SigCache defines a signature cache to use.
 	SigCache *txscript.SigCache
 
@@ -114,10 +120,6 @@ type Policy struct {
 	// This helps prevent memory exhaustion attacks from sending a lot of
 	// of big orphans.
 	MaxOrphanTxSize int
-
-	// MaxSigOpsPerTx is the maximum number of signature operations
-	// in a single transaction we will relay or mine.  It is a fraction
-	// of the max signature operations for a block.
 
 	// MaxSigOpCostPerTx is the cumulative maximum cost of all the signature
 	// operations in a single transaction we will relay or mine.  It is a
@@ -611,6 +613,22 @@ func (mp *TxPool) FetchTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error) 
 func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit, rejectDupOrphans bool) ([]*chainhash.Hash, *TxDesc, error) {
 	txHash := tx.Hash()
 
+	// If a transaction has iwtness data, and segwit isn't active yet, If
+	// segwit isn't active yet, then we won't accept it into the mempool as
+	// it can't be mined yet.
+	if tx.MsgTx().HasWitness() {
+		segwitActive, err := mp.cfg.IsDeploymentActive(chaincfg.DeploymentSegwit)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if !segwitActive {
+			str := fmt.Sprintf("transaction %v has witness data, "+
+				"but segwit isn't active yet", txHash)
+			return nil, nil, txRuleError(wire.RejectNonstandard, str)
+		}
+	}
+
 	// Don't accept the transaction if it already exists in the pool.  This
 	// applies to orphan transactions as well when the reject duplicate
 	// orphans flag is set.  This check is intended to be a quick check to
@@ -797,7 +815,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit, rejec
 	}
 	if sigOpCost > mp.cfg.Policy.MaxSigOpCostPerTx {
 		str := fmt.Sprintf("transaction %v sigop cost is too high: %d > %d",
-			txHash, sigOpCost, maxStandardSigOpsCost)
+			txHash, sigOpCost, mp.cfg.Policy.MaxSigOpCostPerTx)
 		return nil, nil, txRuleError(wire.RejectNonstandard, str)
 	}
 

@@ -15,13 +15,13 @@ import (
 )
 
 const (
+	// maxStandardP2SHSigOps is the maximum number of signature operations
+	// that are considered standard in a pay-to-script-hash script.
+	maxStandardP2SHSigOps = 15
+
 	// maxStandardTxCost is the max weight permitted by any transaction
 	// according to the current default policy.
 	maxStandardTxWeight = 400000
-
-	// maxStandardSigOpsCost is the max sig op cost any transaction is
-	// permitted to have according to the current default policy.
-	maxStandardSigOpsCost = blockchain.MaxBlockSigOpsCost / 4
 
 	// maxStandardSigScriptSize is the maximum size allowed for a
 	// transaction input signature script to be considered standard.  This
@@ -102,6 +102,17 @@ func checkInputsStandard(tx *btcutil.Tx, utxoView *blockchain.UtxoViewpoint) err
 		entry := utxoView.LookupEntry(&prevOut.Hash)
 		originPkScript := entry.PkScriptByIndex(prevOut.Index)
 		switch txscript.GetScriptClass(originPkScript) {
+		case txscript.ScriptHashTy:
+			numSigOps := txscript.GetPreciseSigOpCount(
+				txIn.SignatureScript, originPkScript, true)
+			if numSigOps > maxStandardP2SHSigOps {
+				str := fmt.Sprintf("transaction input #%d has "+
+					"%d signature operations which is more "+
+					"than the allowed max amount of %d",
+					i, numSigOps, maxStandardP2SHSigOps)
+				return txRuleError(wire.RejectNonstandard, str)
+			}
+
 		case txscript.NonStandardTy:
 			str := fmt.Sprintf("transaction input #%d has a "+
 				"non-standard script form", i)
@@ -205,10 +216,22 @@ func isDust(txOut *wire.TxOut, minRelayTxFee btcutil.Amount) bool {
 	//   36 prev outpoint, 1 script len, 73 script [1 OP_DATA_72,
 	//   72 sig], 4 sequence
 	//
+	// Pay-to-witness-pubkey-hash bytes breakdown:
+	//
+	//  Output to witness key hash (31 bytes);
+	//   8 value, 1 script len, 22 script [1 OP_0, 1 OP_DATA_20,
+	//   20 bytes hash160]
+	//
+	//  Input (67 bytes as the 107 witness stack is discounted):
+	//   36 prev outpoint, 1 script len, 0 script (not sigScript), 107
+	//   witness stack bytes [1 element length, 33 compressed pubkey,
+	//   element length 72 sig], 4 sequence
+	//
+	//
 	// Theoretically this could examine the script type of the output script
 	// and use a different size for the typical input script size for
 	// pay-to-pubkey vs pay-to-pubkey-hash inputs per the above breakdowns,
-	// but the only combinination which is less than the value chosen is
+	// but the only combination which is less than the value chosen is
 	// a pay-to-pubkey script with a compressed pubkey, which is not very
 	// common.
 	//
@@ -216,12 +239,19 @@ func isDust(txOut *wire.TxOut, minRelayTxFee btcutil.Amount) bool {
 	// breakdown, the minimum size of a p2pkh input script is 148 bytes.  So
 	// that figure is used. If the output being spent is a witness program,
 	// then we apply the witness discount to the size of the signature.
-	var totalSize int
+	//
+	// The segwit analogue to p2pkh is a p2wkh output. This is the smallest
+	// output possible using the new segwit features. The 107 bytes of
+	// witness data is discounted by a factor of 4, leading to a computed
+	// value of 67 bytes of witness data.
+	//
+	// Both cases share a 41 byte preamble required to reference the input
+	// being spent and the sequence number of the input.
+	totalSize := txOut.SerializeSize() + 41
 	if txscript.IsWitnessProgram(txOut.PkScript) {
-		witnessSig := (32 + 4 + 1 + (107 / blockchain.WitnessScaleFactor) + 4)
-		totalSize = txOut.SerializeSize() + witnessSig
+		totalSize += (107 / blockchain.WitnessScaleFactor)
 	} else {
-		totalSize = txOut.SerializeSize() + 148
+		totalSize += 107
 	}
 
 	// The output is considered dust if the cost to the network to spend the
