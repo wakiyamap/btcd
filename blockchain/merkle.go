@@ -28,9 +28,9 @@ const (
 )
 
 var (
-	// WitnessMagicBytes is the prefix marker within a public key script to
-	// indicate that this output holds the witness commitment for a block.
-	// The prefix breaks down down: OP_RETURN OP_DATA_36
+	// WitnessMagicBytes is the prefix marker within the public key script
+	// of a coinbase output to indicate that this output holds the witness
+	// commitment for a block.
 	WitnessMagicBytes = []byte{
 		txscript.OP_RETURN,
 		txscript.OP_DATA_36,
@@ -161,41 +161,51 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx, witness bool) []*chainhash
 // in the passed transaction. The witness commitment is stored as the data push
 // for an OP_RETURN with special magic bytes to aide in location.
 func ExtractWitnessCommitment(tx *btcutil.Tx) ([]byte, bool) {
-	var witnessCommitment []byte
-
 	// The witness commitment *must* be located within one of the coinbase
 	// transaction's outputs.
 	if !IsCoinBase(tx) {
-		return witnessCommitment, false
+		return nil, false
 	}
 
 	msgTx := tx.MsgTx()
-	witFound := false
 	for i := len(msgTx.TxOut) - 1; i >= 0; i-- {
 		// The public key script that contains the witness commitment
 		// must shared a prefix with the WitnessMagicBytes, and be at
 		// least 38 bytes.
 		pkScript := msgTx.TxOut[i].PkScript
-		if len(pkScript) >= 38 &&
+		if len(pkScript) >= CoinbaseWitnessPkScriptLength &&
 			bytes.HasPrefix(pkScript, WitnessMagicBytes) {
 
 			// The witness commitment itself is a 32-byte hash
 			// directly after the WitnessMagicBytes. The remaining
 			// bytes beyond the 38th byte currently have no consensus
 			// meaning.
-			witnessCommitment = msgTx.TxOut[i].PkScript[6:38]
-			witFound = true
-			break
+			start := len(WitnessMagicBytes)
+			end := CoinbaseWitnessPkScriptLength
+			return msgTx.TxOut[i].PkScript[start:end], true
 		}
 	}
 
-	return witnessCommitment, witFound
+	return nil, false
 }
 
 // ValidateWitnessCommitment validates the witness commitment (if any) found
 // within the coinbase transaction of the passed block.
 func ValidateWitnessCommitment(blk *btcutil.Block) error {
+	// If the block doesn't have any transactions at all, then we won't be
+	// able to extract a commitment from the non-existent coinbase
+	// transaction. So we exit early here.
+	if len(blk.Transactions()) == 0 {
+		str := "cannot validate witness commitment of block without " +
+			"transactions"
+		return ruleError(ErrNoTransactions, str)
+	}
+
 	coinbaseTx := blk.Transactions()[0]
+	if len(coinbaseTx.MsgTx().TxIn) == 0 {
+		return ruleError(ErrNoTxInputs, "transaction has no inputs")
+	}
+
 	witnessCommitment, witnessFound := ExtractWitnessCommitment(coinbaseTx)
 
 	// If we can't find a witness commitment in any of the coinbase's
@@ -239,12 +249,15 @@ func ValidateWitnessCommitment(blk *btcutil.Block) error {
 	witnessMerkleTree := BuildMerkleTreeStore(blk.Transactions(), true)
 	witnessMerkleRoot := witnessMerkleTree[len(witnessMerkleTree)-1]
 
-	witnessPreimage := make([]byte, 64)
+	var witnessPreimage [chainhash.HashSize * 2]byte
 	copy(witnessPreimage[:], witnessMerkleRoot[:])
-	copy(witnessPreimage[32:], witnessNonce)
+	copy(witnessPreimage[chainhash.HashSize:], witnessNonce)
 
-	if !bytes.Equal(chainhash.DoubleHashB(witnessPreimage), witnessCommitment) {
-		str := "witness commitment does not match"
+	computedCommitment := chainhash.DoubleHashB(witnessPreimage[:])
+	if !bytes.Equal(computedCommitment, witnessCommitment) {
+		str := fmt.Sprintf("witness commitment does not match: "+
+			"computed %v, coinbase includes %v", computedCommitment,
+			witnessCommitment)
 		return ruleError(ErrWitnessCommitmentMismatch, str)
 	}
 
