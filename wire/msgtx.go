@@ -109,9 +109,9 @@ const (
 	maxWitnessItemSize = 11000
 )
 
-// witessMarkerBytes are a pair of bytes specific to the witness encoding. If
+// witnessMarkerBytes are a pair of bytes specific to the witness encoding. If
 // this sequence is encoutered, then it indicates a transaction has iwtness
-// data.The first byte is an always 0x00 marker byte, which allows decoders to
+// data. The first byte is an always 0x00 marker byte, which allows decoders to
 // distinguish a serialized transaction with witnesses from a regular (legacy)
 // one. The second byte is the Flag field, which at the moment is always 0x01,
 // but may be extended in the future to accommodate auxiliary non-committed
