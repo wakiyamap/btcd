@@ -915,11 +915,11 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 			// The sigScript MUST be *exactly* a single canonical
 			// data push of the witness program, otherwise we
 			// reintroduce malleability.
-			dataPush := vm.scripts[0][0]
-			if len(vm.scripts[0]) == 1 && canonicalPush(dataPush) &&
-				IsWitnessProgram(dataPush.data) {
+			sigPops := vm.scripts[0]
+			if len(sigPops) == 1 && canonicalPush(sigPops[0]) &&
+				IsWitnessProgram(sigPops[0].data) {
 
-				witProgram = dataPush.data
+				witProgram = sigPops[0].data
 			} else {
 				errStr := "signature script for witness " +
 					"nested p2sh is not canonical"
