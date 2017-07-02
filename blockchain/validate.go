@@ -756,28 +756,6 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 		return err
 	}
 
-	// Query for the Version Bits state for the segwit soft-fork
-	// deployment. If segwit is active, we'll switch over to enforcing all
-	// the new rules.
-	segwitState, err := b.deploymentState(prevNode, chaincfg.DeploymentSegwit)
-	if err != nil {
-		return err
-	}
-
-	// If segwit is active, then we'll need to fully validate the new
-	// witness commitment for adherance to the rules.
-	if segwitState == ThresholdActive {
-		// Validate the witness commitment (if any) within the block.
-		// This involves asserting that if the coinbase contains the
-		// special commitment output, then this merkle root matches a
-		// computed merkle root of all the wtxid's of the transactions
-		// within the block. In addition, various other checks against
-		// the coinbase's witness stack.
-		if err := ValidateWitnessCommitment(block); err != nil {
-			return err
-		}
-	}
-
 	fastAdd := flags&BFFastAdd == BFFastAdd
 	if !fastAdd {
 		// Obtain the latest state of the deployed CSV soft-fork in
@@ -826,6 +804,30 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 			coinbaseTx := block.Transactions()[0]
 			err := checkSerializedHeight(coinbaseTx, blockHeight)
 			if err != nil {
+				return err
+			}
+		}
+
+		// Query for the Version Bits state for the segwit soft-fork
+		// deployment. If segwit is active, we'll switch over to
+		// enforcing all the new rules.
+		segwitState, err := b.deploymentState(prevNode,
+			chaincfg.DeploymentSegwit)
+		if err != nil {
+			return err
+		}
+
+		// If segwit is active, then we'll need to fully validate the
+		// new witness commitment for adherance to the rules.
+		if segwitState == ThresholdActive {
+			// Validate the witness commitment (if any) within the
+			// block.  This involves asserting that if the coinbase
+			// contains the special commitment output, then this
+			// merkle root matches a computed merkle root of all
+			// the wtxid's of the transactions within the block. In
+			// addition, various other checks against the
+			// coinbase's witness stack.
+			if err := ValidateWitnessCommitment(block); err != nil {
 				return err
 			}
 		}
