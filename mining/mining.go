@@ -627,14 +627,14 @@ mempoolLoop:
 		switch {
 		// If segregated witness has not been activated yet, then we
 		// shouldn't include any witness transactions in the block.
-		case tx.MsgTx().HasWitness() && !segwitActive:
+		case tx.HasWitness() && !segwitActive:
 			continue
 
 		// Otherwise, Keep track of if we've included a transaction
 		// with witness data or not. If so, then we'll need to include
 		// the witness commitment as the last output in the coinbase
 		// transaction.
-		case tx.MsgTx().HasWitness() && segwitActive:
+		case tx.HasWitness() && segwitActive:
 			// If we're about to include a transaction bearing
 			// witness data, then we'll also need to include a
 			// witness commitment in the coinbase transaction.

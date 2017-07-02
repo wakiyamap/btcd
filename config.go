@@ -55,7 +55,6 @@ const (
 	blockMaxSizeMax              = blockchain.MaxBlockBaseSize - 1000
 	blockMaxWeightMin            = 4000
 	blockMaxWeightMax            = blockchain.MaxBlockWeight - 4000
-	defaultBlockPrioritySize     = 50000
 	defaultGenerate              = false
 	defaultMaxOrphanTransactions = 100
 	defaultMaxOrphanTxSize       = 100000
@@ -759,8 +758,22 @@ func loadConfig() (*config, []string, error) {
 	cfg.BlockMinSize = minUint32(cfg.BlockMinSize, cfg.BlockMaxSize)
 	cfg.BlockMinWeight = minUint32(cfg.BlockMinWeight, cfg.BlockMaxWeight)
 
-	// TODO(roasbeef): need to do multi-dimensional limiting based on if
-	// both weight AND size are set, or just one.
+	switch {
+	// If the max block size isn't set, but the max weight is, then we'll
+	// set the limit for the max block size to a safe limit so weight takes
+	// precedence.
+	case cfg.BlockMaxSize == defaultBlockMaxSize &&
+		cfg.BlockMaxWeight != defaultBlockMaxWeight:
+
+		cfg.BlockMaxSize = blockchain.MaxBlockBaseSize - 1000
+
+	// If the max block weight isn't set, but the block size is, then we'll
+	// scale the set weight accordingly based on the max block size value.
+	case cfg.BlockMaxSize != defaultBlockMaxSize &&
+		cfg.BlockMaxWeight == defaultBlockMaxWeight:
+
+		cfg.BlockMaxWeight = cfg.BlockMaxSize * blockchain.WitnessScaleFactor
+	}
 
 	// --txindex and --droptxindex do not mix.
 	if cfg.TxIndex && cfg.DropTxIndex {
