@@ -5,6 +5,7 @@
 package mining
 
 import (
+	"bytes"
 	"container/heap"
 	"fmt"
 	"time"
@@ -627,37 +628,38 @@ mempoolLoop:
 		switch {
 		// If segregated witness has not been activated yet, then we
 		// shouldn't include any witness transactions in the block.
-		case tx.HasWitness() && !segwitActive:
+		case !segwitActive && tx.HasWitness():
 			continue
 
 		// Otherwise, Keep track of if we've included a transaction
 		// with witness data or not. If so, then we'll need to include
 		// the witness commitment as the last output in the coinbase
 		// transaction.
-		case tx.HasWitness() && segwitActive:
+		case segwitActive && !witnessIncluded && tx.HasWitness():
 			// If we're about to include a transaction bearing
 			// witness data, then we'll also need to include a
 			// witness commitment in the coinbase transaction.
 			// Therefore, we account for the additional weight
-			// within the block.
-			if !witnessIncluded {
-				// First we account for the additional witness
-				// data in the witness nonce of the coinbaes
-				// transaction: 32-bytes of zeroes.
-				blockWeight += 2 + 32
-
-				// Next we account for the additional flag and
-				// marker bytes in the transaction
-				// serialization.
-				blockWeight += (1 + 1) * blockchain.WitnessScaleFactor
-
-				// Finally we account for the weight of the
-				// additional OP_RETURN output: 8-bytes (value)
-				// + 1-byte (var-int) + 38-bytes (pkScript),
-				// scaling up the weight as it's non-witness
-				// data.
-				blockWeight += (8 + 1 + 38) * blockchain.WitnessScaleFactor
+			// within the block with a model coinbase tx with a
+			// witness commitment.
+			coinbaseCopy := btcutil.NewTx(coinbaseTx.MsgTx().Copy())
+			coinbaseCopy.MsgTx().TxIn[0].Witness = [][]byte{
+				bytes.Repeat([]byte("a"),
+					blockchain.CoinbaseWitnessDataLen),
 			}
+			coinbaseCopy.MsgTx().AddTxOut(&wire.TxOut{
+				PkScript: bytes.Repeat([]byte("a"),
+					blockchain.CoinbaseWitnessPkScriptLength),
+			})
+
+			// In order to accurately account for the weight
+			// addition due to this coinbase transaction, we'll add
+			// the difference of the transaction before and after
+			// the addition of the commitment to the block weight.
+			weightDiff := blockchain.GetTransactionWeight(coinbaseCopy) -
+				blockchain.GetTransactionWeight(coinbaseTx)
+
+			blockWeight += uint32(weightDiff)
 
 			witnessIncluded = true
 		}
