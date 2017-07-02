@@ -90,9 +90,9 @@ const (
 	// 68, 112, and 113.
 	DeploymentCSV
 
-	// DeploymentSegwit defines the reule change deployment ID for the
-	// Segragated Witness (segwit) soft-fork pckage. The segwit package
-	// includes the depolymnet of BIPS 141, 142, 143, 144, 145 and 147.
+	// DeploymentSegwit defines the rule change deployment ID for the
+	// Segragated Witness (segwit) soft-fork package. The segwit package
+	// includes the deployment of BIPS 141, 142, 144, 145, 147 and 173.
 	DeploymentSegwit
 
 	// NOTE: DefinedDeployments must always come last since it is used to
