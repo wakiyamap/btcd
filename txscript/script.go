@@ -762,10 +762,8 @@ func GetWitnessSigOpCount(sigScript, pkScript []byte, witness wire.TxWitness) in
 	if err != nil {
 		return 0
 	}
-	if IsPayToScriptHash(pkScript) &&
-		isPushOnly(sigPops) &&
-		(IsPayToWitnessScriptHash(sigScript[1:]) ||
-			IsPayToWitnessPubKeyHash(sigScript[1:])) {
+	if IsPayToScriptHash(pkScript) && isPushOnly(sigPops) &&
+		IsWitnessProgram(sigScript[1:]) {
 		return getWitnessSigOps(sigScript[1:], witness)
 	}
 
