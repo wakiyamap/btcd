@@ -251,7 +251,7 @@ func (vm *Engine) isWitnessVersionActive(version uint) bool {
 // verifyWitnessProgram validates the stored witness program using the passed
 // witness as input.
 func (vm *Engine) verifyWitnessProgram(witness [][]byte) error {
-	if vm.isWitnessVersionActive(0) {
+	if vm.witnessVersion == 0 {
 		switch len(vm.witnessProgram) {
 		case payToWitnessPubKeyHashDataSize: // P2WKH
 			// The witness stack should consist of exactly two
