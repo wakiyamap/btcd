@@ -148,6 +148,14 @@ func ExtractWitnessProgramInfo(script []byte) (int, []byte, error) {
 		return 0, nil, err
 	}
 
+	// If at this point, the scripts doesn't resemble a witness program,
+	// then we'll exit early as there isn't a valid version or program to
+	// extract.
+	if !isWitnessProgram(pops) {
+		return 0, nil, fmt.Errorf("script is not a witness program, " +
+			"unable to extract version or witness program")
+	}
+
 	witnessVersion := asSmallInt(pops[0].opcode)
 	witnessProgram := pops[1].data
 
