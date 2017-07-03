@@ -57,12 +57,6 @@ const (
 // IsCompressedPubKey returns true the the passed serialized public key has
 // been encoded in compressed format, and false otherwise.
 func IsCompressedPubKey(pubKey []byte) bool {
-	// If the length of the public key isn't 33-bytes, then we can rule it
-	// out early.
-	if len(pubKey) != PubKeyBytesLenCompressed {
-		return false
-	}
-
 	// The public key is only compressed if it is the correct length and
 	// the format (first byte) is one of the compressed pubkey values.
 	return len(pubKey) == PubKeyBytesLenCompressed &&
