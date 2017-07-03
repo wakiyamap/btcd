@@ -6,8 +6,6 @@ package txscript
 
 import (
 	"bytes"
-	"encoding/hex"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -3848,18 +3846,6 @@ func TestGetPreciseSigOps(t *testing.T) {
 	}
 }
 
-// mustDecodeHex attempts to decode the passed hex-encoded string. In the case
-// that a string is unable to be decoded, then this function will panic. This
-// helper function is meant to be used in the creation of table driven tests.
-func mustDecodeHex(s string) []byte {
-	h, err := hex.DecodeString(s)
-	if err != nil {
-		panic(fmt.Sprintf("unable to decode string: %v", err))
-	}
-
-	return h
-}
-
 // TestGetWitnessSigOpCount tests that the sig op counting for p2wkh, p2wsh,
 // nested p2sh, and invalid variants are counted properly.
 func TestGetWitnessSigOpCount(t *testing.T) {
@@ -3880,11 +3866,11 @@ func TestGetWitnessSigOpCount(t *testing.T) {
 			pkScript: mustParseShortForm("OP_0 DATA_20 " +
 				"0x365ab47888e150ff46f8d51bce36dcd680f1283f"),
 			witness: wire.TxWitness{
-				mustDecodeHex("3045022100ee9fe8f9487afa977" +
+				hexToBytes("3045022100ee9fe8f9487afa977" +
 					"6647ebcf0883ce0cd37454d7ce19889d34ba2c9" +
 					"9ce5a9f402200341cb469d0efd3955acb9e46" +
 					"f568d7e2cc10f9084aaff94ced6dc50a59134ad01"),
-				mustDecodeHex("03f0000d0639a22bfaf217e4c9428" +
+				hexToBytes("03f0000d0639a22bfaf217e4c9428" +
 					"9c2b0cc7fa1036f7fd5d9f61a9d6ec153100e"),
 			},
 			numSigOps: 1,
@@ -3894,16 +3880,16 @@ func TestGetWitnessSigOpCount(t *testing.T) {
 		// a single sig op.
 		{
 			name: "nested p2sh",
-			sigScript: mustDecodeHex("160014ad0ffa2e387f07" +
+			sigScript: hexToBytes("160014ad0ffa2e387f07" +
 				"e7ead14dc56d5a97dbd6ff5a23"),
 			pkScript: mustParseShortForm("HASH160 DATA_20 " +
 				"0xb3a84b564602a9d68b4c9f19c2ea61458ff7826c EQUAL"),
 			witness: wire.TxWitness{
-				mustDecodeHex("3045022100cb1c2ac1ff1d57d" +
+				hexToBytes("3045022100cb1c2ac1ff1d57d" +
 					"db98f7bdead905f8bf5bcc8641b029ce8eef25" +
 					"c75a9e22a4702203be621b5c86b771288706be5" +
 					"a7eee1db4fceabf9afb7583c1cc6ee3f8297b21201"),
-				mustDecodeHex("03f0000d0639a22bfaf217e4c9" +
+				hexToBytes("03f0000d0639a22bfaf217e4c9" +
 					"4289c2b0cc7fa1036f7fd5d9f61a9d6ec153100e"),
 			},
 			numSigOps: 1,
@@ -3912,10 +3898,10 @@ func TestGetWitnessSigOpCount(t *testing.T) {
 		{
 			name:      "p2wsh multi-sig spend",
 			numSigOps: 2,
-			pkScript: mustDecodeHex("0020e112b88a0cd87ba387f" +
+			pkScript: hexToBytes("0020e112b88a0cd87ba387f" +
 				"449d443ee2596eb353beb1f0351ab2cba8909d875db23"),
 			witness: wire.TxWitness{
-				mustDecodeHex("522103b05faca7ceda92b493" +
+				hexToBytes("522103b05faca7ceda92b493" +
 					"3f7acdf874a93de0dc7edc461832031cd69cbb1d1e" +
 					"6fae2102e39092e031c1621c902e3704424e8d8" +
 					"3ca481d4d4eeae1b7970f51c78231207e52ae"),
@@ -3927,7 +3913,7 @@ func TestGetWitnessSigOpCount(t *testing.T) {
 		{
 			name:      "witness script doesn't parse",
 			numSigOps: 1,
-			pkScript: mustDecodeHex("0020e112b88a0cd87ba387f44" +
+			pkScript: hexToBytes("0020e112b88a0cd87ba387f44" +
 				"9d443ee2596eb353beb1f0351ab2cba8909d875db23"),
 			witness: wire.TxWitness{
 				mustParseShortForm("DUP HASH160 " +
