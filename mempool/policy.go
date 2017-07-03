@@ -370,7 +370,7 @@ func checkTransactionStandard(tx *btcutil.Tx, height int32,
 }
 
 // GetTxVirtualSize computes the virtual size of a given transaction. A
-// transaction's virtual size is based off it's weight, creating a discount for
+// transaction's virtual size is based off its weight, creating a discount for
 // any witness data it contains, proportional to the current
 // blockchain.WitnessScaleFactor value.
 func GetTxVirtualSize(tx *btcutil.Tx) int64 {
