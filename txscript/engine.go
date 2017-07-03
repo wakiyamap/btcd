@@ -6,10 +6,9 @@ package txscript
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"math/big"
-
-	"crypto/sha256"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/wire"
