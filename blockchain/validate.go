@@ -567,16 +567,6 @@ func checkBlockSanity(block *btcutil.Block, powLimit *big.Int, timeSource Median
 		}
 	}
 
-	// Once the witness commitment, witness nonce, and sig op cost have
-	// been validated, we can finally assert that the block's weight
-	// doesn't exceed the current consensus parameter.
-	blockWeight := GetBlockWeight(block)
-	if blockWeight > MaxBlockWeight {
-		str := fmt.Sprintf("block's weight metric is too high - got %v, max %v",
-			blockWeight, MaxBlockWeight)
-		return ruleError(ErrBlockVersionTooOld, str)
-	}
-
 	return nil
 }
 
@@ -829,6 +819,18 @@ func (b *BlockChain) checkBlockContext(block *btcutil.Block, prevNode *blockNode
 			// coinbase's witness stack.
 			if err := ValidateWitnessCommitment(block); err != nil {
 				return err
+			}
+
+			// Once the witness commitment, witness nonce, and sig
+			// op cost have been validated, we can finally assert
+			// that the block's weight doesn't exceed the current
+			// consensus parameter.
+			blockWeight := GetBlockWeight(block)
+			if blockWeight > MaxBlockWeight {
+				str := fmt.Sprintf("block's weight metric is "+
+					"too high - got %v, max %v",
+					blockWeight, MaxBlockWeight)
+				return ruleError(ErrBlockVersionTooOld, str)
 			}
 		}
 	}
