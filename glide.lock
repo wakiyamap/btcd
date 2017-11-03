@@ -1,10 +1,10 @@
-hash: b1175cf2cc6189d08faa4ef9aecec97aada84d240e8f97e2e09563cb415df83e
-updated: 2017-08-24T16:08:59.276315855-07:00
+hash: 395a375e8fd702c12c3cc3db8641a663a92f147d619b8a21ec48d4bd1b7f85b8
+updated: 2017-11-02T18:01:58.221546291-07:00
 imports:
 - name: github.com/aead/siphash
   version: e404fcfc888570cadd1610538e2dbc89f66af814
 - name: github.com/btcsuite/btclog
-  version: 96c2a91a67da03552a5e6554fe3ccbfbc7f860be
+  version: 84c8d2346e9fc8c7b947e243b9c24e6df9fd206a
 - name: github.com/btcsuite/fastsha256
   version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/btcsuite/go-flags
@@ -45,19 +45,19 @@ imports:
   - svc
   - winapi
 - name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
   subpackages:
   - spew
 - name: github.com/jessevdk/go-flags
   version: 1679536dcc895411a9f5848d9a0250be7856448c
 - name: github.com/jrick/logrotate
-  version: 4ed05ed86ef17d10ff99cce77481e0fcf6f2c7b0
+  version: a93b200c26cbae3bb09dd0dc2c7c7fe1468a034a
   subpackages:
   - rotator
 - name: github.com/kkdai/bstream
   version: f391b8402d23024e7c0f624b31267a89998fca95
 - name: github.com/roasbeef/btcutil
-  version: 4675c7e1e02d8fe1f40d1e40a71d31922e62e605
+  version: c4646eb27366f887b9e034ce91510fe720a31201
   subpackages:
   - base58
   - bech32
@@ -66,7 +66,7 @@ imports:
   - gcs/builder
   - hdkeychain
 - name: golang.org/x/crypto
-  version: 122d919ec1efcfb58483215da23f815853e24b81
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
   - ripemd160
 testImports: []
