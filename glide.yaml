@@ -2,7 +2,7 @@ package: github.com/roasbeef/btcd
 import:
 - package: github.com/btcsuite/btclog
 - package: github.com/roasbeef/btcutil
-  version: c4646eb27366f887b9e034ce91510fe720a31201
+  version: c3ff179366044979fb9856c2feb79bd4c2184c7a
   subpackages:
   - bloom
   - hdkeychain
