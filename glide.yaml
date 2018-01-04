@@ -1,8 +1,8 @@
-package: github.com/roasbeef/btcd
+package: github.com/wakiyamap/monad
 import:
 - package: github.com/btcsuite/btclog
-- package: github.com/roasbeef/btcutil
-  version: c3ff179366044979fb9856c2feb79bd4c2184c7a
+- package: github.com/wakiyamap/monautil
+  version: d7c96a74d4d796a28562002f0d9c9150c8f6a4f7
   subpackages:
   - bloom
   - hdkeychain

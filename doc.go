@@ -3,22 +3,22 @@
 // license that can be found in the LICENSE file.
 
 /*
-btcd is a full-node bitcoin implementation written in Go.
+monad is a full-node bitcoin implementation written in Go.
 
-The default options are sane for most users.  This means btcd will work 'out of
+The default options are sane for most users.  This means monad will work 'out of
 the box' for most users.  However, there are also a wide variety of flags that
 can be used to control it.
 
 The following section provides a usage overview which enumerates the flags.  An
 interesting point to note is that the long form of all of these options
 (except -C) can be specified in a configuration file that is automatically
-parsed when btcd starts up.  By default, the configuration file is located at
-~/.btcd/btcd.conf on POSIX-style operating systems and %LOCALAPPDATA%\btcd\btcd.conf
+parsed when monad starts up.  By default, the configuration file is located at
+~/.monad/monad.conf on POSIX-style operating systems and %LOCALAPPDATA%\monad\monad.conf
 on Windows.  The -C (--configfile) flag, as shown below, can be used to override
 this location.
 
 Usage:
-  btcd [OPTIONS]
+  monad [OPTIONS]
 
 Application Options:
   -V, --version             Display version information and exit
@@ -32,7 +32,7 @@ Application Options:
                             or --proxy options are used without also specifying
                             listen interfaces via --listen
       --listen=             Add an interface/port to listen for connections
-                            (default all interfaces port: 8333, testnet: 18333)
+                            (default all interfaces port: 9401, testnet: 19401)
       --maxpeers=           Max number of inbound and outbound peers (125)
       --nobanning           Disable banning of misbehaving peers
       --banduration=        How long to ban misbehaving peers.  Valid time units
@@ -46,7 +46,7 @@ Application Options:
       --rpclimituser=       Username for limited RPC connections
       --rpclimitpass=       Password for limited RPC connections
       --rpclisten=          Add an interface/port to listen for RPC connections
-                            (default port: 8334, testnet: 18334)
+                            (default port: 9402, testnet: 19402)
       --rpccert=            File containing the certificate file
       --rpckey=             File containing the certificate key
       --rpcmaxclients=      Max number of RPC clients for standard connections

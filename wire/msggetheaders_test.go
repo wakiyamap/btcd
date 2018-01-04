@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
 )
 

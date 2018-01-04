@@ -14,13 +14,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/database"
-	_ "github.com/roasbeef/btcd/database/ffldb"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/database"
+	_ "github.com/wakiyamap/monad/database/ffldb"
+	"github.com/wakiyamap/monad/txscript"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 const (
@@ -59,8 +59,8 @@ func isSupportedDbType(dbType string) bool {
 
 // loadBlocks reads files containing bitcoin block data (gzipped but otherwise
 // in the format bitcoind writes) from disk and returns them as an array of
-// btcutil.Block.  This is largely borrowed from the test code in btcdb.
-func loadBlocks(filename string) (blocks []*btcutil.Block, err error) {
+// monautil.Block.  This is largely borrowed from the test code in monadb.
+func loadBlocks(filename string) (blocks []*monautil.Block, err error) {
 	filename = filepath.Join("testdata/", filename)
 
 	var network = wire.MainNet
@@ -79,7 +79,7 @@ func loadBlocks(filename string) (blocks []*btcutil.Block, err error) {
 	}
 	defer fi.Close()
 
-	var block *btcutil.Block
+	var block *monautil.Block
 
 	err = nil
 	for height := int64(1); err == nil; height++ {
@@ -105,7 +105,7 @@ func loadBlocks(filename string) (blocks []*btcutil.Block, err error) {
 		// read block
 		dr.Read(rbytes)
 
-		block, err = btcutil.NewBlockFromBytes(rbytes)
+		block, err = monautil.NewBlockFromBytes(rbytes)
 		if err != nil {
 			return
 		}

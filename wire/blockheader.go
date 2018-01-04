@@ -9,7 +9,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
+	"github.com/wakiyamap/lyra2rev2"
+  	"github.com/wakiyamap/monad/chaincfg/chainhash"
 )
 
 // MaxBlockHeaderPayload is the maximum number of bytes a block header can be.
@@ -55,6 +56,23 @@ func (h *BlockHeader) BlockHash() chainhash.Hash {
 
 	return chainhash.DoubleHashH(buf.Bytes())
 }
+
+// PowHash returns the monacoin lyra2re2 hash of this block header. This value is
+// used to check the PoW on blocks advertised on the network. TODO monacoin is ok?
+  func (h *BlockHeader) PowHash() (*chainhash.Hash, error) {
+  	var powHash chainhash.Hash
+  
+  	buf := bytes.NewBuffer(make([]byte, 0, MaxBlockHeaderPayload))
+  	_ = writeBlockHeader(buf, 0, h)
+  
+	lyraHash, err := lyra2rev2.Sum(buf.Bytes())
+  	if err != nil {
+  		return nil, err
+  	}
+	copy(powHash[:], lyraHash)
+  
+  	return &powHash, nil
+  }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
 // This is part of the Message interface implementation.

@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/txscript"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/btcec"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/txscript"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
@@ -22,7 +22,7 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 	tests := []struct {
 		name     string         // test description.
 		size     int64          // Transaction size in bytes.
-		relayFee btcutil.Amount // minimum relay transaction fee.
+		relayFee monautil.Amount // minimum relay transaction fee.
 		want     int64          // Expected fee.
 	}{
 		{
@@ -48,8 +48,8 @@ func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 		{
 			"max standard tx size with max satoshi relay fee",
 			maxStandardTxWeight / 4,
-			btcutil.MaxSatoshi,
-			btcutil.MaxSatoshi,
+			monautil.MaxSatoshi,
+			monautil.MaxSatoshi,
 		},
 		{
 			"1500 bytes with 5000 relay fee",
@@ -215,7 +215,7 @@ func TestDust(t *testing.T) {
 	tests := []struct {
 		name     string // test description
 		txOut    wire.TxOut
-		relayFee btcutil.Amount // minimum relay transaction fee.
+		relayFee monautil.Amount // minimum relay transaction fee.
 		isDust   bool
 	}{
 		{
@@ -247,8 +247,8 @@ func TestDust(t *testing.T) {
 		{
 			// Maximum allowed value is never dust.
 			"max satoshi amount is never dust",
-			wire.TxOut{Value: btcutil.MaxSatoshi, PkScript: pkScript},
-			btcutil.MaxSatoshi,
+			wire.TxOut{Value: monautil.MaxSatoshi, PkScript: pkScript},
+			monautil.MaxSatoshi,
 			false,
 		},
 		{
@@ -292,8 +292,8 @@ func TestCheckTransactionStandard(t *testing.T) {
 		Sequence:         wire.MaxTxInSequenceNum,
 	}
 	addrHash := [20]byte{0x01}
-	addr, err := btcutil.NewAddressPubKeyHash(addrHash[:],
-		&chaincfg.TestNet3Params)
+	addr, err := monautil.NewAddressPubKeyHash(addrHash[:],
+		&chaincfg.TestNet4Params)
 	if err != nil {
 		t.Fatalf("NewAddressPubKeyHash: unexpected error: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestCheckTransactionStandard(t *testing.T) {
 	pastMedianTime := time.Now()
 	for _, test := range tests {
 		// Ensure standardness is as expected.
-		err := checkTransactionStandard(btcutil.NewTx(&test.tx),
+		err := checkTransactionStandard(monautil.NewTx(&test.tx),
 			test.height, pastMedianTime, DefaultMinRelayTxFee, 1)
 		if err == nil && test.isStandard {
 			// Test passes since function returned standard for a

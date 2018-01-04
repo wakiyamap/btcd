@@ -1,7 +1,7 @@
 fullblocktests
 ==============
 
-[![Build Status](http://img.shields.io/travis/roasbeef/btcd.svg)](https://travis-ci.org/roasbeef/btcd) 
+[![Build Status](http://img.shields.io/travis/wakiyamap/monad.svg)](https://travis-ci.org/wakiyamap/monad) 
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
 
@@ -20,7 +20,7 @@ of blocks that excerise the consensus validation rules.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/roasbeef/btcd/blockchain/fullblocktests
+$ go get -u github.com/wakiyamap/monad/blockchain/fullblocktests
 ```
 
 ## License

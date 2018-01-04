@@ -7,7 +7,7 @@ package addrmgr
 import (
 	"time"
 
-	"github.com/roasbeef/btcd/wire"
+	"github.com/wakiyamap/monad/wire"
 )
 
 // KnownAddress tracks information about a known network address that is used

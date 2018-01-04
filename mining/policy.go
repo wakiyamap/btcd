@@ -5,9 +5,9 @@
 package mining
 
 import (
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/blockchain"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 const (
@@ -44,7 +44,7 @@ type Policy struct {
 	// TxMinFreeFee is the minimum fee in Satoshi/1000 bytes that is
 	// required for a transaction to be treated as free for mining purposes
 	// (block template generation).
-	TxMinFreeFee btcutil.Amount
+	TxMinFreeFee monautil.Amount
 }
 
 // minInt is a helper function to return the minimum of two ints.  This avoids

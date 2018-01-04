@@ -56,8 +56,8 @@ imports:
   - rotator
 - name: github.com/kkdai/bstream
   version: f391b8402d23024e7c0f624b31267a89998fca95
-- name: github.com/roasbeef/btcutil
-  version: c3ff179366044979fb9856c2feb79bd4c2184c7a
+- name: github.com/wakiyamap/monautil
+  version: d7c96a74d4d796a28562002f0d9c9150c8f6a4f7
   subpackages:
   - base58
   - bech32

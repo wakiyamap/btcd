@@ -8,14 +8,14 @@ import (
 	"errors"
 
 	"github.com/btcsuite/fastsha256"
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/database"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
-	"github.com/roasbeef/btcutil/gcs"
-	"github.com/roasbeef/btcutil/gcs/builder"
+	"github.com/wakiyamap/monad/blockchain"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/database"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
+	"github.com/wakiyamap/monautil/gcs"
+	"github.com/wakiyamap/monautil/gcs/builder"
 )
 
 const (
@@ -168,7 +168,7 @@ func (idx *CfIndex) Create(dbTx database.Tx) error {
 
 // storeFilter stores a given filter, and performs the steps needed to
 // generate the filter's header.
-func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
+func storeFilter(dbTx database.Tx, block *monautil.Block, f *gcs.Filter,
 	filterType wire.FilterType) error {
 	if uint8(filterType) > maxFilterType {
 		return errors.New("unsupported filter type")
@@ -208,7 +208,7 @@ func storeFilter(dbTx database.Tx, block *btcutil.Block, f *gcs.Filter,
 // ConnectBlock is invoked by the index manager when a new block has been
 // connected to the main chain. This indexer adds a hash-to-cf mapping for
 // every passed block. This is part of the Indexer interface.
-func (idx *CfIndex) ConnectBlock(dbTx database.Tx, block *btcutil.Block,
+func (idx *CfIndex) ConnectBlock(dbTx database.Tx, block *monautil.Block,
 	view *blockchain.UtxoViewpoint) error {
 
 	f, err := builder.BuildBasicFilter(block.MsgBlock())
@@ -232,7 +232,7 @@ func (idx *CfIndex) ConnectBlock(dbTx database.Tx, block *btcutil.Block,
 // DisconnectBlock is invoked by the index manager when a block has been
 // disconnected from the main chain.  This indexer removes the hash-to-cf
 // mapping for every passed block. This is part of the Indexer interface.
-func (idx *CfIndex) DisconnectBlock(dbTx database.Tx, block *btcutil.Block,
+func (idx *CfIndex) DisconnectBlock(dbTx database.Tx, block *monautil.Block,
 	view *blockchain.UtxoViewpoint) error {
 
 	for _, key := range cfIndexKeys {

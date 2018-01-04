@@ -10,7 +10,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
 )
 
 const (

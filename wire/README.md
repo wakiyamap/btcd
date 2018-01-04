@@ -2,22 +2,22 @@ wire
 ====
 
 <<<<<<< HEAD
-[![Build Status](http://img.shields.io/travis/roasbeef/btcd.svg)](https://travis-ci.org/roasbeef/btcd)
+[![Build Status](http://img.shields.io/travis/wakiyamap/monad.svg)](https://travis-ci.org/wakiyamap/monad)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/roasbeef/btcd/wire)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/wakiyamap/monad/wire)
 =======
-[![Build Status](http://img.shields.io/travis/roasbeef/btcd.svg)]
-(https://travis-ci.org/roasbeef/btcd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/wakiyamap/monad.svg)]
+(https://travis-ci.org/wakiyamap/monad) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/roasbeef/btcd/wire)
+(http://godoc.org/github.com/wakiyamap/monad/wire)
 >>>>>>> c7d17841... multi: update imports to roasbeef's
 
 Package wire implements the bitcoin wire protocol.  A comprehensive suite of
 tests with 100% test coverage is provided to ensure proper functionality.
 
 There is an associated blog post about the release of this package
-[here](https://blog.conformal.com/btcwire-the-bitcoin-wire-protocol-package-from-btcd/).
+[here](https://blog.conformal.com/btcwire-the-bitcoin-wire-protocol-package-from-monad/).
 
 This package has intentionally been designed so it can be used as a standalone
 package for any projects needing to interface with bitcoin peers at the wire
@@ -26,7 +26,7 @@ protocol level.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/roasbeef/btcd/wire
+$ go get -u github.com/wakiyamap/monad/wire
 ```
 
 ## Bitcoin Message Overview

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/roasbeef/btcd/wire"
+	"github.com/wakiyamap/monad/wire"
 )
 
 var (

@@ -7,7 +7,7 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/roasbeef/btcd/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg"
 )
 
 // TestNotifications ensures that notification callbacks are fired on events.

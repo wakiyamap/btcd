@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/mining"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/blockchain"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/mining"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 const (
@@ -59,12 +59,12 @@ type Config struct {
 
 	// MiningAddrs is a list of payment addresses to use for the generated
 	// blocks.  Each generated block will randomly choose one of them.
-	MiningAddrs []btcutil.Address
+	MiningAddrs []monautil.Address
 
 	// ProcessBlock defines the function to call with any solved blocks.
 	// It typically must run the provided block through the same set of
 	// rules and handling as any other block coming from the network.
-	ProcessBlock func(*btcutil.Block, blockchain.BehaviorFlags) (bool, error)
+	ProcessBlock func(*monautil.Block, blockchain.BehaviorFlags) (bool, error)
 
 	// ConnectedCount defines the function to use to obtain how many other
 	// peers the server is connected to.  This is used by the automatic
@@ -152,7 +152,7 @@ out:
 
 // submitBlock submits the passed block to network after ensuring it passes all
 // of the consensus validation rules.
-func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
+func (m *CPUMiner) submitBlock(block *monautil.Block) bool {
 	m.submitBlockLock.Lock()
 	defer m.submitBlockLock.Unlock()
 
@@ -191,7 +191,7 @@ func (m *CPUMiner) submitBlock(block *btcutil.Block) bool {
 	// The block was accepted.
 	coinbaseTx := block.MsgBlock().Transactions[0].TxOut[0]
 	log.Infof("Block submitted via CPU miner accepted (hash %s, "+
-		"amount %v)", block.Hash(), btcutil.Amount(coinbaseTx.Value))
+		"amount %v)", block.Hash(), monautil.Amount(coinbaseTx.Value))
 	return true
 }
 
@@ -355,7 +355,7 @@ out:
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
-			block := btcutil.NewBlock(template.Block)
+			block := monautil.NewBlock(template.Block)
 			m.submitBlock(block)
 		}
 	}
@@ -609,7 +609,7 @@ func (m *CPUMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
 		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
-			block := btcutil.NewBlock(template.Block)
+			block := monautil.NewBlock(template.Block)
 			m.submitBlock(block)
 			blockHashes[i] = block.Hash()
 			i++

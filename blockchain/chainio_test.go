@@ -11,9 +11,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/database"
-	"github.com/roasbeef/btcd/wire"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/database"
+	"github.com/wakiyamap/monad/wire"
 )
 
 // TestErrNotInMainChain ensures the functions related to errNotInMainChain work

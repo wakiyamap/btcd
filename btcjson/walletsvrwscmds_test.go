@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/roasbeef/btcd/btcjson"
+	"github.com/wakiyamap/monad/btcjson"
 )
 
 // TestWalletSvrWsCmds tests all of the wallet server websocket-specific

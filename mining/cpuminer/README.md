@@ -2,15 +2,15 @@ cpuminer
 ========
 
 <<<<<<< HEAD
-[![Build Status](http://img.shields.io/travis/roasbeef/btcd.svg)](https://travis-ci.org/roasbeef/btcd)
+[![Build Status](http://img.shields.io/travis/wakiyamap/monad.svg)](https://travis-ci.org/wakiyamap/monad)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/roasbeef/btcd/mining/cpuminer)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/wakiyamap/monad/mining/cpuminer)
 =======
-[![Build Status](http://img.shields.io/travis/roasbeef/btcd.svg)]
-(https://travis-ci.org/roasbeef/btcd) [![ISC License]
+[![Build Status](http://img.shields.io/travis/wakiyamap/monad.svg)]
+(https://travis-ci.org/wakiyamap/monad) [![ISC License]
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
-(http://godoc.org/github.com/roasbeef/btcd/mining/cpuminer)
+(http://godoc.org/github.com/wakiyamap/monad/mining/cpuminer)
 >>>>>>> c7d17841... multi: update imports to roasbeef's
 
 ## Overview
@@ -23,7 +23,7 @@ now.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/roasbeef/btcd/mining/cpuminer
+$ go get -u github.com/wakiyamap/monad/mining/cpuminer
 ```
 
 ## License

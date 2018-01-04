@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/roasbeef/btcd/btcjson"
+	"github.com/wakiyamap/monad/btcjson"
 )
 
 const (

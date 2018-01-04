@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/chaincfg"
-	"github.com/roasbeef/btcd/database"
-	_ "github.com/roasbeef/btcd/database/ffldb"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/blockchain"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/database"
+	_ "github.com/wakiyamap/monad/database/ffldb"
+	"github.com/wakiyamap/monautil"
 )
 
 // This example demonstrates how to create a new chain instance and use
@@ -58,7 +58,7 @@ func ExampleBlockChain_ProcessBlock() {
 	// Process a block.  For this example, we are going to intentionally
 	// cause an error by trying to process the genesis block which already
 	// exists.
-	genesisBlock := btcutil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
+	genesisBlock := monautil.NewBlock(chaincfg.MainNetParams.GenesisBlock)
 	isMainChain, isOrphan, err := chain.ProcessBlock(genesisBlock,
 		blockchain.BFNone)
 	if err != nil {

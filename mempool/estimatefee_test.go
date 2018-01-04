@@ -9,10 +9,10 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/mining"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/mining"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 // newTestFeeEstimator creates a feeEstimator with some different parameters
@@ -46,11 +46,11 @@ type estimateFeeTester struct {
 	last    *lastBlock
 }
 
-func (eft *estimateFeeTester) testTx(fee btcutil.Amount) *TxDesc {
+func (eft *estimateFeeTester) testTx(fee monautil.Amount) *TxDesc {
 	eft.version++
 	return &TxDesc{
 		TxDesc: mining.TxDesc{
-			Tx: btcutil.NewTx(&wire.MsgTx{
+			Tx: monautil.NewTx(&wire.MsgTx{
 				Version: eft.version,
 			}),
 			Height: eft.height,
@@ -70,7 +70,7 @@ func expectedFeePerKilobyte(t *TxDesc) BtcPerKilobyte {
 func (eft *estimateFeeTester) newBlock(txs []*wire.MsgTx) {
 	eft.height++
 
-	block := btcutil.NewBlock(&wire.MsgBlock{
+	block := monautil.NewBlock(&wire.MsgBlock{
 		Transactions: txs,
 	})
 	block.SetHeight(eft.height)
@@ -283,7 +283,7 @@ func (eft *estimateFeeTester) round(txHistory [][]*TxDesc,
 	// generate new txs.
 	var newTxs []*TxDesc
 	for i := uint32(0); i < txPerRound; i++ {
-		newTx := eft.testTx(btcutil.Amount(rand.Intn(1000000)))
+		newTx := eft.testTx(monautil.Amount(rand.Intn(1000000)))
 		eft.ef.ObserveTransaction(newTx)
 		newTxs = append(newTxs, newTx)
 	}

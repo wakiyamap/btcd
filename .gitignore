@@ -2,7 +2,7 @@
 *~
 
 # Databases
-btcd.db
+monad.db
 *-shm
 *-wal
 

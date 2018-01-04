@@ -25,8 +25,8 @@
 //          "fmt"
 //          "log"
 //
-//          "github.com/roasbeef/btcutil"
-//          "github.com/roasbeef/btcd/chaincfg"
+//          "github.com/wakiyamap/monautil"
+//          "github.com/wakiyamap/monad/chaincfg"
 //  )
 //
 //  var testnet = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
@@ -39,14 +39,14 @@
 //
 //          // Modify active network parameters if operating on testnet.
 //          if *testnet {
-//                  chainParams = &chaincfg.TestNet3Params
+//                  chainParams = &chaincfg.TestNet4Params
 //          }
 //
 //          // later...
 //
 //          // Create and print new payment address, specific to the active network.
 //          pubKeyHash := make([]byte, 20)
-//          addr, err := btcutil.NewAddressPubKeyHash(pubKeyHash, chainParams)
+//          addr, err := monautil.NewAddressPubKeyHash(pubKeyHash, chainParams)
 //          if err != nil {
 //                  log.Fatal(err)
 //          }

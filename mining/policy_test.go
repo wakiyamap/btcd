@@ -8,10 +8,10 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/roasbeef/btcd/blockchain"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monad/blockchain"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 // newHashFromStr converts the passed big-endian hex string into a
@@ -49,7 +49,7 @@ func newUtxoViewpoint(sourceTxns []*wire.MsgTx, sourceTxHeights []int32) *blockc
 
 	view := blockchain.NewUtxoViewpoint()
 	for i, tx := range sourceTxns {
-		view.AddTxOuts(btcutil.NewTx(tx), sourceTxHeights[i])
+		view.AddTxOuts(monautil.NewTx(tx), sourceTxHeights[i])
 	}
 	return view
 }
@@ -153,7 +153,7 @@ func TestCalcPriority(t *testing.T) {
 			utxoView: newUtxoViewpoint([]*wire.MsgTx{commonSourceTx1},
 				[]int32{100}),
 			nextHeight: 100000,
-			want:       3083333333333.3335,
+			want:       3094013333333.3335,
 		},
 	}
 

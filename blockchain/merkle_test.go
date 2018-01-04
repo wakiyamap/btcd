@@ -7,12 +7,12 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/roasbeef/btcutil"
+	"github.com/wakiyamap/monautil"
 )
 
 // TestMerkle tests the BuildMerkleTreeStore API.
 func TestMerkle(t *testing.T) {
-	block := btcutil.NewBlock(&Block100000)
+	block := monautil.NewBlock(&Block100000)
 	merkles := BuildMerkleTreeStore(block.Transactions(), false)
 	calculatedMerkleRoot := merkles[len(merkles)-1]
 	wantMerkle := &Block100000.Header.MerkleRoot

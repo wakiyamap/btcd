@@ -7,7 +7,7 @@ package wire
 import (
 	"io"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
 )
 
 // MsgGetCFilter implements the Message interface and represents a bitcoin

@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/roasbeef/btcd/btcjson"
+	"github.com/wakiyamap/monad/btcjson"
 )
 
 // TestWalletSvrCmds tests all of the wallet server commands marshal and

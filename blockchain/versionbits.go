@@ -7,7 +7,7 @@ package blockchain
 import (
 	"math"
 
-	"github.com/roasbeef/btcd/chaincfg"
+	"github.com/wakiyamap/monad/chaincfg"
 )
 
 const (

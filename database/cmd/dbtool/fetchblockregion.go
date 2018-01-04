@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/database"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/database"
 )
 
 // blockRegionCmd defines the configuration options for the fetchblockregion

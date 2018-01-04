@@ -5,8 +5,8 @@
 package blockchain
 
 import (
-	"github.com/roasbeef/btcd/btcec"
-	"github.com/roasbeef/btcd/txscript"
+	"github.com/wakiyamap/monad/btcec"
+	"github.com/wakiyamap/monad/txscript"
 )
 
 // -----------------------------------------------------------------------------

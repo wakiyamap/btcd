@@ -7,7 +7,7 @@ package main
 import (
 	"log"
 
-	"github.com/roasbeef/btcd/rpcclient"
+	"github.com/wakiyamap/monad/rpcclient"
 )
 
 func main() {
