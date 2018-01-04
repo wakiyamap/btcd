@@ -69,7 +69,7 @@ imports:
 - name: github.com/wakiyamap/lyra2rev2
   version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
 - name: github.com/wakiyamap/monautil
-  version: d7c96a74d4d796a28562002f0d9c9150c8f6a4f7
+  version: acbd8209e7920509daaf04cb870f99f2618d5780
   subpackages:
   - base58
   - bech32
