@@ -1,8 +1,16 @@
-hash: d74068b4218716346d9ed6c2bd10439e7c599216dd7b63ef37e9ff0f56632898
-updated: 2017-11-17T15:59:49.625897724-08:00
+hash: 992f47c4584f4286121ff1874f3eb75a8eddeb09016d5f292d9bd49fbcdc739d
+updated: 2018-01-04T18:19:24.948662589+09:00
 imports:
 - name: github.com/aead/siphash
   version: e404fcfc888570cadd1610538e2dbc89f66af814
+- name: github.com/aead/skein
+  version: 9365ae6e95d294dc113a0b308852f97c916db233
+  subpackages:
+  - threefish
+- name: github.com/bitgoin/lyra2rev2
+  version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
+  subpackages:
+  - sha3
 - name: github.com/btcsuite/btclog
   version: 84c8d2346e9fc8c7b947e243b9c24e6df9fd206a
 - name: github.com/btcsuite/fastsha256
@@ -48,6 +56,8 @@ imports:
   version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
   subpackages:
   - spew
+- name: github.com/dchest/blake256
+  version: dee3fe6eb0e98dc774a94fc231f85baf7c29d360
 - name: github.com/jessevdk/go-flags
   version: 1679536dcc895411a9f5848d9a0250be7856448c
 - name: github.com/jrick/logrotate
@@ -56,6 +66,8 @@ imports:
   - rotator
 - name: github.com/kkdai/bstream
   version: f391b8402d23024e7c0f624b31267a89998fca95
+- name: github.com/wakiyamap/lyra2rev2
+  version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
 - name: github.com/wakiyamap/monautil
   version: d7c96a74d4d796a28562002f0d9c9150c8f6a4f7
   subpackages:
