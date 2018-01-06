@@ -111,7 +111,7 @@ func TestAddrWire(t *testing.T) {
 		Timestamp: time.Unix(0x495fab29, 0), // 2009-01-03 12:15:05 -0600 CST
 		Services:  SFNodeNetwork,
 		IP:        net.ParseIP("192.168.0.1"),
-		Port:      9402,
+		Port:      9400,
 	}
 
 	// Empty address message.
@@ -134,7 +134,7 @@ func TestAddrWire(t *testing.T) {
 		0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // SFNodeNetwork
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0xff, 0xff, 0xc0, 0xa8, 0x00, 0x01, // IP 192.168.0.1
-		0x20, 0x8e, // Port 9402 in big-endian
+		0x20, 0x8e, // Port 9400 in big-endian
 
 	}
 
@@ -222,7 +222,7 @@ func TestAddrWireErrors(t *testing.T) {
 		Timestamp: time.Unix(0x495fab29, 0), // 2009-01-03 12:15:05 -0600 CST
 		Services:  SFNodeNetwork,
 		IP:        net.ParseIP("192.168.0.1"),
-		Port:      9402,
+		Port:      9400,
 	}
 
 	// Address message with multiple addresses.
@@ -239,7 +239,7 @@ func TestAddrWireErrors(t *testing.T) {
 		0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // SFNodeNetwork
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0xff, 0xff, 0xc0, 0xa8, 0x00, 0x01, // IP 192.168.0.1
-		0x20, 0x8e, // Port 9402 in big-endian
+		0x20, 0x8e, // Port 9400 in big-endian
 
 	}
 

@@ -28,7 +28,7 @@ type params struct {
 // to emulate the full reference implementation RPC API.
 var mainNetParams = params{
 	Params:  &chaincfg.MainNetParams,
-	rpcPort: "9402",
+	rpcPort: "9400",
 }
 
 // regressionNetParams contains parameters specific to the regression test
@@ -37,7 +37,7 @@ var mainNetParams = params{
 // details.
 var regressionNetParams = params{
 	Params:  &chaincfg.RegressionNetParams,
-	rpcPort: "19402",
+	rpcPort: "19400",
 }
 
 // testNet4Params contains parameters specific to the test network (version 3)
@@ -45,7 +45,7 @@ var regressionNetParams = params{
 // reference implementation - see the mainNetParams comment for details.
 var testNet4Params = params{
 	Params:  &chaincfg.TestNet4Params,
-	rpcPort: "19402",
+	rpcPort: "19400",
 }
 
 // simNetParams contains parameters specific to the simulation test network

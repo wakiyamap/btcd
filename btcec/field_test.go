@@ -555,7 +555,7 @@ func TestAdd2(t *testing.T) {
 		{"fffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000", "f1ffff000", "1ffff3d1"},
 		// Random samples.
 		{
-			"ad82b8d1cc136e23e9fd77fe2c7db1fe5a2ecbfcbde59ab3529759402f862d28",
+			"ad82b8d1cc136e23e9fd77fe2c7db1fe5a2ecbfcbde59ab3529759400f862d28",
 			"4d6a4e95d6d61f4f46b528bebe152d408fd741157a28f415639347a84f6f574b",
 			"faed0767a2e98d7330b2a0bcea92df3eea060d12380e8ec8b62a9fdb9ef58473",
 		},

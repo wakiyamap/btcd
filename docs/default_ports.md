@@ -12,4 +12,4 @@ configurations.
 |Name|Port|
 |----|----|
 |Default Bitcoin peer-to-peer port|TCP 9401|
-|Default RPC port|TCP 9402|
+|Default RPC port|TCP 9400|

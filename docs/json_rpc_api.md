@@ -46,7 +46,7 @@ differences between monad and bitcoind as far as how RPCs are serviced:
 Websockets are the preferred transport for monad RPC and are used by applications
 such as [btcwallet](https://github.com/btcsuite/btcwallet) for inter-process
 communication with monad.  The websocket connection endpoint for monad is
-`wss://your_ip_or_domain:9402/ws`.
+`wss://your_ip_or_domain:9400/ws`.
 
 In addition to the [standard API](#Methods), an [extension API](#WSExtMethods)
 has been developed that is exclusive to clients using Websockets. In its current
@@ -71,7 +71,7 @@ indicates, the [Websocket-specific extension](#WSExtMethods) methods can only be
 accessed when connected via Websockets.
 
 As mentioned in the [overview](#Overview), the websocket connection endpoint for
-monad is `wss://your_ip_or_domain:9402/ws`.
+monad is `wss://your_ip_or_domain:9400/ws`.
 
 The most important differences between the two transports as it pertains to the
 JSON-RPC API are:
@@ -1115,7 +1115,7 @@ func main() {
 	// not long-lived, the connection will be closed as soon as the program
 	// exits.
 	connCfg := &btcrpcclient.ConnConfig{
-		Host:         "localhost:9402",
+		Host:         "localhost:9400",
 		Endpoint:     "ws",
 		User:         "yourrpcuser",
 		Pass:         "yourrpcpass",
@@ -1179,7 +1179,7 @@ func main() {
 	// not long-lived, the connection will be closed as soon as the program
 	// exits.
 	connCfg := &btcrpcclient.ConnConfig{
-		Host:         "localhost:19402",
+		Host:         "localhost:19400",
 		Endpoint:     "ws",
 		User:         "yourrpcuser",
 		Pass:         "yourrpcpass",
@@ -1280,7 +1280,7 @@ func main() {
 
 	// Create a new RPC client using websockets.
 	connCfg := &btcrpcclient.ConnConfig{
-		Host:         "localhost:9402",
+		Host:         "localhost:9400",
 		Endpoint:     "ws",
 		User:         "yourrpcuser",
 		Pass:         "yourrpcpass",
@@ -1351,7 +1351,7 @@ var password = "yourpassword";
 // Initiate the websocket connection.  The monad generated certificate acts as
 // its own certificate authority, so it needs to be specified in the 'ca' array
 // for the certificate to properly validate.
-var ws = new WebSocket('wss://127.0.0.1:9402/ws', {
+var ws = new WebSocket('wss://127.0.0.1:9400/ws', {
   headers: {
     'Authorization': 'Basic '+new Buffer(user+':'+password).toString('base64')
   },

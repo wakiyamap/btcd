@@ -915,7 +915,7 @@ Changes in 0.3.2 (Tue Oct 22 2013)
   - Remove deprecated sqlite as an available database backend
   - Close sqlite compile issue as sqlite has now been removed
     (https://github.com/conformal/monad/issues/11)
-  - Change default RPC ports to 9402 (mainnet) and 19402 (testnet)
+  - Change default RPC ports to 9400 (mainnet) and 19400 (testnet)
   - Continue cleanup and work on implementing RPC API calls
   - Add support for the following RPC calls: getrawmempool,
     getbestblockhash, decoderawtransaction, getdifficulty,
