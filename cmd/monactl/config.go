@@ -27,12 +27,12 @@ const (
 
 var (
 	monadHomeDir           = monautil.AppDataDir("monad", false)
-	btcctlHomeDir         = monautil.AppDataDir("btcctl", false)
-	btcwalletHomeDir      = monautil.AppDataDir("btcwallet", false)
-	defaultConfigFile     = filepath.Join(btcctlHomeDir, "btcctl.conf")
+	monactlHomeDir         = monautil.AppDataDir("monactl", false)
+	monawalletHomeDir      = monautil.AppDataDir("monawallet", false)
+	defaultConfigFile     = filepath.Join(monactlHomeDir, "monactl.conf")
 	defaultRPCServer      = "localhost"
 	defaultRPCCertFile    = filepath.Join(monadHomeDir, "rpc.cert")
-	defaultWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
+	defaultWalletCertFile = filepath.Join(monawalletHomeDir, "rpc.cert")
 )
 
 // listCommands categorizes and lists all of the usable commands along with
@@ -88,7 +88,7 @@ func listCommands() {
 	}
 }
 
-// config defines the configuration options for btcctl.
+// config defines the configuration options for monactl.
 //
 // See loadConfig for details on the configuration load process.
 type config struct {
@@ -146,7 +146,7 @@ func normalizeAddress(addr string, useTestNet4, useSimNet, useWallet bool) strin
 func cleanAndExpandPath(path string) string {
 	// Expand initial ~ to OS specific home directory.
 	if strings.HasPrefix(path, "~") {
-		homeDir := filepath.Dir(btcctlHomeDir)
+		homeDir := filepath.Dir(monactlHomeDir)
 		path = strings.Replace(path, "~", homeDir, 1)
 	}
 
@@ -211,10 +211,10 @@ func loadConfig() (*config, []string, error) {
 	}
 
 	if _, err := os.Stat(preCfg.ConfigFile); os.IsNotExist(err) {
-		// Use config file for RPC server to create default btcctl config
+		// Use config file for RPC server to create default monactl config
 		var serverConfigPath string
 		if preCfg.Wallet {
-			serverConfigPath = filepath.Join(btcwalletHomeDir, "btcwallet.conf")
+			serverConfigPath = filepath.Join(monawalletHomeDir, "monawallet.conf")
 		} else {
 			serverConfigPath = filepath.Join(monadHomeDir, "monad.conf")
 		}
@@ -281,7 +281,7 @@ func loadConfig() (*config, []string, error) {
 
 // createDefaultConfig creates a basic config file at the given destination path.
 // For this it tries to read the config file for the RPC server (either monad or
-// btcwallet), and extract the RPC user and password from it.
+// monawallet), and extract the RPC user and password from it.
 func createDefaultConfigFile(destinationPath, serverConfigPath string) error {
 	// Read the RPC server config
 	serverConfigFile, err := os.Open(serverConfigPath)
