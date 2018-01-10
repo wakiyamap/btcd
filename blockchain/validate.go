@@ -660,17 +660,17 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		// Ensure the difficulty specified in the block header matches
 		// the calculated difficulty based on the previous block and
 		// difficulty retarget rules. TODO monacoin is ok?
-		//expectedDifficulty, err := b.calcNextRequiredDifficulty(prevNode,
-		//	header.Timestamp)
-		//if err != nil {
-		//	return err
-		//}
-		//blockDifficulty := header.Bits
-		//if blockDifficulty != expectedDifficulty {
-		//	str := "block difficulty of %d is not the expected value of %d"
-		//	str = fmt.Sprintf(str, blockDifficulty, expectedDifficulty)
-		//	return ruleError(ErrUnexpectedDifficulty, str)
-		//}
+		expectedDifficulty, err := b.calcNextRequiredDifficulty(prevNode,
+			header.Timestamp)
+		if err != nil {
+			return err
+		}
+		blockDifficulty := header.Bits
+		if blockDifficulty != expectedDifficulty {
+			str := "block difficulty of %d is not the expected value of %d"
+			str = fmt.Sprintf(str, blockDifficulty, expectedDifficulty)
+			return ruleError(ErrUnexpectedDifficulty, str)
+		}
 
 		// Ensure the timestamp for the block header is after the
 		// median time of the last several blocks (medianTimeBlocks).
