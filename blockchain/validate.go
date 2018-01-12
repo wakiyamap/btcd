@@ -52,12 +52,12 @@ var (
 	// block91842Hash is one of the two nodes which violate the rules
 	// set forth in BIP0030.  It is defined as a package level variable to
 	// avoid the need to create a new instance every time a check is needed.
-	block91842Hash = newHashFromStr("00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec")
+	block91842Hash = newHashFromStr("1a18c9f9c17c65960d641926de19cddca2fb817050613b5a36090ffc0eac70ff")
 
 	// block91880Hash is one of the two nodes which violate the rules
 	// set forth in BIP0030.  It is defined as a package level variable to
 	// avoid the need to create a new instance every time a check is needed.
-	block91880Hash = newHashFromStr("00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721")
+	block91880Hash = newHashFromStr("65a376f14c1ef5f47cd831a106c396e6efce82ffd3954869235865a68597ceb0")
 )
 
 // isNullOutpoint determines whether or not a previous transaction output point
@@ -325,9 +325,10 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 	// to avoid proof of work checks is set.
 	if flags&BFNoPoWCheck != BFNoPoWCheck {
 		// The block hash must be less than the claimed target.
-		//hash := header.BlockHash()
-		//hashNum := HashToBig(&hash) TODO monacoin is ok?
-		lyratime := time.Unix(1443352620, 0) //450000block
+		// monacoin is ok?
+		// This time is over 450025blocks(mainnet) and 55 blocks(testnet)
+		// 2017/06/08 12:37:00
+		lyratime := time.Unix(1499485020, 0)
 		if header.Timestamp.After(lyratime) {
 		} else {
 			return nil

@@ -57,5 +57,5 @@
 // a new Params struct may be created which defines the parameters for the
 // non-standard network.  As a general rule of thumb, all network parameters
 // should be unique to the network, but parameter collisions can still occur
-// (unfortunately, this is the case with regtest and testnet3 sharing magics).
+// (unfortunately, this is the case with regtest and testnet4 sharing magics).
 package chaincfg

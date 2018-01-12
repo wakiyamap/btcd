@@ -621,7 +621,7 @@ The following is an overview of the RPC methods which are implemented by monad, 
 |Parameters|None|
 |Description|Get bitcoin network monad is running on.|
 |Returns|numeric|
-|Example Return|`3652501241` (mainnet)<br />`118034699` (testnet3)|
+|Example Return|`3652501241` (mainnet)<br />`118034699` (testnet4)|
 [Return to Overview](#ExtMethodOverview)<br />
 
 ***

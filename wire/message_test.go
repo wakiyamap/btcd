@@ -200,7 +200,7 @@ func TestReadMessageWireErrors(t *testing.T) {
 			testErr.Error(), wantErr)
 	}
 
-	// Wire encoded bytes for main and testnet3 networks magic identifiers.
+	// Wire encoded bytes for main and testnet4 networks magic identifiers.
 	testNet4Bytes := makeHeader(TestNet4, "", 0, 0)
 
 	// Wire encoded bytes for a message that exceeds max overall message

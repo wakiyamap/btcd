@@ -62,7 +62,7 @@ var simNetParams = params{
 // name as "testnet" when the passed active network matches wire.TestNet4.
 //
 // A proper upgrade to move the data and log directories for this network to
-// "testnet3" is planned for the future, at which point this function can be
+// "testnet4" is planned for the future, at which point this function can be
 // removed and the network parameter's name used instead.
 func netName(chainParams *params) string {
 	switch chainParams.Net {
