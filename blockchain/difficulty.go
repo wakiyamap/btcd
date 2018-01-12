@@ -226,6 +226,7 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 
 
 	// DarkGravityWave3
+	// current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io
 	readNode := lastNode.RelativeAncestor(0) //last block
 	if readNode == nil {
 		return 0, AssertError("unable to obtain previous retarget block")
@@ -239,9 +240,11 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 	PastDifficultyAverage := big.NewInt(0)
 	PastDifficultyAveragePrev := big.NewInt(0)
 
+	// loop over the past n blocks, where n == PastBlocksMax
 	for i := 1; i < 25; i++ {
 		CountBlocks += 1
 
+		// Calculate average difficulty based on the blocks we iterate over in this for loop
 		if CountBlocks <= 24 {
 			if CountBlocks == 1 {
 				PastDifficultyAverage = CompactToBig(readNode.bits)
@@ -251,30 +254,29 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 			}
 			PastDifficultyAveragePrev = PastDifficultyAverage
 		}
+
+		// If this is the second iteration (LastBlockTime was set)
 		if LastBlockTime > 0 {
+			// Calculate time difference between previous block and current block
 			Diff = (LastBlockTime - readNode.timestamp)
 			nActualTimespan += Diff
 		}
+		// Increment the actual timespan
 		LastBlockTime = readNode.timestamp
 
 		readNode = readNode.RelativeAncestor(1)
 	}
 
-	// Limit the amount of adjustment that can occur to the previous
-	// difficulty.
-	nTargetTimespan := int64(CountBlocks * 90) //1.5 miniutes
+	// Limit the re-adjustment to 3x or 0.33x
+	// We don't want to increase/decrease diff too much.
+	nTargetTimespan := int64(CountBlocks * 90) // Monacoin: 1.5(60*1.5) minutes between block
 	if nActualTimespan < nTargetTimespan / 3 {
 		nActualTimespan = nTargetTimespan / 3
 	} else if nActualTimespan > nTargetTimespan * 3 {
 		nActualTimespan = nTargetTimespan * 3
 	}
 
-	// Calculate new target difficulty as:
-	//  currentDifficulty * (adjustedTimespan / targetTimespan)
-	// The result uses integer division which means it will be slightly
-	// rounded down.  Bitcoind also uses integer division to calculate this
-	// result.
-	//oldTarget := CompactToBig(lastNode.bits)
+	// Calculate the new difficulty based on actual and target timespan.
 	oldTarget := PastDifficultyAverage
 	newTarget := new(big.Int).Mul(oldTarget, big.NewInt(nActualTimespan))
 	newTarget.Div(newTarget, big.NewInt(nTargetTimespan))
@@ -292,10 +294,9 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 	log.Debugf("Difficulty retarget at block height %d", lastNode.height+1)
 	log.Debugf("Old target %08x (%064x)", readNode.bits, oldTarget)
 	log.Debugf("New target %08x (%064x)", newTargetBits, CompactToBig(newTargetBits))
-	log.Debugf("Actual timespan %v, adjusted timespan %v, target timespan %v",
+	log.Debugf("Actual timespan %v, adjusted timespan %v",
 		time.Duration(nActualTimespan)*time.Second,
 		time.Duration(nTargetTimespan)*time.Second)
-		//b.chainParams.TargetTimespan)
 
 	return newTargetBits, nil
 }
