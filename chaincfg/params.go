@@ -466,7 +466,7 @@ var TestNet4Params = Params{
 
 	// Address encoding magics
 	PubKeyHashAddrID:        0x6f, // starts with m or n
-	ScriptHashAddrID:        0xc4, // starts with 2
+	ScriptHashAddrID:        0x75, // starts with p
 	WitnessPubKeyHashAddrID: 0x03, // starts with QW
 	WitnessScriptHashAddrID: 0x28, // starts with T7n
 	PrivateKeyID:            0xef,
