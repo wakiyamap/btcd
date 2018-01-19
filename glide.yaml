@@ -2,7 +2,7 @@ package: github.com/wakiyamap/monad
 import:
 - package: github.com/btcsuite/btclog
 - package: github.com/wakiyamap/monautil
-  version: acbd8209e7920509daaf04cb870f99f2618d5780
+  version: f5bfcf53b9ae24b8146086c9c11790a5f0616d9d
   subpackages:
   - bloom
   - hdkeychain
