@@ -52,12 +52,12 @@ var (
 	// block91842Hash is one of the two nodes which violate the rules
 	// set forth in BIP0030.  It is defined as a package level variable to
 	// avoid the need to create a new instance every time a check is needed.
-	block91842Hash = newHashFromStr("1a18c9f9c17c65960d641926de19cddca2fb817050613b5a36090ffc0eac70ff")
+	//block91842Hash = newHashFromStr("1a18c9f9c17c65960d641926de19cddca2fb817050613b5a36090ffc0eac70ff")
 
 	// block91880Hash is one of the two nodes which violate the rules
 	// set forth in BIP0030.  It is defined as a package level variable to
 	// avoid the need to create a new instance every time a check is needed.
-	block91880Hash = newHashFromStr("65a376f14c1ef5f47cd831a106c396e6efce82ffd3954869235865a68597ceb0")
+	//block91880Hash = newHashFromStr("65a376f14c1ef5f47cd831a106c396e6efce82ffd3954869235865a68597ceb0")
 )
 
 // isNullOutpoint determines whether or not a previous transaction output point
@@ -170,15 +170,16 @@ func IsFinalizedTransaction(tx *monautil.Tx, blockHeight int32, blockTime time.T
 // two blocks that violate the BIP0030 rule which prevents transactions from
 // overwriting old ones.
 func isBIP0030Node(node *blockNode) bool {
-	if node.height == 91842 && node.hash.IsEqual(block91842Hash) {
-		return true
-	}
+	//if node.height == 91842 && node.hash.IsEqual(block91842Hash) {
+	//	return true
+	//}
 
-	if node.height == 91880 && node.hash.IsEqual(block91880Hash) {
-		return true
-	}
+	//if node.height == 91880 && node.hash.IsEqual(block91880Hash) {
+	//	return true
+	//}
 
-	return false
+	//return false
+	return true
 }
 
 // CalcBlockSubsidy returns the subsidy amount a block at the provided height
