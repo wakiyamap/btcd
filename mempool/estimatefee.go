@@ -45,7 +45,7 @@ const (
 	// it will provide fee estimations.
 	DefaultEstimateFeeMinRegisteredBlocks = 3
 
-	bytePerKb = 1024
+	bytePerKb = 1000
 
 	btcPerSatoshi = 1E-8
 )
@@ -208,11 +208,11 @@ func (ef *FeeEstimator) ObserveTransaction(t *TxDesc) {
 
 	hash := *t.Tx.Hash()
 	if _, ok := ef.observed[hash]; !ok {
-		size := uint32(t.Tx.MsgTx().SerializeSize())
-
 		ef.observed[hash] = &observedTransaction{
-			hash:     hash,
-			feeRate:  NewSatoshiPerByte(monautil.Amount(t.Fee), size),
+			hash: hash,
+			// We'll map the fee per KB back into fee per byte by
+			// diving by 1000.
+			feeRate:  SatoshiPerByte(t.FeePerKB / 1000),
 			observed: t.Height,
 			mined:    mining.UnminedHeight,
 		}
