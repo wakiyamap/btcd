@@ -375,7 +375,7 @@ var RegressionNetParams = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "tb", // always tb for test net
+	Bech32HRPSegwit: "tmona", // always tb for test net
 
 	// Address encoding magics
 	PubKeyHashAddrID: 0x6f, // starts with m or n
@@ -542,7 +542,7 @@ var SimNetParams = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "sb", // always sb for sim net
+	Bech32HRPSegwit: "smona", // always sb for sim net
 
 	// Address encoding magics
 	PubKeyHashAddrID:        0x3f, // starts with S
