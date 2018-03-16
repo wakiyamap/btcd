@@ -224,6 +224,13 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 		return b.chainParams.PowLimitBits, nil
 	}
 
+	if b.chainParams.Name == "simnet" {
+		return b.chainParams.PowLimitBits, nil
+	}
+	if b.chainParams.Name == "regtest" {
+		return b.chainParams.PowLimitBits, nil
+	}
+
 
 	// DarkGravityWave3
 	// current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io
