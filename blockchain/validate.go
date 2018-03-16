@@ -334,6 +334,10 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 		} else {
 			return nil
 		}
+		// For simnet. This value does not exist in mainnet.
+		if header.Bits == 545259519 {
+			return nil
+		}
  		hash, err := header.PowHash()
   		if err != nil {
   			return err
