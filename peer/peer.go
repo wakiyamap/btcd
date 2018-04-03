@@ -130,8 +130,9 @@ type MessageListeners struct {
 	// message.
 	OnCFHeaders func(p *Peer, msg *wire.MsgCFHeaders)
 
-	// OnCFTypes is invoked when a peer receives a cftypes bitcoin message.
-	OnCFTypes func(p *Peer, msg *wire.MsgCFTypes)
+	// OnCFCheckpt is invoked when a peer receives a cfcheckpt bitcoin
+	// message.
+	OnCFCheckpt func(p *Peer, msg *wire.MsgCFCheckpt)
 
 	// OnInv is invoked when a peer receives an inv bitcoin message.
 	OnInv func(p *Peer, msg *wire.MsgInv)
@@ -154,17 +155,17 @@ type MessageListeners struct {
 	// message.
 	OnGetHeaders func(p *Peer, msg *wire.MsgGetHeaders)
 
-	// OnGetCFilter is invoked when a peer receives a getcfilter bitcoin
+	// OnGetCFilters is invoked when a peer receives a getcfilters bitcoin
 	// message.
-	OnGetCFilter func(p *Peer, msg *wire.MsgGetCFilter)
+	OnGetCFilters func(p *Peer, msg *wire.MsgGetCFilters)
 
 	// OnGetCFHeaders is invoked when a peer receives a getcfheaders
 	// bitcoin message.
 	OnGetCFHeaders func(p *Peer, msg *wire.MsgGetCFHeaders)
 
-	// OnGetCFTypes is invoked when a peer receives a getcftypes bitcoin
-	// message.
-	OnGetCFTypes func(p *Peer, msg *wire.MsgGetCFTypes)
+	// OnGetCFCheckpt is invoked when a peer receives a getcfcheckpt
+	// bitcoin message.
+	OnGetCFCheckpt func(p *Peer, msg *wire.MsgGetCFCheckpt)
 
 	// OnFeeFilter is invoked when a peer receives a feefilter bitcoin message.
 	OnFeeFilter func(p *Peer, msg *wire.MsgFeeFilter)
@@ -1598,9 +1599,9 @@ out:
 				p.cfg.Listeners.OnGetHeaders(p, msg)
 			}
 
-		case *wire.MsgGetCFilter:
-			if p.cfg.Listeners.OnGetCFilter != nil {
-				p.cfg.Listeners.OnGetCFilter(p, msg)
+		case *wire.MsgGetCFilters:
+			if p.cfg.Listeners.OnGetCFilters != nil {
+				p.cfg.Listeners.OnGetCFilters(p, msg)
 			}
 
 		case *wire.MsgGetCFHeaders:
@@ -1608,9 +1609,9 @@ out:
 				p.cfg.Listeners.OnGetCFHeaders(p, msg)
 			}
 
-		case *wire.MsgGetCFTypes:
-			if p.cfg.Listeners.OnGetCFTypes != nil {
-				p.cfg.Listeners.OnGetCFTypes(p, msg)
+		case *wire.MsgGetCFCheckpt:
+			if p.cfg.Listeners.OnGetCFCheckpt != nil {
+				p.cfg.Listeners.OnGetCFCheckpt(p, msg)
 			}
 
 		case *wire.MsgCFilter:
@@ -1621,11 +1622,6 @@ out:
 		case *wire.MsgCFHeaders:
 			if p.cfg.Listeners.OnCFHeaders != nil {
 				p.cfg.Listeners.OnCFHeaders(p, msg)
-			}
-
-		case *wire.MsgCFTypes:
-			if p.cfg.Listeners.OnCFTypes != nil {
-				p.cfg.Listeners.OnCFTypes(p, msg)
 			}
 
 		case *wire.MsgFeeFilter:

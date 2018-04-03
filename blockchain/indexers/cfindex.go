@@ -7,7 +7,6 @@ package indexers
 import (
 	"errors"
 
-	"github.com/btcsuite/fastsha256"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
@@ -45,52 +44,35 @@ var (
 		[]byte("cf1headerbyhashidx"),
 	}
 
+	// cfHashKeys is an array of db bucket names used to house indexes of
+	// block hashes to cf hashes.
+	cfHashKeys = [][]byte{
+		[]byte("cf0hashbyhashidx"),
+		[]byte("cf1hashbyhashidx"),
+	}
+
 	maxFilterType = uint8(len(cfHeaderKeys) - 1)
+
+	// zeroHash is the chainhash.Hash value of all zero bytes, defined here for
+	// convenience.
+	zeroHash chainhash.Hash
 )
 
-// dbFetchFilter retrieves a block's basic or extended filter. A filter's
-// absence is not considered an error.
-func dbFetchFilter(dbTx database.Tx, key []byte, h *chainhash.Hash) ([]byte, error) {
+// dbFetchFilterIdxEntry retrieves a data blob from the filter index database.
+// An entry's absence is not considered an error.
+func dbFetchFilterIdxEntry(dbTx database.Tx, key []byte, h *chainhash.Hash) ([]byte, error) {
 	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
 	return idx.Get(h[:]), nil
 }
 
-// dbFetchFilterHeader retrieves a block's basic or extended filter header.
-// A filter's absence is not considered an error.
-func dbFetchFilterHeader(dbTx database.Tx, key []byte, h *chainhash.Hash) ([]byte, error) {
-	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
-
-	fh := idx.Get(h[:])
-	if len(fh) != fastsha256.Size {
-		return nil, errors.New("invalid filter header length")
-	}
-
-	return fh, nil
-}
-
-// dbStoreFilter stores a block's basic or extended filter.
-func dbStoreFilter(dbTx database.Tx, key []byte, h *chainhash.Hash, f []byte) error {
+// dbStoreFilterIdxEntry stores a data blob in the filter index database.
+func dbStoreFilterIdxEntry(dbTx database.Tx, key []byte, h *chainhash.Hash, f []byte) error {
 	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
 	return idx.Put(h[:], f)
 }
 
-// dbStoreFilterHeader stores a block's basic or extended filter header.
-func dbStoreFilterHeader(dbTx database.Tx, key []byte, h *chainhash.Hash, fh []byte) error {
-	if len(fh) != fastsha256.Size {
-		return errors.New("invalid filter header length")
-	}
-	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
-	return idx.Put(h[:], fh)
-}
-
-// dbDeleteFilter deletes a filter's basic or extended filter.
-func dbDeleteFilter(dbTx database.Tx, key []byte, h *chainhash.Hash) error {
-	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
-	return idx.Delete(h[:])
-}
-
-// dbDeleteFilterHeader deletes a filter's basic or extended filter header.
-func dbDeleteFilterHeader(dbTx database.Tx, key []byte, h *chainhash.Hash) error {
+// dbDeleteFilterIdxEntry deletes a data blob from the filter index database.
+func dbDeleteFilterIdxEntry(dbTx database.Tx, key []byte, h *chainhash.Hash) error {
 	idx := dbTx.Metadata().Bucket(cfIndexParentBucketKey).Bucket(key)
 	return idx.Delete(h[:])
 }
@@ -147,23 +129,14 @@ func (idx *CfIndex) Create(dbTx database.Tx) error {
 		}
 	}
 
-	firstHeader := make([]byte, chainhash.HashSize)
-	err = dbStoreFilterHeader(
-		dbTx,
-		cfHeaderKeys[wire.GCSFilterRegular],
-		&idx.chainParams.GenesisBlock.Header.PrevBlock,
-		firstHeader,
-	)
-	if err != nil {
-		return err
+	for _, bucketName := range cfHashKeys {
+		_, err = cfIndexParentBucket.CreateBucket(bucketName)
+		if err != nil {
+			return err
+		}
 	}
 
-	return dbStoreFilterHeader(
-		dbTx,
-		cfHeaderKeys[wire.GCSFilterExtended],
-		&idx.chainParams.GenesisBlock.Header.PrevBlock,
-		firstHeader,
-	)
+	return nil
 }
 
 // storeFilter stores a given filter, and performs the steps needed to
@@ -177,32 +150,52 @@ func storeFilter(dbTx database.Tx, block *monautil.Block, f *gcs.Filter,
 	// Figure out which buckets to use.
 	fkey := cfIndexKeys[filterType]
 	hkey := cfHeaderKeys[filterType]
+	hashkey := cfHashKeys[filterType]
 
 	// Start by storing the filter.
 	h := block.Hash()
-	var basicFilterBytes []byte
-	if f != nil {
-		basicFilterBytes = f.NBytes()
+	filterBytes, err := f.NBytes()
+	if err != nil {
+		return err
 	}
-	err := dbStoreFilter(dbTx, fkey, h, basicFilterBytes)
+	err = dbStoreFilterIdxEntry(dbTx, fkey, h, filterBytes)
+	if err != nil {
+		return err
+	}
+
+	// Next store the filter hash.
+	filterHash, err := builder.GetFilterHash(f)
+	if err != nil {
+		return err
+	}
+	err = dbStoreFilterIdxEntry(dbTx, hashkey, h, filterHash[:])
 	if err != nil {
 		return err
 	}
 
 	// Then fetch the previous block's filter header.
+	var prevHeader *chainhash.Hash
 	ph := &block.MsgBlock().Header.PrevBlock
-	pfh, err := dbFetchFilterHeader(dbTx, hkey, ph)
-	if err != nil {
-		return err
+	if ph.IsEqual(&zeroHash) {
+		prevHeader = &zeroHash
+	} else {
+		pfh, err := dbFetchFilterIdxEntry(dbTx, hkey, ph)
+		if err != nil {
+			return err
+		}
+
+		// Construct the new block's filter header, and store it.
+		prevHeader, err = chainhash.NewHash(pfh)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Construct the new block's filter header, and store it.
-	prevHeader, err := chainhash.NewHash(pfh)
+	fh, err := builder.MakeHeaderForFilter(f, *prevHeader)
 	if err != nil {
 		return err
 	}
-	fh := builder.MakeHeaderForFilter(f, *prevHeader)
-	return dbStoreFilterHeader(dbTx, hkey, h, fh[:])
+	return dbStoreFilterIdxEntry(dbTx, hkey, h, fh[:])
 }
 
 // ConnectBlock is invoked by the index manager when a new block has been
@@ -212,17 +205,17 @@ func (idx *CfIndex) ConnectBlock(dbTx database.Tx, block *monautil.Block,
 	view *blockchain.UtxoViewpoint) error {
 
 	f, err := builder.BuildBasicFilter(block.MsgBlock())
-	if err != nil && err != gcs.ErrNoData {
+	if err != nil {
 		return err
 	}
 
-	if err := storeFilter(dbTx, block, f,
-		wire.GCSFilterRegular); err != nil {
+	err = storeFilter(dbTx, block, f, wire.GCSFilterRegular)
+	if err != nil {
 		return err
 	}
 
 	f, err = builder.BuildExtFilter(block.MsgBlock())
-	if err != nil && err != gcs.ErrNoData {
+	if err != nil {
 		return err
 	}
 
@@ -236,14 +229,21 @@ func (idx *CfIndex) DisconnectBlock(dbTx database.Tx, block *monautil.Block,
 	view *blockchain.UtxoViewpoint) error {
 
 	for _, key := range cfIndexKeys {
-		err := dbDeleteFilter(dbTx, key, block.Hash())
+		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, key := range cfHeaderKeys {
-		err := dbDeleteFilterHeader(dbTx, key, block.Hash())
+		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, key := range cfHashKeys {
+		err := dbDeleteFilterIdxEntry(dbTx, key, block.Hash())
 		if err != nil {
 			return err
 		}
@@ -252,39 +252,89 @@ func (idx *CfIndex) DisconnectBlock(dbTx database.Tx, block *monautil.Block,
 	return nil
 }
 
+// entryByBlockHash fetches a filter index entry of a particular type
+// (eg. filter, filter header, etc) for a filter type and block hash.
+func (idx *CfIndex) entryByBlockHash(filterTypeKeys [][]byte,
+	filterType wire.FilterType, h *chainhash.Hash) ([]byte, error) {
+
+	if uint8(filterType) > maxFilterType {
+		return nil, errors.New("unsupported filter type")
+	}
+	key := filterTypeKeys[filterType]
+
+	var entry []byte
+	err := idx.db.View(func(dbTx database.Tx) error {
+		var err error
+		entry, err = dbFetchFilterIdxEntry(dbTx, key, h)
+		return err
+	})
+	return entry, err
+}
+
+// entriesByBlockHashes batch fetches a filter index entry of a particular type
+// (eg. filter, filter header, etc) for a filter type and slice of block hashes.
+func (idx *CfIndex) entriesByBlockHashes(filterTypeKeys [][]byte,
+	filterType wire.FilterType, blockHashes []*chainhash.Hash) ([][]byte, error) {
+
+	if uint8(filterType) > maxFilterType {
+		return nil, errors.New("unsupported filter type")
+	}
+	key := filterTypeKeys[filterType]
+
+	entries := make([][]byte, 0, len(blockHashes))
+	err := idx.db.View(func(dbTx database.Tx) error {
+		for _, blockHash := range blockHashes {
+			entry, err := dbFetchFilterIdxEntry(dbTx, key, blockHash)
+			if err != nil {
+				return err
+			}
+			entries = append(entries, entry)
+		}
+		return nil
+	})
+	return entries, err
+}
+
 // FilterByBlockHash returns the serialized contents of a block's basic or
 // extended committed filter.
 func (idx *CfIndex) FilterByBlockHash(h *chainhash.Hash,
 	filterType wire.FilterType) ([]byte, error) {
-	var f []byte
-	err := idx.db.View(func(dbTx database.Tx) error {
-		if uint8(filterType) > maxFilterType {
-			return errors.New("unsupported filter type")
-		}
+	return idx.entryByBlockHash(cfIndexKeys, filterType, h)
+}
 
-		var err error
-		f, err = dbFetchFilter(dbTx, cfIndexKeys[filterType], h)
-		return err
-	})
-	return f, err
+// FiltersByBlockHashes returns the serialized contents of a block's basic or
+// extended committed filter for a set of blocks by hash.
+func (idx *CfIndex) FiltersByBlockHashes(blockHashes []*chainhash.Hash,
+	filterType wire.FilterType) ([][]byte, error) {
+	return idx.entriesByBlockHashes(cfIndexKeys, filterType, blockHashes)
 }
 
 // FilterHeaderByBlockHash returns the serialized contents of a block's basic
 // or extended committed filter header.
 func (idx *CfIndex) FilterHeaderByBlockHash(h *chainhash.Hash,
 	filterType wire.FilterType) ([]byte, error) {
-	var fh []byte
-	err := idx.db.View(func(dbTx database.Tx) error {
-		if uint8(filterType) > maxFilterType {
-			return errors.New("unsupported filter type")
-		}
+	return idx.entryByBlockHash(cfHeaderKeys, filterType, h)
+}
 
-		var err error
-		fh, err = dbFetchFilterHeader(dbTx,
-			cfHeaderKeys[filterType], h)
-		return err
-	})
-	return fh, err
+// FilterHeadersByBlockHashes returns the serialized contents of a block's basic
+// or extended committed filter header for a set of blocks by hash.
+func (idx *CfIndex) FilterHeadersByBlockHashes(blockHashes []*chainhash.Hash,
+	filterType wire.FilterType) ([][]byte, error) {
+	return idx.entriesByBlockHashes(cfHeaderKeys, filterType, blockHashes)
+}
+
+// FilterHashByBlockHash returns the serialized contents of a block's basic
+// or extended committed filter hash.
+func (idx *CfIndex) FilterHashByBlockHash(h *chainhash.Hash,
+	filterType wire.FilterType) ([]byte, error) {
+	return idx.entryByBlockHash(cfHashKeys, filterType, h)
+}
+
+// FilterHashesByBlockHashes returns the serialized contents of a block's basic
+// or extended committed filter hash for a set of blocks by hash.
+func (idx *CfIndex) FilterHashesByBlockHashes(blockHashes []*chainhash.Hash,
+	filterType wire.FilterType) ([][]byte, error) {
+	return idx.entriesByBlockHashes(cfHashKeys, filterType, blockHashes)
 }
 
 // NewCfIndex returns a new instance of an indexer that is used to create a
