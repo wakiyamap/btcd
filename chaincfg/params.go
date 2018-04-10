@@ -299,7 +299,7 @@ var MainNetParams = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "mona", // always bc for main net
+	Bech32HRPSegwit: "mona", // always mona for main net
 
 	// Address encoding magics
 	PubKeyHashAddrID:        0x32, // starts with M
@@ -375,7 +375,7 @@ var RegressionNetParams = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "tmona", // always tb for test net
+	Bech32HRPSegwit: "tmona", // always tmona for test net
 
 	// Address encoding magics
 	PubKeyHashAddrID: 0x6f, // starts with m or n
@@ -462,7 +462,7 @@ var TestNet4Params = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "tmona", // always tb for test net
+	Bech32HRPSegwit: "tmona", // always tmona for test net
 
 	// Address encoding magics
 	PubKeyHashAddrID:        0x6f, // starts with m or n
