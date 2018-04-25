@@ -249,7 +249,7 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 
 	// loop over the past n blocks, where n == PastBlocksMax
 	for i := 1; i < 25; i++ {
-		CountBlocks += 1
+		CountBlocks++
 
 		// Calculate average difficulty based on the blocks we iterate over in this for loop
 		if CountBlocks <= 24 {
