@@ -276,7 +276,7 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 
 	// Limit the re-adjustment to 3x or 0.33x
 	// We don't want to increase/decrease diff too much.
-	nTargetTimespan := int64(CountBlocks * 90) // Monacoin: 1.5(60*1.5) minutes between block
+	nTargetTimespan := CountBlocks * 90 // Monacoin: 1.5(60*1.5) minutes between block
 	if nActualTimespan < nTargetTimespan / 3 {
 		nActualTimespan = nTargetTimespan / 3
 	} else if nActualTimespan > nTargetTimespan * 3 {
