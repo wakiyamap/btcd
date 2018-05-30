@@ -129,9 +129,11 @@ var rpcHandlers map[string]commandHandler
 var rpcHandlersBeforeInit = map[string]commandHandler{
 	"addnode":               handleAddNode,
 	"createrawtransaction":  handleCreateRawTransaction,
+	"checkpoint":            handleCheckpoint,
 	"debuglevel":            handleDebugLevel,
 	"decoderawtransaction":  handleDecodeRawTransaction,
 	"decodescript":          handleDecodeScript,
+	"dumpcheckpoint":        handleDumpCheckpoint,
 	"estimatefee":           handleEstimateFee,
 	"generate":              handleGenerate,
 	"getaddednodeinfo":      handleGetAddedNodeInfo,
@@ -252,6 +254,8 @@ var rpcLimited = map[string]struct{}{
 
 	// HTTP/S-only commands
 	"createrawtransaction":  {},
+	"checkpoint":            {},
+	"dumpcheckpoint":        {},
 	"decoderawtransaction":  {},
 	"decodescript":          {},
 	"estimatefee":           {},
@@ -852,6 +856,32 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 		reply.P2sh = p2sh.EncodeAddress()
 	}
 	return reply, nil
+}
+
+// handleCheckpoint handles checkpoint commands.
+func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.CheckpointCmd)
+	hash, err := s.cfg.Chain.BlockHashByHeight(int32(c.Index))
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCOutOfRange,
+			Message: "Block number out of range",
+		}
+	}
+	return hash.String(), nil
+}
+
+// handleDumpcheckpoint handles dumpcheckpoint commands.
+func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.DumpCheckpointCmd)
+	hash, err := s.cfg.Chain.BlockHashByHeight(int32(c.Index))
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCOutOfRange,
+			Message: "Block number out of range",
+		}
+	}
+	return hash.String(), nil
 }
 
 // handleEstimateFee handles estimatefee commands.

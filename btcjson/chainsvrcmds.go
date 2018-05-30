@@ -60,6 +60,32 @@ type CreateRawTransactionCmd struct {
 	LockTime *int64
 }
 
+// CheckpointCmd defines the checkpoint JSON-RPC command.
+type CheckpointCmd struct {
+	Index int64
+}
+
+// NewCheckpointCmd returns a new instance which can be used to issue a
+// checkpoint JSON-RPC command.
+func NewCheckpointCmd(index int64) *CheckpointCmd {
+	return &CheckpointCmd{
+		Index: index,
+	}
+}
+
+// DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
+type DumpCheckpointCmd struct {
+	Index int64
+}
+
+// NewDumpCheckpointCmd returns a new instance which can be used to issue a
+// dumpcheckpoint JSON-RPC command.
+func NewDumpCheckpointCmd(index int64) *DumpCheckpointCmd {
+	return &DumpCheckpointCmd{
+		Index: index,
+	}
+}
+
 // NewCreateRawTransactionCmd returns a new instance which can be used to issue
 // a createrawtransaction JSON-RPC command.
 //
@@ -779,6 +805,8 @@ func init() {
 
 	MustRegisterCmd("addnode", (*AddNodeCmd)(nil), flags)
 	MustRegisterCmd("createrawtransaction", (*CreateRawTransactionCmd)(nil), flags)
+	MustRegisterCmd("checkpoint", (*CheckpointCmd)(nil), flags)
+	MustRegisterCmd("dumpcheckpoint", (*DumpCheckpointCmd)(nil), flags)
 	MustRegisterCmd("decoderawtransaction", (*DecodeRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
 	MustRegisterCmd("getaddednodeinfo", (*GetAddedNodeInfoCmd)(nil), flags)

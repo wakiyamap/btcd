@@ -224,6 +224,16 @@ var helpDescsEnUS = map[string]string{
 	"searchrawtransactionsresult-size":          "The size of the transaction in bytes",
 	"searchrawtransactionsresult-vsize":         "The virtual size of the transaction in bytes",
 
+	// CheckpointCmd help.
+	"checkpoint--synopsis": "Returns hash of the block in best block chain at the given height.",
+	"checkpoint-index":     "The block height",
+	"checkpoint--result0":  "The block hash",
+
+	// DumpCheckpointCmd help.
+	"dumpcheckpoint--synopsis": "Returns hash of the block in best block chain at the given height.",
+	"dumpcheckpoint-index":     "The block height",
+	"dumpcheckpoint--result0":  "The block hash",
+
 	// GetBlockVerboseResult help.
 	"getblockverboseresult-hash":              "The hash of the block (same as provided)",
 	"getblockverboseresult-confirmations":     "The number of confirmations",
@@ -669,9 +679,11 @@ var helpDescsEnUS = map[string]string{
 var rpcResultTypes = map[string][]interface{}{
 	"addnode":               nil,
 	"createrawtransaction":  {(*string)(nil)},
+	"checkpoint":            {(*string)(nil)},
 	"debuglevel":            {(*string)(nil), (*string)(nil)},
 	"decoderawtransaction":  {(*btcjson.TxRawDecodeResult)(nil)},
 	"decodescript":          {(*btcjson.DecodeScriptResult)(nil)},
+	"dumpcheckpoint":        {(*string)(nil)},
 	"estimatefee":           {(*float64)(nil)},
 	"generate":              {(*[]string)(nil)},
 	"getaddednodeinfo":      {(*[]string)(nil), (*[]btcjson.GetAddedNodeInfoResult)(nil)},
