@@ -306,7 +306,7 @@ func CheckTransactionSanity(tx *monautil.Tx) error {
 // The flags modify the behavior of this function as follows:
 //  - BFNoPoWCheck: The check to ensure the block hash is less than the target
 //    difficulty is not performed.
-func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags BehaviorFlags) error {
+func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags BehaviorFlags, checkHeight int32) error {
 	// The target difficulty must be larger than zero.
 	target := CompactToBig(header.Bits)
 	if target.Sign() <= 0 {
@@ -327,11 +327,9 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 	if flags&BFNoPoWCheck != BFNoPoWCheck {
 		// The block hash must be less than the claimed target.
 		// monacoin is ok?
-		// This time is over 450025blocks(mainnet) and 55 blocks(testnet)
-		// 2017/06/08 12:37:00
-		lyratime := time.Unix(1499485020, 0)
-		if header.Timestamp.After(lyratime) {
-		} else {
+		// PoW hardfork from 450000blocks(mainnet).
+		// But for convenience of calculation, check is starting from 450025.
+		if checkHeight < 450025 {
 			return nil
 		}
 		// For simnet. This value does not exist in mainnet.
@@ -357,7 +355,7 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 // difficulty is in min/max range and that the block hash is less than the
 // target difficulty as claimed.
 func CheckProofOfWork(block *monautil.Block, powLimit *big.Int) error {
-	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone)
+	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone, block.Height())
 }
 
 // CountSigOps returns the number of signature operations for all transaction
@@ -446,11 +444,11 @@ func CountP2SHSigOps(tx *monautil.Tx, isCoinBaseTx bool, utxoView *UtxoViewpoint
 //
 // The flags do not modify the behavior of this function directly, however they
 // are needed to pass along to checkProofOfWork.
-func checkBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags) error {
+func checkBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags, checkHeight int32) error {
 	// Ensure the proof of work bits in the block header is in min/max range
 	// and the block hash is less than the target value described by the
 	// bits.
-	err := checkProofOfWork(header, powLimit, flags)
+	err := checkProofOfWork(header, powLimit, flags, checkHeight)
 	if err != nil {
 		return err
 	}
@@ -483,10 +481,10 @@ func checkBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int, timeSou
 //
 // The flags do not modify the behavior of this function directly, however they
 // are needed to pass along to checkBlockHeaderSanity.
-func checkBlockSanity(block *monautil.Block, powLimit *big.Int, timeSource MedianTimeSource, flags BehaviorFlags) error {
+func checkBlockSanity(block *monautil.Block, powLimit *big.Int, timeSource MedianTimeSource, checkHeight int32, flags BehaviorFlags) error {
 	msgBlock := block.MsgBlock()
 	header := &msgBlock.Header
-	err := checkBlockHeaderSanity(header, powLimit, timeSource, flags)
+	err := checkBlockHeaderSanity(header, powLimit, timeSource, flags, checkHeight)
 	if err != nil {
 		return err
 	}
@@ -590,8 +588,8 @@ func checkBlockSanity(block *monautil.Block, powLimit *big.Int, timeSource Media
 
 // CheckBlockSanity performs some preliminary checks on a block to ensure it is
 // sane before continuing with block processing.  These checks are context free.
-func CheckBlockSanity(block *monautil.Block, powLimit *big.Int, timeSource MedianTimeSource) error {
-	return checkBlockSanity(block, powLimit, timeSource, BFNone)
+func CheckBlockSanity(block *monautil.Block, powLimit *big.Int, checkHeight int32, timeSource MedianTimeSource) error {
+	return checkBlockSanity(block, powLimit, timeSource, checkHeight, BFNone)
 }
 
 // ExtractCoinbaseHeight attempts to extract the height of the block from the
@@ -1276,7 +1274,8 @@ func (b *BlockChain) CheckConnectBlockTemplate(block *monautil.Block) error {
 		return ruleError(ErrPrevBlockNotBest, str)
 	}
 
-	err := checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, flags)
+	checkHeight := tip.height+1
+	err := checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, checkHeight, flags)
 	if err != nil {
 		return err
 	}
