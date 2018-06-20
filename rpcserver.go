@@ -948,8 +948,9 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	for iter.Next() {
 		h := strings.TrimLeft(fmt.Sprintf("%d", iter.Key()),"[")
 		h = strings.TrimRight(h,"]")
+		height, _ := strconv.Atoi(h)
 		checkpoint := &btcjson.DumpCheckpointResult {
-			Blocks: int32(h),
+			Blocks: int32(height),
 			Hash:   string(iter.Value()),
 		}
 		checkpoints = append(checkpoints, checkpoint)
