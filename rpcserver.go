@@ -26,6 +26,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"path/filepath"
 
 	"github.com/btcsuite/websocket"
 	"github.com/wakiyamap/monad/blockchain"
@@ -42,6 +43,7 @@ import (
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
+	"github.com/btcsuite/goleveldb/leveldb"
 )
 
 // API version constants
@@ -858,30 +860,107 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 	return reply, nil
 }
 
+const (
+	// userCheckpointDbNamePrefix is the prefix for the monad block database.
+	userCheckpointDbNamePrefix = "usercheckpoints"
+)
+
 // handleCheckpoint handles checkpoint commands.
 func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.CheckpointCmd)
-	hash, err := s.cfg.Chain.BlockHashByHeight(int32(c.Index))
+	var err error
+
+	//dbName := userCheckpointDbNamePrefix + "_" + cfg.DbType
+	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
+	dbPath := filepath.Join(cfg.DataDir, dbName)
+
+	rpcsLog.Infof(dbName)
+	rpcsLog.Infof(dbPath)
+	rpcsLog.Infof("Block height %s",int32(c.Index))
+
+	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
+		return nil, nil
+	}
+
+	//Todo もともとint64で動いているので0より下はないが、coindとは違い0でも反応する
+	if int32(c.Index) < 0 {
 		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCOutOfRange,
-			Message: "Block number out of range",
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: fmt.Sprintf("Block height %s out of range",int32(c.Index)),
 		}
 	}
-	return hash.String(), nil
+	switch c.SubCmd {
+	case "add":
+		err = userCheckpointDb.Put([]byte(string(c.Index)), []byte(string(c.Hash)), nil)
+	case "delete":
+		err = userCheckpointDb.Delete([]byte(string(c.Index)), nil)
+	default:
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid subcommand for checkpoint",
+		}
+	}
+
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: err.Error(),
+		}
+	}
+
+	chdata, err := userCheckpointDb.Get([]byte(string(c.Index)), nil)
+	rpcsLog.Infof(string(chdata))
+	defer userCheckpointDb.Close()
+
+	// no data returned unless an error.
+	return nil, nil
 }
 
 // handleDumpcheckpoint handles dumpcheckpoint commands.
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.DumpCheckpointCmd)
-	hash, err := s.cfg.Chain.BlockHashByHeight(int32(c.Index))
+	//c := cmd.(*btcjson.DumpCheckpointCmd)
+	var err error
+
+	//dbName := userCheckpointDbNamePrefix + "_" + cfg.DbType
+	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
+	dbPath := filepath.Join(cfg.DataDir, dbName)
+
+	rpcsLog.Infof(dbName)
+	rpcsLog.Infof(dbPath)
+
+	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCOutOfRange,
-			Message: "Block number out of range",
-		}
+		return nil, nil
 	}
-	return hash.String(), nil
+
+	var n int32
+	iter := userCheckpointDb.NewIterator(nil, nil)
+	for iter.Next() {
+		n++
+	}
+	iter.Release()
+	err = iter.Error()
+
+	checkpoints := make([]*btcjson.DumpCheckpointResult, 0, n)
+
+	iter = userCheckpointDb.NewIterator(nil, nil)
+	for iter.Next() {
+		h := strings.TrimLeft(fmt.Sprintf("%d", iter.Key()),"[")
+		h = strings.TrimRight(h,"]")
+		checkpoint := &btcjson.DumpCheckpointResult {
+			Blocks: int32(h),
+			Hash:   string(iter.Value()),
+		}
+		checkpoints = append(checkpoints, checkpoint)
+	}
+	iter.Release()
+	err = iter.Error()
+
+	defer userCheckpointDb.Close()
+
+	// no data returned unless an error.
+	return checkpoints, nil
 }
 
 // handleEstimateFee handles estimatefee commands.

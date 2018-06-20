@@ -60,30 +60,43 @@ type CreateRawTransactionCmd struct {
 	LockTime *int64
 }
 
-// CheckpointCmd defines the checkpoint JSON-RPC command.
+// CheckpointCmd defines the type used in the addnode JSON-RPC command for the
+// sub command field.
+type CheckpointSubCmd string
+
+const (
+	// CAdd indicates the specified checkpoint should be added as a persistent
+	// checkpoint.
+	CAdd CheckpointSubCmd = "add"
+
+	// CDelete indicates the specified checkpoint should be deleted.
+	CDelete CheckpointSubCmd = "remove"
+)
+
+// AddNodeCmd defines the addnode JSON-RPC command.
 type CheckpointCmd struct {
+	SubCmd CheckpointSubCmd `jsonrpcusage:"\"add|delete\""`
 	Index int64
+	Hash string
 }
 
-// NewCheckpointCmd returns a new instance which can be used to issue a
-// checkpoint JSON-RPC command.
-func NewCheckpointCmd(index int64) *CheckpointCmd {
+// NewAddNodeCmd returns a new instance which can be used to issue an addnode
+// JSON-RPC command.
+func NewCheckpointCmd(index int64,hash string, subCmd CheckpointSubCmd) *CheckpointCmd {
 	return &CheckpointCmd{
-		Index: index,
+		SubCmd: subCmd,
+		Index:   index,
+		Hash:    hash,
 	}
 }
 
 // DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
-type DumpCheckpointCmd struct {
-	Index int64
-}
+type DumpCheckpointCmd struct {}
 
 // NewDumpCheckpointCmd returns a new instance which can be used to issue a
 // dumpcheckpoint JSON-RPC command.
-func NewDumpCheckpointCmd(index int64) *DumpCheckpointCmd {
-	return &DumpCheckpointCmd{
-		Index: index,
-	}
+func NewDumpCheckpointCmd() *DumpCheckpointCmd {
+	return &DumpCheckpointCmd{}
 }
 
 // NewCreateRawTransactionCmd returns a new instance which can be used to issue
