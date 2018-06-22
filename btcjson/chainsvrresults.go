@@ -66,7 +66,7 @@ type DecodeScriptResult struct {
 // DumpCheckpointResult models the data returned from the dumpcheckpoint
 // command.
 type DumpCheckpointResult struct {
-	Blocks    int32    `json:"height"`
+	Blocks    int64    `json:"height"`
 	Hash      string   `json:"hash"`
 }
 

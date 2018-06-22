@@ -874,27 +874,28 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
 	dbPath := filepath.Join(cfg.DataDir, dbName)
 
-	rpcsLog.Infof(dbName)
-	rpcsLog.Infof(dbPath)
-	rpcsLog.Infof("Block height %s",int32(c.Index))
-
 	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return nil, nil
 	}
 
-	//Todo もともとint64で動いているので0より下はないが、coindとは違い0でも反応する
-	if int32(c.Index) < 0 {
+	rpcsLog.Infof("Block height %d",c.Index)
+	rpcsLog.Infof("Block height %d",int32(c.Index))
+	rpcsLog.Infof("Block height %d",int64(c.Index))
+	rpcsLog.Infof(fmt.Sprintf("%d", c.Index))
+
+	if c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: fmt.Sprintf("Block height %s out of range",int32(c.Index)),
+			Message: fmt.Sprintf("Block height %s out of range",c.Index),
 		}
 	}
 	switch c.SubCmd {
 	case "add":
-		err = userCheckpointDb.Put([]byte(string(c.Index)), []byte(string(c.Hash)), nil)
+		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%d", c.Index)), []byte(string(c.Hash)), nil)
+
 	case "delete":
-		err = userCheckpointDb.Delete([]byte(string(c.Index)), nil)
+		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%d", c.Index)), nil)
 	default:
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
@@ -909,8 +910,9 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 		}
 	}
 
-	chdata, err := userCheckpointDb.Get([]byte(string(c.Index)), nil)
+	chdata, err := userCheckpointDb.Get([]byte(fmt.Sprintf("%d", c.Index)), nil)
 	rpcsLog.Infof(string(chdata))
+	rpcsLog.Infof(string(c.Index))
 	defer userCheckpointDb.Close()
 
 	// no data returned unless an error.
@@ -919,15 +921,11 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 // handleDumpcheckpoint handles dumpcheckpoint commands.
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	//c := cmd.(*btcjson.DumpCheckpointCmd)
 	var err error
 
 	//dbName := userCheckpointDbNamePrefix + "_" + cfg.DbType
 	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
 	dbPath := filepath.Join(cfg.DataDir, dbName)
-
-	rpcsLog.Infof(dbName)
-	rpcsLog.Infof(dbPath)
 
 	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
@@ -946,11 +944,17 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 
 	iter = userCheckpointDb.NewIterator(nil, nil)
 	for iter.Next() {
-		h := strings.TrimLeft(fmt.Sprintf("%d", iter.Key()),"[")
-		h = strings.TrimRight(h,"]")
-		height, _ := strconv.Atoi(h)
+		//h := strings.TrimLeft(fmt.Sprintf("%d", iter.Key()),"[")
+		//h = strings.TrimRight(h,"]")
+		//height, _ := strconv.ParseInt(h, 10, 64)
+		rpcsLog.Infof(fmt.Sprintf("%d", iter.Key()))
+		//rpcsLog.Infof(h)
+		//rpcsLog.Infof(fmt.Sprintf("%d", height))
+		rpcsLog.Infof(string(iter.Key()))
+		height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
+
 		checkpoint := &btcjson.DumpCheckpointResult {
-			Blocks: int32(height),
+			Blocks: height,
 			Hash:   string(iter.Value()),
 		}
 		checkpoints = append(checkpoints, checkpoint)
