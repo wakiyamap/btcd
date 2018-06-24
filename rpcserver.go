@@ -26,7 +26,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"path/filepath"
 
 	"github.com/btcsuite/websocket"
 	"github.com/wakiyamap/monad/blockchain"
@@ -43,7 +42,6 @@ import (
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
-	"github.com/btcsuite/goleveldb/leveldb"
 )
 
 // API version constants
@@ -870,19 +868,13 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	c := cmd.(*btcjson.CheckpointCmd)
 	var err error
 
-	//dbName := userCheckpointDbNamePrefix + "_" + cfg.DbType
-	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
-	dbPath := filepath.Join(cfg.DataDir, dbName)
+	dbPath := database.GetCheckpointDbPath()
+	rpcsLog.Infof(dbPath)
 
-	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
+	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
 	if err != nil {
 		return nil, nil
 	}
-
-	rpcsLog.Infof("Block height %d",c.Index)
-	rpcsLog.Infof("Block height %d",int32(c.Index))
-	rpcsLog.Infof("Block height %d",int64(c.Index))
-	rpcsLog.Infof(fmt.Sprintf("%d", c.Index))
 
 	if c.Index < 0 {
 		return nil, &btcjson.RPCError{
@@ -910,9 +902,6 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 		}
 	}
 
-	chdata, err := userCheckpointDb.Get([]byte(fmt.Sprintf("%d", c.Index)), nil)
-	rpcsLog.Infof(string(chdata))
-	rpcsLog.Infof(string(c.Index))
 	defer userCheckpointDb.Close()
 
 	// no data returned unless an error.
@@ -923,11 +912,10 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	var err error
 
-	//dbName := userCheckpointDbNamePrefix + "_" + cfg.DbType
-	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
-	dbPath := filepath.Join(cfg.DataDir, dbName)
+	dbPath := database.GetCheckpointDbPath()
+	rpcsLog.Infof(dbPath)
 
-	userCheckpointDb, err := leveldb.OpenFile(dbPath, nil)
+	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
 	if err != nil {
 		return nil, nil
 	}
@@ -944,12 +932,7 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 
 	iter = userCheckpointDb.NewIterator(nil, nil)
 	for iter.Next() {
-		//h := strings.TrimLeft(fmt.Sprintf("%d", iter.Key()),"[")
-		//h = strings.TrimRight(h,"]")
-		//height, _ := strconv.ParseInt(h, 10, 64)
 		rpcsLog.Infof(fmt.Sprintf("%d", iter.Key()))
-		//rpcsLog.Infof(h)
-		//rpcsLog.Infof(fmt.Sprintf("%d", height))
 		rpcsLog.Infof(string(iter.Key()))
 		height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
 
