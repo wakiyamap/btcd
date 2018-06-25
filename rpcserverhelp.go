@@ -225,14 +225,16 @@ var helpDescsEnUS = map[string]string{
 	"searchrawtransactionsresult-vsize":         "The virtual size of the transaction in bytes",
 
 	// CheckpointCmd help.
-	"checkpoint--synopsis": "Returns hash of the block in best block chain at the given height.",
-	"checkpoint-index":     "The block height",
-	"checkpoint--result0":  "The block hash",
+	"checkpoint--synopsis": "Manage user's checkpoint.",
+	"checkpoint--subcmd":   "'add' to add a user's checkpoint, 'delete' to delete a user's checkpoint.",
+	"checkpoint--index":    "The block height",
+	"checkpoint--height":   "The block hash",
 
 	// DumpCheckpointCmd help.
-	"dumpcheckpoint--synopsis": "Returns hash of the block in best block chain at the given height.",
-	"dumpcheckpoint-index":     "The block height",
-	"dumpcheckpoint--result0":  "The block hash",
+	"dumpcheckpoint--synopsis": "Returns user's checkpoints",
+	"dumpcheckpoint--index":    "The block height",
+	"dumpcheckpoint--height":   "The block hash",
+	"dumpcheckpoint--result0":  "User's checkpoints",
 
 	// GetBlockVerboseResult help.
 	"getblockverboseresult-hash":              "The hash of the block (same as provided)",

@@ -869,8 +869,6 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	var err error
 
 	dbPath := database.GetCheckpointDbPath()
-	rpcsLog.Infof(dbPath)
-
 	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
 	if err != nil {
 		return nil, nil
@@ -884,10 +882,9 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	}
 	switch c.SubCmd {
 	case "add":
-		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%d", c.Index)), []byte(string(c.Hash)), nil)
-
+		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(string(c.Hash)), nil)
 	case "delete":
-		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%d", c.Index)), nil)
+		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
 	default:
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
@@ -913,8 +910,6 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	var err error
 
 	dbPath := database.GetCheckpointDbPath()
-	rpcsLog.Infof(dbPath)
-
 	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
 	if err != nil {
 		return nil, nil
@@ -931,12 +926,16 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	checkpoints := make([]*btcjson.DumpCheckpointResult, 0, n)
 
 	iter = userCheckpointDb.NewIterator(nil, nil)
-	for iter.Next() {
-		rpcsLog.Infof(fmt.Sprintf("%d", iter.Key()))
-		rpcsLog.Infof(string(iter.Key()))
-		height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
-
-		checkpoint := &btcjson.DumpCheckpointResult {
+	iter.Last()
+	height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
+	checkpoint := &btcjson.DumpCheckpointResult {
+		Blocks: height,
+		Hash:   string(iter.Value()),
+	}
+	checkpoints = append(checkpoints, checkpoint)
+	for iter.Prev() {
+		height, _ = strconv.ParseInt(string(iter.Key()), 10, 64)
+		checkpoint = &btcjson.DumpCheckpointResult {
 			Blocks: height,
 			Hash:   string(iter.Value()),
 		}

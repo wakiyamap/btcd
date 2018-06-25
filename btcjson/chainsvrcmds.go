@@ -70,23 +70,22 @@ const (
 	CAdd CheckpointSubCmd = "add"
 
 	// CDelete indicates the specified checkpoint should be deleted.
-	CDelete CheckpointSubCmd = "remove"
+	CDelete CheckpointSubCmd = "delete"
 )
 
-// AddNodeCmd defines the addnode JSON-RPC command.
+// CheckpointCmd defines the addnode JSON-RPC command.
 type CheckpointCmd struct {
 	SubCmd CheckpointSubCmd `jsonrpcusage:"\"add|delete\""`
 	Index int64
 	Hash string
 }
 
-// NewAddNodeCmd returns a new instance which can be used to issue an addnode
+// NewCheckpointCmd returns a new instance which can be used to issue an checkpoint
 // JSON-RPC command.
 func NewCheckpointCmd(index int64,hash string, subCmd CheckpointSubCmd) *CheckpointCmd {
 	return &CheckpointCmd{
 		SubCmd: subCmd,
 		Index:   index,
-		Hash:    hash,
 	}
 }
 
