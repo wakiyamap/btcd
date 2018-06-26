@@ -891,7 +891,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 	switch c.SubCmd {
 	case "add":
-		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(*c.Hash), nil)
+		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(string(*c.Hash)), nil)
 	case "delete":
 		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
 	default:
@@ -935,6 +935,10 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	err = iter.Error()
 
 	checkpoints := make([]*btcjson.DumpCheckpointResult, 0, n)
+	if n == 0 {
+		defer userCheckpointDb.Close()
+		return "[]", nil
+	}
 
 	iter = userCheckpointDb.NewIterator(nil, nil)
 	iter.Last()
