@@ -880,12 +880,22 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 			Message: fmt.Sprintf("Block height %s out of range",c.Index),
 		}
 	}
+
+	if *c.Hash == "Hash" && c.SubCmd == "add" {
+		defer userCheckpointDb.Close()
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid parameter",
+		}
+	}
+
 	switch c.SubCmd {
 	case "add":
-		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(string(c.Hash)), nil)
+		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(*c.Hash), nil)
 	case "delete":
 		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
 	default:
+		defer userCheckpointDb.Close()
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
 			Message: "invalid subcommand for checkpoint",
@@ -893,6 +903,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	}
 
 	if err != nil {
+		defer userCheckpointDb.Close()
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
 			Message: err.Error(),

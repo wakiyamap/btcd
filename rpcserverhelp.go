@@ -226,9 +226,9 @@ var helpDescsEnUS = map[string]string{
 
 	// CheckpointCmd help.
 	"checkpoint--synopsis": "Manage user's checkpoint.",
-	"checkpoint--subcmd":   "'add' to add a user's checkpoint, 'delete' to delete a user's checkpoint.",
-	"checkpoint--index":    "The block height",
-	"checkpoint--height":   "The block hash",
+	"checkpoint-subcmd":   "'add' to add a user's checkpoint, 'delete' to delete a user's checkpoint.",
+	"checkpoint-index":    "The block height",
+	"checkpoint-height":   "The block hash",
 
 	// DumpCheckpointCmd help.
 	"dumpcheckpoint--synopsis": "Returns user's checkpoints",

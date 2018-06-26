@@ -77,15 +77,16 @@ const (
 type CheckpointCmd struct {
 	SubCmd CheckpointSubCmd `jsonrpcusage:"\"add|delete\""`
 	Index int64
-	Hash string
+	Hash *string `jsonrpcdefault:"\"Hash\""`
 }
 
 // NewCheckpointCmd returns a new instance which can be used to issue an checkpoint
 // JSON-RPC command.
-func NewCheckpointCmd(index int64,hash string, subCmd CheckpointSubCmd) *CheckpointCmd {
+func NewCheckpointCmd(subCmd CheckpointSubCmd, hash *string, index int64) *CheckpointCmd {
 	return &CheckpointCmd{
 		SubCmd: subCmd,
-		Index:   index,
+		Index:  index,
+		Hash:   hash,
 	}
 }
 
