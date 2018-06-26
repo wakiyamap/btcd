@@ -129,9 +129,11 @@ var rpcHandlers map[string]commandHandler
 var rpcHandlersBeforeInit = map[string]commandHandler{
 	"addnode":               handleAddNode,
 	"createrawtransaction":  handleCreateRawTransaction,
+	"checkpoint":            handleCheckpoint,
 	"debuglevel":            handleDebugLevel,
 	"decoderawtransaction":  handleDecodeRawTransaction,
 	"decodescript":          handleDecodeScript,
+	"dumpcheckpoint":        handleDumpCheckpoint,
 	"estimatefee":           handleEstimateFee,
 	"generate":              handleGenerate,
 	"getaddednodeinfo":      handleGetAddedNodeInfo,
@@ -252,6 +254,8 @@ var rpcLimited = map[string]struct{}{
 
 	// HTTP/S-only commands
 	"createrawtransaction":  {},
+	"checkpoint":            {},
+	"dumpcheckpoint":        {},
 	"decoderawtransaction":  {},
 	"decodescript":          {},
 	"estimatefee":           {},
@@ -852,6 +856,113 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 		reply.P2sh = p2sh.EncodeAddress()
 	}
 	return reply, nil
+}
+
+const (
+	// userCheckpointDbNamePrefix is the prefix for the monad block database.
+	userCheckpointDbNamePrefix = "usercheckpoints"
+)
+
+// handleCheckpoint handles checkpoint commands.
+func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.CheckpointCmd)
+	var err error
+
+	dbPath := database.GetCheckpointDbPath()
+	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
+	if err != nil {
+		return nil, nil
+	}
+
+	if c.Index < 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: fmt.Sprintf("Block height %s out of range",c.Index),
+		}
+	}
+
+	if *c.Hash == "Hash" && c.SubCmd == "add" {
+		defer userCheckpointDb.Close()
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid parameter",
+		}
+	}
+
+	switch c.SubCmd {
+	case "add":
+		err = userCheckpointDb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(string(*c.Hash)), nil)
+	case "delete":
+		err = userCheckpointDb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
+	default:
+		defer userCheckpointDb.Close()
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid subcommand for checkpoint",
+		}
+	}
+
+	if err != nil {
+		defer userCheckpointDb.Close()
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: err.Error(),
+		}
+	}
+
+	defer userCheckpointDb.Close()
+
+	// no data returned unless an error.
+	return nil, nil
+}
+
+// handleDumpcheckpoint handles dumpcheckpoint commands.
+func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	var err error
+
+	dbPath := database.GetCheckpointDbPath()
+	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
+	if err != nil {
+		return nil, nil
+	}
+
+	var n int32
+	iter := userCheckpointDb.NewIterator(nil, nil)
+	for iter.Next() {
+		n++
+	}
+	iter.Release()
+	err = iter.Error()
+
+	checkpoints := make([]*btcjson.DumpCheckpointResult, 0, n)
+	if n == 0 {
+		defer userCheckpointDb.Close()
+		return "[]", nil
+	}
+
+	iter = userCheckpointDb.NewIterator(nil, nil)
+	iter.Last()
+	height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
+	checkpoint := &btcjson.DumpCheckpointResult {
+		Blocks: height,
+		Hash:   string(iter.Value()),
+	}
+	checkpoints = append(checkpoints, checkpoint)
+	for iter.Prev() {
+		height, _ = strconv.ParseInt(string(iter.Key()), 10, 64)
+		checkpoint = &btcjson.DumpCheckpointResult {
+			Blocks: height,
+			Hash:   string(iter.Value()),
+		}
+		checkpoints = append(checkpoints, checkpoint)
+	}
+	iter.Release()
+	err = iter.Error()
+
+	defer userCheckpointDb.Close()
+
+	// no data returned unless an error.
+	return checkpoints, nil
 }
 
 // handleEstimateFee handles estimatefee commands.

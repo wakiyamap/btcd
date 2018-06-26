@@ -10,12 +10,14 @@ import (
 	"math"
 	"math/big"
 	"time"
+	"strconv"
 
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
+	"github.com/wakiyamap/monad/database"
 )
 
 const (
@@ -710,6 +712,26 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		str := fmt.Sprintf("block at height %d forks the main chain "+
 			"before the previous checkpoint at height %d",
 			blockHeight, checkpointNode.height)
+		return ruleError(ErrForkTooOld, str)
+	}
+
+	dbPath := database.GetCheckpointDbPath()
+	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
+	if err != nil {
+		return nil
+	}
+
+	iter := userCheckpointDb.NewIterator(nil, nil)
+	iter.Last()
+	checkpointHeight, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
+	iter.Release()
+	err = iter.Error()
+	defer userCheckpointDb.Close()
+
+	if checkpointHeight != 0 && int64(blockHeight) < checkpointHeight {
+		str := fmt.Sprintf("block at height %d forks the main chain "+
+			"before the previous checkpoint at height %d",
+			int64(blockHeight), checkpointHeight)
 		return ruleError(ErrForkTooOld, str)
 	}
 

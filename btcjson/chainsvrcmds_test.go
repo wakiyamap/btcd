@@ -80,7 +80,28 @@ func TestChainSvrCmds(t *testing.T) {
 				LockTime: btcjson.Int64(12312333333),
 			},
 		},
-
+		{
+			name: "checkpoint",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("checkpoint", 123)
+			},
+			staticCmd: func() interface{} {
+				return btcjson.NewCheckpointCmd(123)
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"checkpoint","params":[123],"id":1}`,
+			unmarshalled: &btcjson.CheckpointCmd{Index: 123},
+		},
+		{
+			name: "dumpcheckpoint",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("dumpcheckpoint", 123)
+			},
+			staticCmd: func() interface{} {
+				return btcjson.NewDumpCheckpointCmd(123)
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"dumpcheckpoint","params":[123],"id":1}`,
+			unmarshalled: &btcjson.DumpCheckpointCmd{Index: 123},
+		},
 		{
 			name: "decoderawtransaction",
 			newCmd: func() (interface{}, error) {

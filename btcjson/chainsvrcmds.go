@@ -60,6 +60,45 @@ type CreateRawTransactionCmd struct {
 	LockTime *int64
 }
 
+// CheckpointCmd defines the type used in the addnode JSON-RPC command for the
+// sub command field.
+type CheckpointSubCmd string
+
+const (
+	// CAdd indicates the specified checkpoint should be added as a persistent
+	// checkpoint.
+	CAdd CheckpointSubCmd = "add"
+
+	// CDelete indicates the specified checkpoint should be deleted.
+	CDelete CheckpointSubCmd = "delete"
+)
+
+// CheckpointCmd defines the addnode JSON-RPC command.
+type CheckpointCmd struct {
+	SubCmd CheckpointSubCmd `jsonrpcusage:"\"add|delete\""`
+	Index int64
+	Hash *string `jsonrpcdefault:"\"Hash\""`
+}
+
+// NewCheckpointCmd returns a new instance which can be used to issue an checkpoint
+// JSON-RPC command.
+func NewCheckpointCmd(subCmd CheckpointSubCmd, hash *string, index int64) *CheckpointCmd {
+	return &CheckpointCmd{
+		SubCmd: subCmd,
+		Index:  index,
+		Hash:   hash,
+	}
+}
+
+// DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
+type DumpCheckpointCmd struct {}
+
+// NewDumpCheckpointCmd returns a new instance which can be used to issue a
+// dumpcheckpoint JSON-RPC command.
+func NewDumpCheckpointCmd() *DumpCheckpointCmd {
+	return &DumpCheckpointCmd{}
+}
+
 // NewCreateRawTransactionCmd returns a new instance which can be used to issue
 // a createrawtransaction JSON-RPC command.
 //
@@ -779,6 +818,8 @@ func init() {
 
 	MustRegisterCmd("addnode", (*AddNodeCmd)(nil), flags)
 	MustRegisterCmd("createrawtransaction", (*CreateRawTransactionCmd)(nil), flags)
+	MustRegisterCmd("checkpoint", (*CheckpointCmd)(nil), flags)
+	MustRegisterCmd("dumpcheckpoint", (*DumpCheckpointCmd)(nil), flags)
 	MustRegisterCmd("decoderawtransaction", (*DecodeRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
 	MustRegisterCmd("getaddednodeinfo", (*GetAddedNodeInfoCmd)(nil), flags)
