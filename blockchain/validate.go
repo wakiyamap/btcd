@@ -354,9 +354,9 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 // CheckProofOfWork ensures the block header bits which indicate the target
 // difficulty is in min/max range and that the block hash is less than the
 // target difficulty as claimed.
-func CheckProofOfWork(block *monautil.Block, powLimit *big.Int) error {
-	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone, block.Height())
-}
+//func CheckProofOfWork(block *monautil.Block, powLimit *big.Int) error {
+//	return checkProofOfWork(&block.MsgBlock().Header, powLimit, BFNone, block.Height())
+//}
 
 // CountSigOps returns the number of signature operations for all transaction
 // input and output scripts in the provided transaction.  This uses the
