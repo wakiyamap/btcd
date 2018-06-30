@@ -29,7 +29,7 @@ type UserCheckpoint struct {
 var instance *UserCheckpoint
 var once sync.Once
 
-func (uc *UserCheckpoint) OpneDB() error {
+func (uc *UserCheckpoint) OpenDB() error {
 	if uc.Ucdb != nil {
 		return nil
 	}
@@ -41,7 +41,7 @@ func (uc *UserCheckpoint) OpneDB() error {
 }
 
 func (uc *UserCheckpoint) CloseDB() {
-	if uc.Ucdb != nil {
+	if uc.Ucdb == nil {
 		return
 	}
 	uc.Ucdb.Close()
