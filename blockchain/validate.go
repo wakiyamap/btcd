@@ -10,14 +10,13 @@ import (
 	"math"
 	"math/big"
 	"time"
-	"strconv"
 
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
-	"github.com/wakiyamap/monad/database"
 )
 
 const (
@@ -338,11 +337,11 @@ func checkProofOfWork(header *wire.BlockHeader, powLimit *big.Int, flags Behavio
 		if header.Bits == 545259519 {
 			return nil
 		}
- 		hash, err := header.PowHash()
-  		if err != nil {
-  			return err
- 		}
- 		hashNum := HashToBig(hash)
+		hash, err := header.PowHash()
+		if err != nil {
+			return err
+		}
+		hashNum := HashToBig(hash)
 		if hashNum.Cmp(target) > 0 {
 			str := fmt.Sprintf("block hash of %064x is higher than "+
 				"expected max of %064x", hashNum, target)
@@ -715,24 +714,41 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		return ruleError(ErrForkTooOld, str)
 	}
 
-	dbPath := database.GetCheckpointDbPath()
-	userCheckpointDb, err := database.CheckpointDbOpen(dbPath)
-	if err != nil {
-		return nil
-	}
+	uc := database.GetInstance()
+	byteHash, err := uc.Ucdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
+	if err == nil {
+		cpHash, err := chainhash.NewHashFromStr(string(byteHash))
+		if err != nil {
+			return err
+		}
+		if *cpHash != blockHash {
+			str := fmt.Sprintf("block at height %d does not match "+
+				"checkpoint hash", blockHeight)
+			return ruleError(ErrBadCheckpoint, str)
+		}
+	} else {
+		iter := uc.Ucdb.NewIterator(nil, nil)
+		iter.Last()
+		for iter.Valid() {
+			cpHash, err := chainhash.NewHashFromStr(string(iter.Value()))
+			if err != nil {
+				return err
+			}
+			node := b.index.LookupNode(cpHash)
+			if node == nil || !b.bestChain.Contains(node) {
+				iter.Prev()
+				continue
+			}
 
-	iter := userCheckpointDb.NewIterator(nil, nil)
-	iter.Last()
-	checkpointHeight, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
-	iter.Release()
-	err = iter.Error()
-	defer userCheckpointDb.Close()
-
-	if checkpointHeight != 0 && int64(blockHeight) < checkpointHeight {
-		str := fmt.Sprintf("block at height %d forks the main chain "+
-			"before the previous checkpoint at height %d",
-			int64(blockHeight), checkpointHeight)
-		return ruleError(ErrForkTooOld, str)
+			if node != nil && blockHeight < node.height {
+				str := fmt.Sprintf("block at height %d forks the main chain "+
+					"before the previous checkpoint at height %d",
+					blockHeight, checkpointNode.height)
+				return ruleError(ErrForkTooOld, str)
+			} else {
+				break
+			}
+		}
 	}
 
 	// Reject outdated block versions once a majority of the network
