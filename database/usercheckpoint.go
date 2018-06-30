@@ -2,11 +2,13 @@ package database
 
 import (
 	"path/filepath"
+	"sync"
+	"time"
 
-	"github.com/wakiyamap/monautil"
-	"github.com/wakiyamap/monad/wire"
-	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/btcsuite/goleveldb/leveldb"
+	"github.com/wakiyamap/monad/chaincfg"
+	"github.com/wakiyamap/monad/wire"
+	"github.com/wakiyamap/monautil"
 )
 
 const (
@@ -20,13 +22,38 @@ var (
 	activeNetParams = &chaincfg.MainNetParams
 )
 
-func CheckpointDbOpen(dbpath string) (*leveldb.DB , error) {
-	var err error
-	db, err := leveldb.OpenFile(dbpath, nil)
-	if err != nil {
-		return nil, err
+type UserCheckpoint struct {
+	Ucdb *leveldb.DB
+}
+
+var instance *UserCheckpoint
+var once sync.Once
+
+func (uc *UserCheckpoint) OpneDB() error {
+	if uc.Ucdb != nil {
+		return nil
 	}
-	return db, nil
+
+	var err error
+	dbpath := GetCheckpointDbPath()
+	uc.Ucdb, err = leveldb.OpenFile(dbpath, nil)
+	return err
+}
+
+func (uc *UserCheckpoint) CloseDB() {
+	if uc.Ucdb != nil {
+		return
+	}
+	uc.Ucdb.Close()
+	uc.Ucdb = nil
+}
+
+func GetInstance() *UserCheckpoint {
+	once.Do(func() {
+		time.Sleep(1 * time.Second)
+		instance = &UserCheckpoint{nil}
+	})
+	return instance
 }
 
 // netName returns the name used when referring to a bitcoin network.  At the
@@ -53,4 +80,3 @@ func GetCheckpointDbPath() (dbPath string) {
 
 	return dbPath
 }
-
