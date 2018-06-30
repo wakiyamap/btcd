@@ -41,7 +41,7 @@ func (uc *UserCheckpoint) OpenDB() error {
 }
 
 func (uc *UserCheckpoint) CloseDB() {
-	if uc.Ucdb != nil {
+	if uc.Ucdb == nil {
 		return
 	}
 	uc.Ucdb.Close()
