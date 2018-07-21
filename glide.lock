@@ -1,5 +1,5 @@
-hash: 1f5af08853722759e2a95ed29240c093bba4f98dce6af63700d2d43fd6e9becb
-updated: 2018-07-22T07:33:34.406883555+09:00
+hash: 6881aeeeafd3c7a16cca3f46faa64637f4f8252c2b2804dc20c872995fbcea36
+updated: 2018-07-22T07:50:57.041569451+09:00
 imports:
 - name: github.com/aead/siphash
   version: e404fcfc888570cadd1610538e2dbc89f66af814
@@ -67,7 +67,7 @@ imports:
 - name: github.com/wakiyamap/lyra2rev2
   version: bae9ad2043bb55facb14c4918e909f88a7d3ed84
 - name: github.com/wakiyamap/monautil
-  version: 79ca7c0744a0cba0e35919b316d901645385ba59
+  version: c1fba54cb210ffa57c4cb5e40fa09c789daa56b8
   subpackages:
   - base58
   - bech32
