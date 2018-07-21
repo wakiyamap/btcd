@@ -1,5 +1,5 @@
 hash: 1f5af08853722759e2a95ed29240c093bba4f98dce6af63700d2d43fd6e9becb
-updated: 2018-06-22T20:00:55.244370199+09:00
+updated: 2018-07-22T07:33:34.406883555+09:00
 imports:
 - name: github.com/aead/siphash
   version: e404fcfc888570cadd1610538e2dbc89f66af814

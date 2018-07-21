@@ -211,7 +211,7 @@ func (ef *FeeEstimator) ObserveTransaction(t *TxDesc) {
 		size := uint32(GetTxVirtualSize(t.Tx))
 
 		ef.observed[hash] = &observedTransaction{
-			hash: hash,
+			hash:     hash,
 			feeRate:  NewSatoshiPerByte(monautil.Amount(t.Fee), size),
 			observed: t.Height,
 			mined:    mining.UnminedHeight,

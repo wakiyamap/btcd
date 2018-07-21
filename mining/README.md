@@ -6,7 +6,6 @@ mining
 (http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)]
 (http://godoc.org/github.com/wakiyamap/monad/mining)
->>>>>>> c7d17841... multi: update imports to roasbeef's
 
 ## Overview
 

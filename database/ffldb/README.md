@@ -1,14 +1,10 @@
 ffldb
 =====
 
-<<<<<<< HEAD
 [![Build Status](https://travis-ci.org/wakiyamap/monad.png?branch=master)](https://travis-ci.org/wakiyamap/monad)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 [![GoDoc](https://godoc.org/github.com/wakiyamap/monad/database/ffldb?status.png)](http://godoc.org/github.com/wakiyamap/monad/database/ffldb)
 =======
-[![Build Status](https://travis-ci.org/wakiyamap/monad.png?branch=master)]
-(https://travis-ci.org/wakiyamap/monad)
->>>>>>> c7d17841... multi: update imports to roasbeef's
 
 Package ffldb implements a driver for the database package that uses leveldb for
 the backing metadata and flat files for block storage.
@@ -39,8 +35,6 @@ if err != nil {
 }
 ```
 
-<<<<<<< HEAD
-=======
 ## Documentation
 
 [![GoDoc](https://godoc.org/github.com/wakiyamap/monad/database/ffldb?status.png)]
@@ -54,7 +48,6 @@ You can also view the documentation locally once the package is installed with
 the `godoc` tool by running `godoc -http=":6060"` and pointing your browser to
 http://localhost:6060/pkg/github.com/wakiyamap/monad/database/ffldb
 
->>>>>>> c7d17841... multi: update imports to roasbeef's
 ## License
 
 Package ffldb is licensed under the [copyfree](http://copyfree.org) ISC

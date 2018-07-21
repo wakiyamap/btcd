@@ -18,16 +18,16 @@ implement and the API is not stable yet.
 
 ## Documentation
 
-* [API Reference](http://godoc.org/github.com/wakiyamap/monad/rpcclient)
-* [monad Websockets Example](https://github.com/wakiyamap/monad/rpcclient/blob/master/examples/monadwebsockets)  
-  Connects to a monad RPC server using TLS-secured websockets, registers for
+* [API Reference](http://godoc.org/github.com/btcsuite/btcd/rpcclient)
+* [btcd Websockets Example](https://github.com/btcsuite/btcd/tree/master/rpcclient/examples/btcdwebsockets)
+  Connects to a btcd RPC server using TLS-secured websockets, registers for
   block connected and block disconnected notifications, and gets the current
   block count
-* [btcwallet Websockets Example](https://github.com/wakiyamap/monad/rpcclient/blob/master/examples/btcwalletwebsockets)  
+* [btcwallet Websockets Example](https://github.com/btcsuite/btcd/tree/master/rpcclient/examples/btcwalletwebsockets)
   Connects to a btcwallet RPC server using TLS-secured websockets, registers for
   notifications about changes to account balances, and gets a list of unspent
   transaction outputs (utxos) the wallet can sign
-* [Bitcoin Core HTTP POST Example](https://github.com/wakiyamap/monad/rpcclient/blob/master/examples/bitcoincorehttp)  
+* [Bitcoin Core HTTP POST Example](https://github.com/btcsuite/btcd/tree/master/rpcclient/examples/bitcoincorehttp)
   Connects to a bitcoin core RPC server using HTTP POST mode with TLS disabled
   and gets the current block count
 

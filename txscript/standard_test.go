@@ -568,13 +568,13 @@ func TestCalcScriptInfo(t *testing.T) {
 // unsupported address types are handled properly.
 type bogusAddress struct{}
 
-// EncodeAddress simply returns an empty string.  It exists to satsify the
+// EncodeAddress simply returns an empty string.  It exists to satisfy the
 // monautil.Address interface.
 func (b *bogusAddress) EncodeAddress() string {
 	return ""
 }
 
-// ScriptAddress simply returns an empty byte slice.  It exists to satsify the
+// ScriptAddress simply returns an empty byte slice.  It exists to satisfy the
 // monautil.Address interface.
 func (b *bogusAddress) ScriptAddress() []byte {
 	return nil

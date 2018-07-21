@@ -14,10 +14,9 @@ database backends and is not something that a client can directly access as only
 one entity can have the database open at a time (for most database backends),
 and that entity will be monad.
 
-When a client wants programmatic access to the data provided by monad, they'll
-likely want to use the [btcrpcclient](https://github.com/roasbeef/btcrpcclient)
-package which makes use of the [JSON-RPC API]
-(https://github.com/wakiyamap/monad/tree/master/docs/json_rpc_api.md).
+When a client wants programmatic access to the data provided by btcd, they'll
+likely want to use the [rpcclient](https://github.com/btcsuite/btcd/tree/master/rpcclient)
+package which makes use of the [JSON-RPC API](https://github.com/btcsuite/btcd/tree/master/docs/json_rpc_api.md).
 
 However, this package could be extremely useful for any applications requiring
 Bitcoin block storage capabilities.

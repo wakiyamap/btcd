@@ -98,9 +98,8 @@ func checkInputsStandard(tx *monautil.Tx, utxoView *blockchain.UtxoViewpoint) er
 		// It is safe to elide existence and index checks here since
 		// they have already been checked prior to calling this
 		// function.
-		prevOut := txIn.PreviousOutPoint
-		entry := utxoView.LookupEntry(&prevOut.Hash)
-		originPkScript := entry.PkScriptByIndex(prevOut.Index)
+		entry := utxoView.LookupEntry(txIn.PreviousOutPoint)
+		originPkScript := entry.PkScript()
 		switch txscript.GetScriptClass(originPkScript) {
 		case txscript.ScriptHashTy:
 			numSigOps := txscript.GetPreciseSigOpCount(

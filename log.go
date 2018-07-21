@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wakiyamap/monad/netsync"
-
 	"github.com/wakiyamap/monad/addrmgr"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/blockchain/indexers"
@@ -20,6 +18,7 @@ import (
 	"github.com/wakiyamap/monad/mempool"
 	"github.com/wakiyamap/monad/mining"
 	"github.com/wakiyamap/monad/mining/cpuminer"
+	"github.com/wakiyamap/monad/netsync"
 	"github.com/wakiyamap/monad/peer"
 	"github.com/wakiyamap/monad/txscript"
 
