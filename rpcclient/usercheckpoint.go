@@ -46,8 +46,8 @@ func (r FutureCheckpointResult) Receive() error {
 // returned instance.
 //
 // See Checkpoint for the blocking version and more details.
-func (c *Client) CheckpointAsync(blockheight int64, hash string, command CheckpointCommand) FutureCheckpointResult {
-	cmd := btcjson.NewCheckpointCmd(blockheight, hash, btcjson.CheckpointSubCmd(command))
+func (c *Client) CheckpointAsync(command CheckpointCommand, hash *string, blockheight int64) FutureCheckpointResult {
+	cmd := btcjson.NewCheckpointCmd(btcjson.CheckpointSubCmd(command), hash, blockheight)
 	return c.sendCmd(cmd)
 }
 
@@ -56,8 +56,8 @@ func (c *Client) CheckpointAsync(blockheight int64, hash string, command Checkpo
 // a one time connection to a peer.
 //
 // It may not be used to delete non-persistent peers.
-func (c *Client) Checkpoint(blockheight int64, hash string, command CheckpointCommand) error {
-	return c.CheckpointAsync(blockheight, hash, command).Receive()
+func (c *Client) Checkpoint(command CheckpointCommand, hash *string, blockheight int64) error {
+	return c.CheckpointAsync(command, hash, blockheight).Receive()
 }
 
 // FutureDumpCheckpointResult is a future promise to deliver the result of a
