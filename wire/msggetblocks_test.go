@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
 )
 
 // TestGetBlocks tests the MsgGetBlocks API.

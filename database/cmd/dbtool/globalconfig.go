@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	monadHomeDir     = monautil.AppDataDir("monad", false)
+	monadHomeDir    = monautil.AppDataDir("monad", false)
 	knownDbTypes    = database.SupportedDrivers()
 	activeNetParams = &chaincfg.MainNetParams
 

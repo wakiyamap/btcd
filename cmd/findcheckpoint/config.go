@@ -9,12 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
+	flags "github.com/jessevdk/go-flags"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/database"
 	_ "github.com/wakiyamap/monad/database/ffldb"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
-	flags "github.com/jessevdk/go-flags"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	monadHomeDir     = monautil.AppDataDir("monad", false)
+	monadHomeDir    = monautil.AppDataDir("monad", false)
 	defaultDataDir  = filepath.Join(monadHomeDir, "data")
 	knownDbTypes    = database.SupportedDrivers()
 	activeNetParams = &chaincfg.MainNetParams

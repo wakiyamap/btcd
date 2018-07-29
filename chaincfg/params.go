@@ -274,7 +274,7 @@ var MainNetParams = Params{
 	//
 	// The miner confirmation window is defined as:
 	//   target proof of work timespan / target proof of work spacing
-	RuleChangeActivationThreshold: 7560, // 75% of MinerConfirmationWindow
+	RuleChangeActivationThreshold: 7560,  // 75% of MinerConfirmationWindow
 	MinerConfirmationWindow:       10080, //
 	Deployments: [DefinedDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {

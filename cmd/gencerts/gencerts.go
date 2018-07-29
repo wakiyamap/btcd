@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wakiyamap/monautil"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/wakiyamap/monautil"
 )
 
 type config struct {

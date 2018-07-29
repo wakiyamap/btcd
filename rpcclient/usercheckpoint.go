@@ -22,7 +22,6 @@ const (
 
 	// CDelete indicates the specified Checkpoint should be deleted.
 	CDelete CheckpointCommand = "delete"
-
 )
 
 // String returns the CheckpointCommand in human-readable form.
@@ -96,4 +95,3 @@ func (c *Client) DumpCheckpointAsync() FutureDumpCheckpointResult {
 func (c *Client) DumpCheckpoint() ([]btcjson.DumpCheckpointResult, error) {
 	return c.DumpCheckpointAsync().Receive()
 }
-

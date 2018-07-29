@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/btcsuite/btclog"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/blockchain/indexers"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/limits"
-	"github.com/btcsuite/btclog"
 )
 
 const (

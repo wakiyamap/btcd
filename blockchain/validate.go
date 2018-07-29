@@ -1312,7 +1312,7 @@ func (b *BlockChain) CheckConnectBlockTemplate(block *monautil.Block) error {
 		return ruleError(ErrPrevBlockNotBest, str)
 	}
 
-	checkHeight := tip.height+1
+	checkHeight := tip.height + 1
 	err := checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, checkHeight, flags)
 	if err != nil {
 		return err

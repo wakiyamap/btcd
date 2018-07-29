@@ -20,10 +20,10 @@ import (
 // TestCalcMinRequiredTxRelayFee tests the calcMinRequiredTxRelayFee API.
 func TestCalcMinRequiredTxRelayFee(t *testing.T) {
 	tests := []struct {
-		name     string         // test description.
-		size     int64          // Transaction size in bytes.
+		name     string          // test description.
+		size     int64           // Transaction size in bytes.
 		relayFee monautil.Amount // minimum relay transaction fee.
-		want     int64          // Expected fee.
+		want     int64           // Expected fee.
 	}{
 		{
 			// Ensure combination of size and fee that are less than 1000

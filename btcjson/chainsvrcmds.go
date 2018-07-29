@@ -76,8 +76,8 @@ const (
 // CheckpointCmd defines the addnode JSON-RPC command.
 type CheckpointCmd struct {
 	SubCmd CheckpointSubCmd `jsonrpcusage:"\"add|delete\""`
-	Index int64
-	Hash *string `jsonrpcdefault:"\"Hash\""`
+	Index  int64
+	Hash   *string `jsonrpcdefault:"\"Hash\""`
 }
 
 // NewCheckpointCmd returns a new instance which can be used to issue an checkpoint
@@ -91,7 +91,7 @@ func NewCheckpointCmd(subCmd CheckpointSubCmd, hash *string, index int64) *Check
 }
 
 // DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
-type DumpCheckpointCmd struct {}
+type DumpCheckpointCmd struct{}
 
 // NewDumpCheckpointCmd returns a new instance which can be used to issue a
 // dumpcheckpoint JSON-RPC command.

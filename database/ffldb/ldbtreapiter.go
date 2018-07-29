@@ -5,9 +5,9 @@
 package ffldb
 
 import (
-	"github.com/wakiyamap/monad/database/internal/treap"
 	"github.com/btcsuite/goleveldb/leveldb/iterator"
 	"github.com/btcsuite/goleveldb/leveldb/util"
+	"github.com/wakiyamap/monad/database/internal/treap"
 )
 
 // ldbTreapIter wraps a treap iterator to provide the additional functionality

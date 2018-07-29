@@ -166,7 +166,7 @@ func (b *BlockChain) ProcessBlock(block *monautil.Block, flags BehaviorFlags) (b
 
 	// Perform preliminary sanity checks on the block and its transactions.
 	tip := b.bestChain.Tip()
-	checkHeight := tip.height+1
+	checkHeight := tip.height + 1
 	err = checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, checkHeight, flags)
 	if err != nil {
 		return false, false, err

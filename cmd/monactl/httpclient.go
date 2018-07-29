@@ -10,8 +10,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/wakiyamap/monad/btcjson"
 	"github.com/btcsuite/go-socks/socks"
+	"github.com/wakiyamap/monad/btcjson"
 )
 
 // newHTTPClient returns a new HTTP client that is configured according to the

@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/wakiyamap/monad/chaincfg/chainhash"
 )
 
 // TestMerkleBlock tests the MsgMerkleBlock API.

@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/wakiyamap/monad/rpcclient"
 	"github.com/wakiyamap/monautil"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func main() {

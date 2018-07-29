@@ -13,9 +13,9 @@ import (
 	"regexp"
 	"strings"
 
+	flags "github.com/jessevdk/go-flags"
 	"github.com/wakiyamap/monad/btcjson"
 	"github.com/wakiyamap/monautil"
-	flags "github.com/jessevdk/go-flags"
 )
 
 const (
@@ -26,9 +26,9 @@ const (
 )
 
 var (
-	monadHomeDir           = monautil.AppDataDir("monad", false)
-	monactlHomeDir         = monautil.AppDataDir("monactl", false)
-	monawalletHomeDir      = monautil.AppDataDir("monawallet", false)
+	monadHomeDir          = monautil.AppDataDir("monad", false)
+	monactlHomeDir        = monautil.AppDataDir("monactl", false)
+	monawalletHomeDir     = monautil.AppDataDir("monawallet", false)
 	defaultConfigFile     = filepath.Join(monactlHomeDir, "monactl.conf")
 	defaultRPCServer      = "localhost"
 	defaultRPCCertFile    = filepath.Join(monadHomeDir, "rpc.cert")

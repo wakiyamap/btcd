@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/go-socks/socks"
+	flags "github.com/jessevdk/go-flags"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
@@ -28,8 +30,6 @@ import (
 	_ "github.com/wakiyamap/monad/database/ffldb"
 	"github.com/wakiyamap/monad/mempool"
 	"github.com/wakiyamap/monautil"
-	"github.com/btcsuite/go-socks/socks"
-	flags "github.com/jessevdk/go-flags"
 )
 
 const (

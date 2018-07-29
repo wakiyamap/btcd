@@ -17,12 +17,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/btcsuite/goleveldb/leveldb"
+	ldberrors "github.com/btcsuite/goleveldb/leveldb/errors"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
-	"github.com/btcsuite/goleveldb/leveldb"
-	ldberrors "github.com/btcsuite/goleveldb/leveldb/errors"
 )
 
 var (

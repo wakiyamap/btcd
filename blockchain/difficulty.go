@@ -231,7 +231,6 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 		return b.chainParams.PowLimitBits, nil
 	}
 
-
 	// DarkGravityWave3
 	// current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io
 	readNode := lastNode.RelativeAncestor(0) //last block
@@ -257,7 +256,7 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 				PastDifficultyAverage = CompactToBig(readNode.bits)
 			} else {
 				bnNum = CompactToBig(readNode.bits)
-				PastDifficultyAverage = PastDifficultyAveragePrev.Mul(PastDifficultyAveragePrev, big.NewInt(CountBlocks)).Add(PastDifficultyAveragePrev,bnNum).Div(PastDifficultyAveragePrev,big.NewInt(CountBlocks + 1))
+				PastDifficultyAverage = PastDifficultyAveragePrev.Mul(PastDifficultyAveragePrev, big.NewInt(CountBlocks)).Add(PastDifficultyAveragePrev, bnNum).Div(PastDifficultyAveragePrev, big.NewInt(CountBlocks+1))
 			}
 			PastDifficultyAveragePrev = PastDifficultyAverage
 		}
@@ -277,9 +276,9 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 	// Limit the re-adjustment to 3x or 0.33x
 	// We don't want to increase/decrease diff too much.
 	nTargetTimespan := CountBlocks * 90 // Monacoin: 1.5(60*1.5) minutes between block
-	if nActualTimespan < nTargetTimespan / 3 {
+	if nActualTimespan < nTargetTimespan/3 {
 		nActualTimespan = nTargetTimespan / 3
-	} else if nActualTimespan > nTargetTimespan * 3 {
+	} else if nActualTimespan > nTargetTimespan*3 {
 		nActualTimespan = nTargetTimespan * 3
 	}
 
