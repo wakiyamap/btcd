@@ -375,7 +375,7 @@ var RegressionNetParams = Params{
 
 	// Human-readable part for Bech32 encoded segwit addresses, as defined in
 	// BIP 173.
-	Bech32HRPSegwit: "mcrt", // always tmona for test net
+	Bech32HRPSegwit: "rmona", // always tmona for test net
 
 	// Address encoding magics
 	PubKeyHashAddrID: 0x6f, // starts with m or n
