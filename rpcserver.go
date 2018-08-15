@@ -908,11 +908,12 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 // handleDumpcheckpoint handles dumpcheckpoint commands.
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.DumpCheckpointCmd)
 	var n int32
 	uc := database.GetInstance()
 	iter := uc.Ucdb.NewIterator(nil, nil)
 	iter.Last()
-	if !iter.Valid() {
+	if !iter.Valid() || *c.Maxnum <= 0 {
 		return "[]", nil
 	}
 
@@ -924,7 +925,9 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 			Hash:   string(iter.Value()),
 		}
 		checkpoints = append(checkpoints, checkpoint)
-
+		if string(*c.Maxnum) <= string(len(checkpoints)) {
+			break
+		}
 		iter.Prev()
 	}
 

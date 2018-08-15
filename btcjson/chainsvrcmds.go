@@ -91,12 +91,16 @@ func NewCheckpointCmd(subCmd CheckpointSubCmd, hash *string, index int64) *Check
 }
 
 // DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
-type DumpCheckpointCmd struct{}
+type DumpCheckpointCmd struct{
+	Maxnum *int32 `jsonrpcdefault:"2147483647"`
+}
 
 // NewDumpCheckpointCmd returns a new instance which can be used to issue a
 // dumpcheckpoint JSON-RPC command.
-func NewDumpCheckpointCmd() *DumpCheckpointCmd {
-	return &DumpCheckpointCmd{}
+func NewDumpCheckpointCmd(maxnum *int32) *DumpCheckpointCmd {
+	return &DumpCheckpointCmd{
+		Maxnum: maxnum, 	
+	}
 }
 
 // NewCreateRawTransactionCmd returns a new instance which can be used to issue
