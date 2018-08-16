@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"flag"
 
 	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/wakiyamap/monad/chaincfg"
@@ -14,12 +15,14 @@ import (
 const (
 	// userCheckpointDbNamePrefix is the prefix for the monad block database.
 	userCheckpointDbNamePrefix = "usercheckpoints"
+	defaultDbType              = "leveldb"
 )
 
 var (
 	monadHomeDir    = monautil.AppDataDir("monad", false)
 	defaultDataDir  = filepath.Join(monadHomeDir, "data")
 	activeNetParams = &chaincfg.MainNetParams
+	testnet         = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
 )
 
 type UserCheckpoint struct {
@@ -75,7 +78,11 @@ func netName(chainParams *chaincfg.Params) string {
 }
 
 func GetCheckpointDbPath() (dbPath string) {
-	dbName := userCheckpointDbNamePrefix + "_" + "leveldb"
+	flag.Parse()
+	if *testnet {
+		activeNetParams = &chaincfg.TestNet4Params
+	}
+	dbName := userCheckpointDbNamePrefix + "_" + defaultDbType
 	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
 
 	return dbPath
