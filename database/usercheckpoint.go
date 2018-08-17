@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// userCheckpointDbNamePrefix is the prefix for the monad block database.
+	// userCheckpointDbNamePrefix is the prefix for the monad usercheckpoint database.
 	userCheckpointDbNamePrefix = "usercheckpoints"
 	defaultDbType              = "leveldb"
 )
@@ -38,7 +38,7 @@ func (uc *UserCheckpoint) OpenDB() error {
 	}
 
 	var err error
-	dbpath := GetCheckpointDbPath()
+	dbpath := GetUserCheckpointDbPath()
 	uc.Ucdb, err = leveldb.OpenFile(dbpath, nil)
 	return err
 }
@@ -51,7 +51,7 @@ func (uc *UserCheckpoint) CloseDB() {
 	uc.Ucdb = nil
 }
 
-func GetInstance() *UserCheckpoint {
+func GetUserCheckpointDbInstance() *UserCheckpoint {
 	once.Do(func() {
 		time.Sleep(1 * time.Second)
 		instance = &UserCheckpoint{nil}
@@ -77,8 +77,9 @@ func netName(chainParams *chaincfg.Params) string {
 	}
 }
 
-func GetCheckpointDbPath() (dbPath string) {
+func GetUserCheckpointDbPath() (dbPath string) {
 	flag.Parse()
+	// There is a possibility that simnet and regtest will not work for this sentence.
 	if *testnet {
 		activeNetParams = &chaincfg.TestNet4Params
 	}

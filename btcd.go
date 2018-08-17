@@ -110,11 +110,11 @@ func monadMain(serverChan chan<- *server) error {
 		db.Close()
 	}()
 
-	uc := database.GetInstance()
+	uc := database.GetUserCheckpointDbInstance()
 	uc.OpenDB()
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the usercheckpoint database...")
-		database.GetInstance().CloseDB()
+		database.GetUserCheckpointDbInstance().CloseDB()
 	}()
 
 	// Return now if an interrupt signal was triggered.

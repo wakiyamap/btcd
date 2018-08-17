@@ -868,7 +868,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	c := cmd.(*btcjson.CheckpointCmd)
 	var err error
 
-	uc := database.GetInstance()
+	uc := database.GetUserCheckpointDbInstance()
 	if c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
@@ -910,7 +910,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.DumpCheckpointCmd)
 	var n int32
-	uc := database.GetInstance()
+	uc := database.GetUserCheckpointDbInstance()
 	iter := uc.Ucdb.NewIterator(nil, nil)
 	iter.Last()
 	if !iter.Valid() || *c.Maxnum <= 0 {

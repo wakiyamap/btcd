@@ -711,7 +711,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		return ruleError(ErrForkTooOld, str)
 	}
 
-	uc := database.GetInstance()
+	uc := database.GetUserCheckpointDbInstance()
 	byteHash, err := uc.Ucdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
 	if err == nil {
 		cpHash, err := chainhash.NewHashFromStr(string(byteHash))
