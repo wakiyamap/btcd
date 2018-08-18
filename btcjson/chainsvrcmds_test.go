@@ -103,6 +103,28 @@ func TestChainSvrCmds(t *testing.T) {
 			unmarshalled: &btcjson.DumpCheckpointCmd{Index: 123},
 		},
 		{
+			name: "volatilecheckpoint",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("volatilecheckpoint", 123)
+			},
+			staticCmd: func() interface{} {
+				return btcjson.NewVolatileCheckpointCmd(123)
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"volatilecheckpoint","params":[123],"id":1}`,
+			unmarshalled: &btcjson.VolatileCheckpointCmd{Index: 123},
+		},
+		{
+			name: "dumpvolatilecheckpoint",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("dumpvolatilecheckpoint", 123)
+			},
+			staticCmd: func() interface{} {
+				return btcjson.NewDumpVolatileCheckpointCmd(123)
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"dumpvolatilecheckpoint","params":[123],"id":1}`,
+			unmarshalled: &btcjson.DumpVolatileCheckpointCmd{Index: 123},
+		},
+		{
 			name: "decoderawtransaction",
 			newCmd: func() (interface{}, error) {
 				return btcjson.NewCmd("decoderawtransaction", "123")

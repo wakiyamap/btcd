@@ -134,6 +134,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"decoderawtransaction":  handleDecodeRawTransaction,
 	"decodescript":          handleDecodeScript,
 	"dumpcheckpoint":        handleDumpCheckpoint,
+	"dumpvolatilecheckpoint":handleDumpVolatileCheckpoint,
 	"estimatefee":           handleEstimateFee,
 	"generate":              handleGenerate,
 	"getaddednodeinfo":      handleGetAddedNodeInfo,
@@ -175,6 +176,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"verifychain":           handleVerifyChain,
 	"verifymessage":         handleVerifyMessage,
 	"version":               handleVersion,
+	"volatilecheckpoint":    handleVolatileCheckpoint,
 }
 
 // list of commands that we recognize, but for which monad has no support because
@@ -255,9 +257,10 @@ var rpcLimited = map[string]struct{}{
 	// HTTP/S-only commands
 	"createrawtransaction":  {},
 	"checkpoint":            {},
-	"dumpcheckpoint":        {},
 	"decoderawtransaction":  {},
 	"decodescript":          {},
+	"dumpcheckpoint":        {},
+	"dumpvolatilecheckpoint":{},
 	"estimatefee":           {},
 	"getbestblock":          {},
 	"getbestblockhash":      {},
@@ -283,6 +286,7 @@ var rpcLimited = map[string]struct{}{
 	"validateaddress":       {},
 	"verifymessage":         {},
 	"version":               {},
+	"volatilecheckpoint":    {},
 }
 
 // builderScript is a convenience function which is used for hard-coded scripts
@@ -859,7 +863,7 @@ func handleDecodeScript(s *rpcServer, cmd interface{}, closeChan <-chan struct{}
 }
 
 const (
-	// userCheckpointDbNamePrefix is the prefix for the monad block database.
+	// userCheckpointDbNamePrefix is the prefix for the monad checkpoint database.
 	userCheckpointDbNamePrefix = "usercheckpoints"
 )
 
@@ -928,6 +932,83 @@ func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct
 		if string(*c.Maxnum) <= string(len(checkpoints)) {
 			break
 		}
+		iter.Prev()
+	}
+
+	// no data returned unless an error.
+	return checkpoints, nil
+}
+
+const (
+	// volatileCheckpointDbNamePrefix is the prefix for the monad checkpoint database.
+	volatileCheckpointDbNamePrefix = "volatilecheckpoints"
+)
+
+// handleVolatileCheckpoint handles volatilecheckpoint commands.
+func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.VolatileCheckpointCmd)
+	var err error
+
+	vc := database.GetVolatileCheckpointDbInstance()
+	if *c.Index < 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: fmt.Sprintf("Block height %s out of range", *c.Index),
+		}
+	}
+
+	if *c.Hash == "Hash" && c.SubCmd == "set" {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid parameter",
+		}
+	}
+
+	switch c.SubCmd {
+	case "set":
+		err = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", *c.Index)), []byte(string(*c.Hash)), nil)
+	case "clear":
+		iter := vc.Vcdb.NewIterator(nil, nil)
+		for iter.Next() {
+			err = vc.Vcdb.Delete([]byte(string(iter.Key())), nil)
+		}
+		iter.Release()
+	default:
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "invalid subcommand for checkpoint",
+		}
+	}
+
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: err.Error(),
+		}
+	}
+
+	// no data returned unless an error.
+	return nil, nil
+}
+
+// handleDumpVolatilecheckpoint handles dumpVolatilecheckpoint commands.
+func handleDumpVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	var n int32
+	vc := database.GetVolatileCheckpointDbInstance()
+	iter := vc.Vcdb.NewIterator(nil, nil)
+	iter.Last()
+	if !iter.Valid() {
+		return "[]", nil
+	}
+
+	checkpoints := make([]*btcjson.DumpVolatileCheckpointResult, 0, n)
+	for iter.Valid() {
+		height, _ := strconv.ParseInt(string(iter.Key()), 10, 64)
+		checkpoint := &btcjson.DumpVolatileCheckpointResult{
+			Blocks: height,
+			Hash:   string(iter.Value()),
+		}
+		checkpoints = append(checkpoints, checkpoint)
 		iter.Prev()
 	}
 

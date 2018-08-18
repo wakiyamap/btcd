@@ -711,6 +711,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		return ruleError(ErrForkTooOld, str)
 	}
 
+	// Use usercheckpointdb to check checkpoint
 	uc := database.GetUserCheckpointDbInstance()
 	byteHash, err := uc.Ucdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
 	if err == nil {
@@ -725,6 +726,44 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 		}
 	} else {
 		iter := uc.Ucdb.NewIterator(nil, nil)
+		iter.Last()
+		for iter.Valid() {
+			cpHash, err := chainhash.NewHashFromStr(string(iter.Value()))
+			if err != nil {
+				return err
+			}
+			node := b.index.LookupNode(cpHash)
+			if node == nil || !b.bestChain.Contains(node) {
+				iter.Prev()
+				continue
+			}
+
+			if node != nil && blockHeight < node.height {
+				str := fmt.Sprintf("block at height %d forks the main chain "+
+					"before the previous checkpoint at height %d",
+					blockHeight, checkpointNode.height)
+				return ruleError(ErrForkTooOld, str)
+			} else {
+				break
+			}
+		}
+	}
+
+	// Use volatilecheckpointdb to check checkpoint
+	vc := database.GetVolatileCheckpointDbInstance()
+	byteHash, err = vc.Vcdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
+	if err == nil {
+		cpHash, err := chainhash.NewHashFromStr(string(byteHash))
+		if err != nil {
+			return err
+		}
+		if *cpHash != blockHash {
+			str := fmt.Sprintf("block at height %d does not match "+
+				"checkpoint hash", blockHeight)
+			return ruleError(ErrBadCheckpoint, str)
+		}
+	} else {
+		iter := vc.Vcdb.NewIterator(nil, nil)
 		iter.Last()
 		for iter.Valid() {
 			cpHash, err := chainhash.NewHashFromStr(string(iter.Value()))

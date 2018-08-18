@@ -99,8 +99,17 @@ type DumpCheckpointCmd struct{
 // dumpcheckpoint JSON-RPC command.
 func NewDumpCheckpointCmd(maxnum *int32) *DumpCheckpointCmd {
 	return &DumpCheckpointCmd{
-		Maxnum: maxnum, 	
+		Maxnum: maxnum,
 	}
+}
+
+// DumpVolatileCheckpointCmd defines the dumpvolatilecheckpoint JSON-RPC command.
+type DumpVolatileCheckpointCmd struct{}
+
+// NewDumpVolatileCheckpointCmd returns a new instance which can be used to issue a
+// dumpvolatilecheckpoint JSON-RPC command.
+func NewDumpVolatileCheckpointCmd() *DumpVolatileCheckpointCmd {
+	return &DumpVolatileCheckpointCmd{}
 }
 
 // NewCreateRawTransactionCmd returns a new instance which can be used to issue
@@ -816,6 +825,36 @@ func NewVerifyTxOutProofCmd(proof string) *VerifyTxOutProofCmd {
 	}
 }
 
+// VolatileCheckpointCmd defines the type used in the addnode JSON-RPC command for the
+// sub command field.
+type VolatileCheckpointSubCmd string
+
+const (
+	// VCSet indicates the specified volatilecheckpoint should be added as a persistent
+	// checkpoint.
+	VCSet VolatileCheckpointSubCmd = "set"
+
+	// CDelete indicates the specified volatilecheckpoint should be cleared.
+	VCClear VolatileCheckpointSubCmd = "clear"
+)
+
+// VolatileCheckpointCmd defines the addnode JSON-RPC command.
+type VolatileCheckpointCmd struct {
+	SubCmd VolatileCheckpointSubCmd `jsonrpcusage:"\"set|clear\""`
+	Index  *int64  `jsonrpcdefault:"0"`
+	Hash   *string `jsonrpcdefault:"\"Hash\""`
+}
+
+// NewVolatileCheckpointCmd returns a new instance which can be used to issue an volatilecheckpoint
+// JSON-RPC command.
+func NewVolatileCheckpointCmd(subCmd VolatileCheckpointSubCmd, hash *string, index *int64) *VolatileCheckpointCmd {
+	return &VolatileCheckpointCmd{
+		SubCmd: subCmd,
+		Index:  index,
+		Hash:   hash,
+	}
+}
+
 func init() {
 	// No special flags for commands in this file.
 	flags := UsageFlag(0)
@@ -824,6 +863,7 @@ func init() {
 	MustRegisterCmd("createrawtransaction", (*CreateRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("checkpoint", (*CheckpointCmd)(nil), flags)
 	MustRegisterCmd("dumpcheckpoint", (*DumpCheckpointCmd)(nil), flags)
+	MustRegisterCmd("dumpvolatilecheckpoint", (*DumpVolatileCheckpointCmd)(nil), flags)
 	MustRegisterCmd("decoderawtransaction", (*DecodeRawTransactionCmd)(nil), flags)
 	MustRegisterCmd("decodescript", (*DecodeScriptCmd)(nil), flags)
 	MustRegisterCmd("getaddednodeinfo", (*GetAddedNodeInfoCmd)(nil), flags)
@@ -870,4 +910,5 @@ func init() {
 	MustRegisterCmd("verifychain", (*VerifyChainCmd)(nil), flags)
 	MustRegisterCmd("verifymessage", (*VerifyMessageCmd)(nil), flags)
 	MustRegisterCmd("verifytxoutproof", (*VerifyTxOutProofCmd)(nil), flags)
+	MustRegisterCmd("volatilecheckpoint", (*VolatileCheckpointCmd)(nil), flags)
 }

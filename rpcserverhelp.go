@@ -236,6 +236,18 @@ var helpDescsEnUS = map[string]string{
 	"dumpcheckpoint--height":   "The block hash",
 	"dumpcheckpoint--result0":  "User's checkpoints",
 
+	// VolatileCheckpointCmd help.
+	"volatilecheckpoint--synopsis": "Manage volatile checkpoint.",
+	"volatilecheckpoint-subcmd":    "'set' to add a volatile checkpoint, 'clear' to clear volatile checkpoint.",
+	"volatilecheckpoint-index":     "The block height",
+	"volatilecheckpoint-height":    "The block hash",
+
+	// DumpVolatileCheckpointCmd help.
+	"dumpvolatilecheckpoint--synopsis": "Returns volatile checkpoints",
+	"dumpvolatilecheckpoint--index":    "The block height",
+	"dumpvolatilecheckpoint--height":   "The block hash",
+	"dumpvolatilecheckpoint--result0":  "Volatile checkpoints",
+
 	// GetBlockVerboseResult help.
 	"getblockverboseresult-hash":              "The hash of the block (same as provided)",
 	"getblockverboseresult-confirmations":     "The number of confirmations",
@@ -693,6 +705,7 @@ var rpcResultTypes = map[string][]interface{}{
 	"decoderawtransaction":  {(*btcjson.TxRawDecodeResult)(nil)},
 	"decodescript":          {(*btcjson.DecodeScriptResult)(nil)},
 	"dumpcheckpoint":        {(*string)(nil)},
+	"dumpvolatilecheckpoint":{(*string)(nil)},
 	"estimatefee":           {(*float64)(nil)},
 	"generate":              {(*[]string)(nil)},
 	"getaddednodeinfo":      {(*[]string)(nil), (*[]btcjson.GetAddedNodeInfoResult)(nil)},
@@ -734,6 +747,7 @@ var rpcResultTypes = map[string][]interface{}{
 	"verifychain":           {(*bool)(nil)},
 	"verifymessage":         {(*bool)(nil)},
 	"version":               {(*map[string]btcjson.VersionResult)(nil)},
+	"volatilecheckpoint":    {(*string)(nil)},
 
 	// Websocket commands.
 	"loadtxfilter":              nil,

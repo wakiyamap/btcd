@@ -70,6 +70,13 @@ type DumpCheckpointResult struct {
 	Hash   string `json:"hash"`
 }
 
+// DumpVolatileCheckpointResult models the data returned from the dumpvolatilecheckpoint
+// command.
+type DumpVolatileCheckpointResult struct {
+	Blocks int64  `json:"height"`
+	Hash   string `json:"hash"`
+}
+
 // GetAddedNodeInfoResultAddr models the data of the addresses portion of the
 // getaddednodeinfo command.
 type GetAddedNodeInfoResultAddr struct {

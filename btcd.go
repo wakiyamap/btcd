@@ -117,6 +117,13 @@ func monadMain(serverChan chan<- *server) error {
 		database.GetUserCheckpointDbInstance().CloseDB()
 	}()
 
+	vc := database.GetVolatileCheckpointDbInstance()
+	vc.OpenDB()
+	defer func() {
+		monadLog.Infof("Gracefully shutting down the volatilecheckpoint database...")
+		database.GetVolatileCheckpointDbInstance().CloseDB()
+	}()
+
 	// Return now if an interrupt signal was triggered.
 	if interruptRequested(interrupt) {
 		return nil
