@@ -91,7 +91,7 @@ func NewCheckpointCmd(subCmd CheckpointSubCmd, hash *string, index int64) *Check
 }
 
 // DumpCheckpointCmd defines the dumpcheckpoint JSON-RPC command.
-type DumpCheckpointCmd struct{
+type DumpCheckpointCmd struct {
 	Maxnum *int32 `jsonrpcdefault:"2147483647"`
 }
 
@@ -841,8 +841,8 @@ const (
 // VolatileCheckpointCmd defines the addnode JSON-RPC command.
 type VolatileCheckpointCmd struct {
 	SubCmd VolatileCheckpointSubCmd `jsonrpcusage:"\"set|clear\""`
-	Index  *int64  `jsonrpcdefault:"0"`
-	Hash   *string `jsonrpcdefault:"\"Hash\""`
+	Index  *int64                   `jsonrpcdefault:"0"`
+	Hash   *string                  `jsonrpcdefault:"\"Hash\""`
 }
 
 // NewVolatileCheckpointCmd returns a new instance which can be used to issue an volatilecheckpoint
