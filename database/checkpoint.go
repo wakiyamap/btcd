@@ -27,6 +27,8 @@ var (
 	defaultDataDir  = filepath.Join(monadHomeDir, "data")
 	activeNetParams = &chaincfg.MainNetParams
 	testnet         = flag.Bool("testnet", false, "operate on the testnet Bitcoin network")
+	regtest         = flag.Bool("regtest", false, "operate on the regtest Bitcoin network")
+	simnet          = flag.Bool("simnet", false, "operate on the simnet Bitcoin network")
 )
 
 type UserCheckpoint struct {
@@ -132,6 +134,12 @@ func GetVolatileCheckpointDbPath() (dbPath string) {
 	// There is a possibility that simnet and regtest will not work for this sentence.
 	if *testnet {
 		activeNetParams = &chaincfg.TestNet4Params
+	}
+	if *regtest {
+		activeNetParams = &chaincfg.RegressionNetParams
+	}
+	if *simnet {
+		activeNetParams = &chaincfg.SimNetParams
 	}
 	dbName := volatileCheckpointDbNamePrefix + "_" + defaultDbType
 	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
