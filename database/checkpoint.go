@@ -131,7 +131,6 @@ func GetVolatileCheckpointDbInstance() *VolatileCheckpoint {
 
 func GetVolatileCheckpointDbPath() (dbPath string) {
 	flag.Parse()
-	// There is a possibility that simnet and regtest will not work for this sentence.
 	if *testnet {
 		activeNetParams = &chaincfg.TestNet4Params
 	}

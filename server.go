@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
@@ -1280,6 +1281,15 @@ func (sp *serverPeer) OnWrite(_ *peer.Peer, bytesWritten int, msg wire.Message, 
 	sp.server.AddBytesSent(uint64(bytesWritten))
 }
 
+// OnAlert is invoked when a peer receives a alert and it is used to update
+// the checkpoint db.
+func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
+	hash := sha256.Sum256(msg.SerializedPayload)
+	peerLog.Debugf("%s your hash?", hash)
+	return
+}
+
+
 // randomUint16Number returns a random uint16 in a specified input range.  Note
 // that the range is in zeroth ordering; if you pass it 1800, you will get
 // values from 0 to 1800.
@@ -1930,12 +1940,7 @@ func newPeerConfig(sp *serverPeer) *peer.Config {
 			OnAddr:         sp.OnAddr,
 			OnRead:         sp.OnRead,
 			OnWrite:        sp.OnWrite,
-
-			// Note: The reference client currently bans peers that send alerts
-			// not signed with its key.  We could verify against their key, but
-			// since the reference client is currently unwilling to support
-			// other implementations' alert messages, we will not relay theirs.
-			OnAlert: nil,
+			OnAlert:        sp.OnAlert,
 		},
 		NewestBlock:       sp.newestBlock,
 		HostToNetAddress:  sp.server.addrManager.HostToNetAddress,

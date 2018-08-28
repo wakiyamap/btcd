@@ -221,6 +221,9 @@ type Params struct {
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType uint32
+
+	// vAlertPubKey is used checkpoint's deliverty
+	AlertPubKey string
 }
 
 // MainNetParams defines the network parameters for the main Bitcoin network.
@@ -315,6 +318,9 @@ var MainNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 22,
+
+	// vAlertPubKey is used checkpoint's deliverty
+	AlertPubKey: "04fc55d919cdea21e8171fea24c3cf23864ff64a53404829ad50af86e1be1b8217115701b348d50c6aaba6983bc148d3c9e6fa8c11365889774fc1db6da6840c06",
 }
 
 // RegressionNetParams defines the network parameters for the regression test
@@ -389,6 +395,9 @@ var RegressionNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 1,
+
+	// vAlertPubKey is used checkpoint's deliverty
+	AlertPubKey: "",
 }
 
 // TestNet4Params defines the network parameters for the test Bitcoin network
@@ -478,6 +487,9 @@ var TestNet4Params = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 1,
+
+	// vAlertPubKey is used checkpoint's deliverty
+	AlertPubKey: "",
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -558,6 +570,9 @@ var SimNetParams = Params{
 	// BIP44 coin type used in the hierarchical deterministic path for
 	// address generation.
 	HDCoinType: 115, // ASCII for s
+
+	// vAlertPubKey is used checkpoint's deliverty
+	AlertPubKey: "",
 }
 
 var (
