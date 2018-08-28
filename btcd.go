@@ -120,6 +120,12 @@ func monadMain(serverChan chan<- *server) error {
 	vc := database.GetVolatileCheckpointDbInstance()
 	vc.OpenDB()
 	defer func() {
+		// TODO To summarize later
+		iter := vc.Vcdb.NewIterator(nil, nil)
+		for iter.Next() {
+			err = vc.Vcdb.Delete([]byte(string(iter.Key())), nil)
+		}
+		iter.Release()
 		monadLog.Infof("Gracefully shutting down the volatilecheckpoint database...")
 		database.GetVolatileCheckpointDbInstance().CloseDB()
 	}()
