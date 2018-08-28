@@ -397,7 +397,7 @@ var RegressionNetParams = Params{
 	HDCoinType: 1,
 
 	// vAlertPubKey is used checkpoint's deliverty
-	AlertPubKey: "",
+	AlertPubKey: "04887665070e79d20f722857e58ec8f402733f710135521a0b63441419bf5665ba4623bed13fca0cb2338682ab2a54ad13ce07fbc81c3c2f0912a4eb8521dd3cfb",
 }
 
 // TestNet4Params defines the network parameters for the test Bitcoin network
