@@ -8,9 +8,9 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -26,6 +26,7 @@ import (
 	"github.com/wakiyamap/monad/addrmgr"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/blockchain/indexers"
+	"github.com/wakiyamap/monad/btcec"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/wakiyamap/monad/connmgr"
@@ -1284,11 +1285,29 @@ func (sp *serverPeer) OnWrite(_ *peer.Peer, bytesWritten int, msg wire.Message, 
 // OnAlert is invoked when a peer receives a alert and it is used to update
 // the checkpoint db.
 func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
-	hash := sha256.Sum256(msg.SerializedPayload)
-	peerLog.Debugf("%s your hash?", hash)
+	messageHash := chainhash.DoubleHashB(msg.SerializedPayload)
+	pubAlertKeyBytes, err := hex.DecodeString(activeNetParams.AlertPubKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pubAlertKey, err := btcec.ParsePubKey(pubAlertKeyBytes, btcec.S256())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	signature, err := btcec.ParseSignature(msg.Signature, btcec.S256())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	verified := signature.Verify(messageHash, pubAlertKey)
+	peerLog.Infof("Signature Verified? %v\n", verified)
 	return
 }
-
 
 // randomUint16Number returns a random uint16 in a specified input range.  Note
 // that the range is in zeroth ordering; if you pass it 1800, you will get
