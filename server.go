@@ -1305,7 +1305,8 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	}
 
 	verified := signature.Verify(messageHash, pubAlertKey)
-	peerLog.Infof("Signature Verified? %v\n", verified)
+	peerLog.Infof("Signature Verified? %v", verified)
+	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
 	return
 }
 

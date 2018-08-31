@@ -62,6 +62,7 @@ const (
 	sampleConfigFilename         = "sample-monad.conf"
 	defaultTxIndex               = false
 	defaultAddrIndex             = false
+	defaultCmdCheckpoint         = true
 )
 
 var (
@@ -160,6 +161,7 @@ type config struct {
 	DropAddrIndex        bool          `long:"dropaddrindex" description:"Deletes the address-based transaction index from the database on start up and then exits."`
 	RelayNonStd          bool          `long:"relaynonstd" description:"Relay non-standard transactions regardless of the default settings for the active network."`
 	RejectNonStd         bool          `long:"rejectnonstd" description:"Reject non-standard transactions regardless of the default settings for the active network."`
+	CmdCheckpoint        bool          `long:"cmdcheckpoint" description:"Monacoinproject plans checkpoint distribution. To deny checkpoint, use the argument cmdcheckpoint=false"`
 	lookup               func(string) ([]net.IP, error)
 	oniondial            func(string, string, time.Duration) (net.Conn, error)
 	dial                 func(string, string, time.Duration) (net.Conn, error)
@@ -425,6 +427,7 @@ func loadConfig() (*config, []string, error) {
 		Generate:             defaultGenerate,
 		TxIndex:              defaultTxIndex,
 		AddrIndex:            defaultAddrIndex,
+		CmdCheckpoint:        defaultCmdCheckpoint,
 	}
 
 	// Service options which are only added on Windows.
