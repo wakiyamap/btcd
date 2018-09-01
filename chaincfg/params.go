@@ -417,7 +417,7 @@ var TestNet4Params = Params{
 	GenesisBlock:             &testNet4GenesisBlock,
 	GenesisHash:              &testNet4GenesisHash,
 	PowLimit:                 testNet4PowLimit,
-	PowLimitBits:             0x1e0ffff0,
+	PowLimitBits:             0x1e0fffff,          // TODO
 	BIP0034Height:            0,
 	BIP0065Height:            -1,
 	BIP0066Height:            -1,
@@ -446,8 +446,8 @@ var TestNet4Params = Params{
 	//
 	// The miner confirmation window is defined as:
 	//   target proof of work timespan / target proof of work spacing
-	RuleChangeActivationThreshold: 1512, // 75% of MinerConfirmationWindow
-	MinerConfirmationWindow:       2016,
+	RuleChangeActivationThreshold: 75,  // 75% of MinerConfirmationWindow
+	MinerConfirmationWindow:       100, //
 	Deployments: [DefinedDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {
 			BitNumber:  28,

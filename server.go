@@ -1289,24 +1289,31 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	pubAlertKeyBytes, err := hex.DecodeString(activeNetParams.AlertPubKey)
 	if err != nil {
 		fmt.Println(err)
+		peerLog.Infof("1")
 		return
 	}
 
 	pubAlertKey, err := btcec.ParsePubKey(pubAlertKeyBytes, btcec.S256())
 	if err != nil {
 		fmt.Println(err)
+		peerLog.Infof("2")
 		return
 	}
 
 	signature, err := btcec.ParseSignature(msg.Signature, btcec.S256())
 	if err != nil {
 		fmt.Println(err)
+		peerLog.Infof("3")
 		return
 	}
 
 	verified := signature.Verify(messageHash, pubAlertKey)
 	peerLog.Infof("Signature Verified? %v", verified)
 	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
+	best := sp.server.chain.BestSnapshot()
+	peerLog.Infof("your height? %v", best.Height)
+	peerLog.Infof("ID %v", msg.Payload.ID)
+	peerLog.Infof("Comment %v", msg.Payload.Comment)
 	return
 }
 
