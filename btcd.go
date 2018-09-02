@@ -110,6 +110,13 @@ func monadMain(serverChan chan<- *server) error {
 		db.Close()
 	}()
 
+	ga := database.GetGlobalAlertDbInstance()
+	ga.OpenDB()
+	defer func() {
+		monadLog.Infof("Gracefully shutting down the globalalert database...")
+		database.GetGlobalAlertDbInstance().CloseDB()
+	}()
+
 	uc := database.GetUserCheckpointDbInstance()
 	uc.OpenDB()
 	defer func() {

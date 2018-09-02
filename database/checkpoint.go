@@ -19,6 +19,9 @@ const (
 	// volatileCheckpointDbNamePrefix is the prefix for the monad volatilecheckpoint database.
 	volatileCheckpointDbNamePrefix = "volatilecheckpoints"
 
+	// globalAlertDbNamePrefix is the prefix for the monad globalAlert database.
+	globalAlertDbNamePrefix = "globalalert"
+
 	defaultDbType = "leveldb"
 )
 
@@ -146,6 +149,57 @@ func GetVolatileCheckpointDbPath() (dbPath string) {
 		activeNetParams = &chaincfg.SimNetParams
 	}
 	dbName := volatileCheckpointDbNamePrefix + "_" + defaultDbType
+	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
+
+	return dbPath
+}
+
+type GlobalAlert struct {
+	Gadb *leveldb.DB
+}
+
+var ginstance *GlobalAlert
+var gonce sync.Once
+
+func (ga *GlobalAlert) OpenDB() error {
+	if ga.Gadb != nil {
+		return nil
+	}
+
+	var err error
+	dbpath := GetGlobalAlertDbPath()
+	ga.Gadb, err = leveldb.OpenFile(dbpath, nil)
+	return err
+}
+
+func (ga *GlobalAlert) CloseDB() {
+	if ga.Gadb == nil {
+		return
+	}
+	ga.Gadb.Close()
+	ga.Gadb = nil
+}
+
+func GetGlobalAlertDbInstance() *GlobalAlert {
+	gonce.Do(func() {
+		time.Sleep(1 * time.Second)
+		ginstance = &GlobalAlert{nil}
+	})
+	return ginstance
+}
+
+func GetGlobalAlertDbPath() (dbPath string) {
+	flag.Parse()
+	if *testnet {
+		activeNetParams = &chaincfg.TestNet4Params
+	}
+	if *regtest {
+		activeNetParams = &chaincfg.RegressionNetParams
+	}
+	if *simnet {
+		activeNetParams = &chaincfg.SimNetParams
+	}
+	dbName := globalAlertDbNamePrefix + "_" + defaultDbType
 	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
 
 	return dbPath

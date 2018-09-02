@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1288,25 +1289,45 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	messageHash := chainhash.DoubleHashB(msg.SerializedPayload)
 	pubAlertKeyBytes, err := hex.DecodeString(activeNetParams.AlertPubKey)
 	if err != nil {
-		fmt.Println(err)
-		peerLog.Infof("1")
 		return
 	}
 
 	pubAlertKey, err := btcec.ParsePubKey(pubAlertKeyBytes, btcec.S256())
 	if err != nil {
-		fmt.Println(err)
-		peerLog.Infof("2")
 		return
 	}
 
 	signature, err := btcec.ParseSignature(msg.Signature, btcec.S256())
 	if err != nil {
-		fmt.Println(err)
-		peerLog.Infof("3")
 		return
 	}
 
+	ga := database.GetGlobalAlertDbInstance()
+	err = ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
+	_ , err = ga.Gadb.Get([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), nil)
+	if err != nil {
+		ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
+	}
+
+	iter := ga.Gadb.NewIterator(nil, nil)
+	iter.Last()
+	key := iter.Key()
+	value := iter.Value()
+	fmt.Printf("key: %s | value: %s\n", key, value)
+	for iter.Prev() {
+		peerLog.Infof("key: %s | value: %s\n", key, value)
+	}
+
+	testjson := `{\n"height": 10000,\n"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"\n}`
+	if !strings.Contains(testjson, "height") || !strings.Contains(testjson, "hash") {
+		return
+	}
+
+	r := regexp.MustCompile(`(?m)" *height *" *: *([0-9]+) *,.*\n? *" *hash *" *: *"([0-9a-f]+)"`)
+	result := r.FindStringSubmatch(testjson)
+	peerLog.Infof("height %v", (result[1]))
+	peerLog.Infof("hash %v", (result[2]))
+	peerLog.Infof("json1 %v", (testjson))
 	verified := signature.Verify(messageHash, pubAlertKey)
 	peerLog.Infof("Signature Verified? %v", verified)
 	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
