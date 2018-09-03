@@ -11,11 +11,11 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"net"
-	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -78,6 +78,12 @@ var zeroHash chainhash.Hash
 // onionAddr implements the net.Addr interface and represents a tor address.
 type onionAddr struct {
 	addr string
+}
+
+
+type CheckPointData struct {
+	Height int64 `json:"height"`
+	Hash string  `json:"hash"`
 }
 
 // String returns the onion address.
@@ -1318,16 +1324,25 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 		peerLog.Infof("key: %s | value: %s\n", key, value)
 	}
 
-	testjson := `{\n"height": 10000,\n"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"\n}`
-	if !strings.Contains(testjson, "height") || !strings.Contains(testjson, "hash") {
+	// strComment := msg.Payload.Comment
+	strComment := `{
+	"height": 10000,
+	"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"
+}`
+	if !strings.Contains(strComment, "height") || !strings.Contains(strComment, "hash") {
 		return
 	}
 
-	r := regexp.MustCompile(`(?m)" *height *" *: *([0-9]+) *,.*\n? *" *hash *" *: *"([0-9a-f]+)"`)
-	result := r.FindStringSubmatch(testjson)
-	peerLog.Infof("height %v", (result[1]))
-	peerLog.Infof("hash %v", (result[2]))
-	peerLog.Infof("json1 %v", (testjson))
+	byteComment := ([]byte)(strComment)
+	cpd := new(CheckPointData)
+	if err := json.Unmarshal(byteComment, cpd); err != nil {
+		peerLog.Debugf("Unmarshal Error")
+		return
+	}
+
+	peerLog.Infof("height %v", cpd.Height)
+	peerLog.Infof("hash %v", cpd.Hash)
+	peerLog.Infof("json1 %v", (strComment))
 	verified := signature.Verify(messageHash, pubAlertKey)
 	peerLog.Infof("Signature Verified? %v", verified)
 	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
