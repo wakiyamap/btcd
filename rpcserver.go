@@ -968,11 +968,7 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 	case "set":
 		err = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", *c.Index)), []byte(string(*c.Hash)), nil)
 	case "clear":
-		iter := vc.Vcdb.NewIterator(nil, nil)
-		for iter.Next() {
-			err = vc.Vcdb.Delete([]byte(string(iter.Key())), nil)
-		}
-		iter.Release()
+		vc.ClearDB()
 	default:
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
