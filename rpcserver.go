@@ -876,7 +876,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 	if c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: fmt.Sprintf("Block height %s out of range", c.Index),
+			Message: fmt.Sprintf("Block height %v out of range", c.Index),
 		}
 	}
 
@@ -889,7 +889,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 	switch c.SubCmd {
 	case "add":
-		err = uc.Ucdb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(string(*c.Hash)), nil)
+		err = uc.Ucdb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(*c.Hash), nil)
 	case "delete":
 		err = uc.Ucdb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
 	default:
@@ -953,7 +953,7 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 	if *c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: fmt.Sprintf("Block height %s out of range", *c.Index),
+			Message: fmt.Sprintf("Block height %v out of range", *c.Index),
 		}
 	}
 
@@ -966,7 +966,7 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 
 	switch c.SubCmd {
 	case "set":
-		err = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", *c.Index)), []byte(string(*c.Hash)), nil)
+		err = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", *c.Index)), []byte(*c.Hash), nil)
 	case "clear":
 		vc.ClearDB()
 	default:

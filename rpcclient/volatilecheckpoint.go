@@ -45,7 +45,7 @@ func (r FutureVolatileCheckpointResult) Receive() error {
 // returned instance.
 //
 // See VolatileCheckpoint for the blocking version and more details.
-func (c *Client) VolatileCheckpointAsync(command VolatileCheckpointCommand, hash *string, blockheight int64) FutureVolatileCheckpointResult {
+func (c *Client) VolatileCheckpointAsync(command VolatileCheckpointCommand, hash *string, blockheight *int64) FutureVolatileCheckpointResult {
 	cmd := btcjson.NewVolatileCheckpointCmd(btcjson.VolatileCheckpointSubCmd(command), hash, blockheight)
 	return c.sendCmd(cmd)
 }
@@ -55,7 +55,7 @@ func (c *Client) VolatileCheckpointAsync(command VolatileCheckpointCommand, hash
 // a one time connection to a peer.
 //
 // It may not be used to delete non-persistent peers.
-func (c *Client) VolatileCheckpoint(command VolatileCheckpointCommand, hash *string, blockheight int64) error {
+func (c *Client) VolatileCheckpoint(command VolatileCheckpointCommand, hash *string, blockheight *int64) error {
 	return c.VolatileCheckpointAsync(command, hash, blockheight).Receive()
 }
 

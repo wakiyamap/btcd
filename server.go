@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -80,10 +79,10 @@ type onionAddr struct {
 	addr string
 }
 
-
+// CheckPointData is a checkpoint to be acquired by Alert.
 type CheckPointData struct {
-	Height int64 `json:"height"`
-	Hash string  `json:"hash"`
+	Height int64  `json:"height"`
+	Hash   string `json:"hash"`
 }
 
 // String returns the onion address.
@@ -1293,12 +1292,8 @@ func (sp *serverPeer) OnWrite(_ *peer.Peer, bytesWritten int, msg wire.Message, 
 // the checkpoint db.
 func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	messageHash := chainhash.DoubleHashB(msg.SerializedPayload)
-	pubAlertKeyBytes, err := hex.DecodeString(activeNetParams.AlertPubKey)
-	if err != nil {
-		return
-	}
 
-	pubAlertKey, err := btcec.ParsePubKey(pubAlertKeyBytes, btcec.S256())
+	pAlertPubMainKey, err := btcec.ParsePubKey(activeNetParams.AlertPubMainKey, btcec.S256())
 	if err != nil {
 		return
 	}
@@ -1310,7 +1305,7 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 
 	ga := database.GetGlobalAlertDbInstance()
 	err = ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
-	_ , err = ga.Gadb.Get([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), nil)
+	_, err = ga.Gadb.Get([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), nil)
 	if err != nil {
 		ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
 	}
@@ -1343,14 +1338,13 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	peerLog.Infof("height %v", cpd.Height)
 	peerLog.Infof("hash %v", cpd.Hash)
 	peerLog.Infof("json1 %v", (strComment))
-	verified := signature.Verify(messageHash, pubAlertKey)
+	verified := signature.Verify(messageHash, pAlertPubMainKey)
 	peerLog.Infof("Signature Verified? %v", verified)
 	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
 	best := sp.server.chain.BestSnapshot()
 	peerLog.Infof("your height? %v", best.Height)
 	peerLog.Infof("ID %v", msg.Payload.ID)
 	peerLog.Infof("Comment %v", msg.Payload.Comment)
-	return
 }
 
 // randomUint16Number returns a random uint16 in a specified input range.  Note
