@@ -2,6 +2,7 @@ package database
 
 import (
 	"flag"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -79,6 +80,14 @@ func (uc *UserCheckpoint) CloseDB() {
 	uc.Ucdb = nil
 }
 
+func (uc *UserCheckpoint) Add(height int64, hash string) {
+	_ = uc.Ucdb.Put([]byte(fmt.Sprintf("%020d", height)), []byte(hash), nil)
+}
+
+func (uc *UserCheckpoint) Delete(height int64) {
+	_ = uc.Ucdb.Delete([]byte(fmt.Sprintf("%020d", height)), nil)
+}
+
 func (uc *UserCheckpoint) GetMaxCheckpointHeight() (height int64) {
 	height = 0
 	iter := uc.Ucdb.NewIterator(nil, nil)
@@ -142,6 +151,10 @@ func (vc *VolatileCheckpoint) CloseDB() {
 	}
 	vc.Vcdb.Close()
 	vc.Vcdb = nil
+}
+
+func (vc *VolatileCheckpoint) Set(height int64, hash string) {
+	_ = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", height)), []byte(hash), nil)
 }
 
 func (vc *VolatileCheckpoint) ClearDB() {

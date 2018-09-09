@@ -870,7 +870,6 @@ const (
 // handleCheckpoint handles checkpoint commands.
 func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.CheckpointCmd)
-	var err error
 
 	uc := database.GetUserCheckpointDbInstance()
 	if c.Index < 0 {
@@ -889,20 +888,13 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 	switch c.SubCmd {
 	case "add":
-		err = uc.Ucdb.Put([]byte(fmt.Sprintf("%020d", c.Index)), []byte(*c.Hash), nil)
+		uc.Add(c.Index,*c.Hash)
 	case "delete":
-		err = uc.Ucdb.Delete([]byte(fmt.Sprintf("%020d", c.Index)), nil)
+		uc.Delete(c.Index)
 	default:
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
 			Message: "invalid subcommand for checkpoint",
-		}
-	}
-
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: err.Error(),
 		}
 	}
 
@@ -947,7 +939,6 @@ const (
 // handleVolatileCheckpoint handles volatilecheckpoint commands.
 func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.VolatileCheckpointCmd)
-	var err error
 
 	vc := database.GetVolatileCheckpointDbInstance()
 	if *c.Index < 0 {
@@ -966,20 +957,13 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 
 	switch c.SubCmd {
 	case "set":
-		err = vc.Vcdb.Put([]byte(fmt.Sprintf("%020d", *c.Index)), []byte(*c.Hash), nil)
+		vc.Set(*c.Index,*c.Hash)
 	case "clear":
 		vc.ClearDB()
 	default:
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
 			Message: "invalid subcommand for checkpoint",
-		}
-	}
-
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: err.Error(),
 		}
 	}
 
