@@ -61,6 +61,7 @@ func netName(chainParams *chaincfg.Params) string {
 	}
 }
 
+// open usercheckpointDB. Basically it is called only at startup.
 func (uc *UserCheckpoint) OpenDB() error {
 	if uc.Ucdb != nil {
 		return nil
@@ -72,6 +73,7 @@ func (uc *UserCheckpoint) OpenDB() error {
 	return err
 }
 
+// Basically it is called only at the end.
 func (uc *UserCheckpoint) CloseDB() {
 	if uc.Ucdb == nil {
 		return
@@ -134,6 +136,7 @@ type VolatileCheckpoint struct {
 var vinstance *VolatileCheckpoint
 var vonce sync.Once
 
+// open volatilecheckpointDB. Basically it is called only at startup.
 func (vc *VolatileCheckpoint) OpenDB() error {
 	if vc.Vcdb != nil {
 		return nil
@@ -145,6 +148,7 @@ func (vc *VolatileCheckpoint) OpenDB() error {
 	return err
 }
 
+// close volatilecheckpointDB. Basically it is called only at the end.
 func (vc *VolatileCheckpoint) CloseDB() {
 	if vc.Vcdb == nil {
 		return

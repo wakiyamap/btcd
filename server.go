@@ -26,7 +26,6 @@ import (
 	"github.com/wakiyamap/monad/addrmgr"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/blockchain/indexers"
-	"github.com/wakiyamap/monad/btcec"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/wakiyamap/monad/connmgr"
@@ -1291,20 +1290,18 @@ func (sp *serverPeer) OnWrite(_ *peer.Peer, bytesWritten int, msg wire.Message, 
 // OnAlert is invoked when a peer receives a alert and it is used to update
 // the checkpoint db.
 func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
-	messageHash := chainhash.DoubleHashB(msg.SerializedPayload)
-
-	pAlertPubMainKey, err := btcec.ParsePubKey(activeNetParams.AlertPubMainKey, btcec.S256())
-	if err != nil {
+	if !cfg.CmdCheckpoint {
 		return
 	}
 
-	signature, err := btcec.ParseSignature(msg.Signature, btcec.S256())
-	if err != nil {
+	// TODO invalidkey ?
+	if !(CheckSignature(activeNetParams.AlertPubMainKey, msg.SerializedPayload, msg.Signature) ||
+		CheckSignature(activeNetParams.AlertPubSubKey, msg.SerializedPayload, msg.Signature)) {
 		return
 	}
 
 	ga := database.GetGlobalAlertDbInstance()
-	err = ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
+	err := ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
 	_, err = ga.Gadb.Get([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), nil)
 	if err != nil {
 		ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
@@ -1331,20 +1328,19 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	byteComment := ([]byte)(strComment)
 	cpd := new(CheckPointData)
 	if err := json.Unmarshal(byteComment, cpd); err != nil {
-		peerLog.Debugf("Unmarshal Error")
+		// peerLog.Debugf("ALERT, Parse error")
 		return
 	}
 
-	peerLog.Infof("height %v", cpd.Height)
-	peerLog.Infof("hash %v", cpd.Hash)
-	peerLog.Infof("json1 %v", (strComment))
-	verified := signature.Verify(messageHash, pAlertPubMainKey)
-	peerLog.Infof("Signature Verified? %v", verified)
-	peerLog.Infof("cmdcheckpoint is bool? %v", cfg.CmdCheckpoint)
 	best := sp.server.chain.BestSnapshot()
-	peerLog.Infof("your height? %v", best.Height)
-	peerLog.Infof("ID %v", msg.Payload.ID)
-	peerLog.Infof("Comment %v", msg.Payload.Comment)
+	CmdCheckpoint(cpd.Height, cpd.Hash, int64(best.Height), fmt.Sprintf("%v", best.Hash), int64(msg.Payload.MinVer))
+
+	//peerLog.Infof("height %v", cpd.Height)
+	//peerLog.Infof("hash %v", cpd.Hash)
+	//peerLog.Infof("json1 %v", (strComment))
+	//peerLog.Infof("your height? %v", best.Height)
+	//peerLog.Infof("ID %v", msg.Payload.ID)
+	//peerLog.Infof("Comment %v", msg.Payload.Comment)
 }
 
 // randomUint16Number returns a random uint16 in a specified input range.  Note

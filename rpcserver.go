@@ -888,7 +888,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 
 	switch c.SubCmd {
 	case "add":
-		uc.Add(c.Index,*c.Hash)
+		uc.Add(c.Index, *c.Hash)
 	case "delete":
 		uc.Delete(c.Index)
 	default:
@@ -957,7 +957,7 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 
 	switch c.SubCmd {
 	case "set":
-		vc.Set(*c.Index,*c.Hash)
+		vc.Set(*c.Index, *c.Hash)
 	case "clear":
 		vc.ClearDB()
 	default:
