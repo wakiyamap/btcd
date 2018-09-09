@@ -24,8 +24,9 @@ func CheckSignature(alertKey []byte, serializedPayload []byte, signature []byte)
 	if err != nil {
 		return false
 	}
-	verified := pSignature.Verify(chainhash.DoubleHashB(serializedPayload), pAlertPubKey)
-	peerLog.Infof("Signature Verified? %v", verified)
+	if !pSignature.Verify(chainhash.DoubleHashB(serializedPayload), pAlertPubKey) {
+		return false
+	}
 	return true
 }
 
