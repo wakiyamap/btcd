@@ -1300,27 +1300,11 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 		return
 	}
 
-	ga := database.GetGlobalAlertDbInstance()
-	err := ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
-	_, err = ga.Gadb.Get([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), nil)
-	if err != nil {
-		ga.Gadb.Put([]byte(fmt.Sprintf("%020d", msg.Payload.ID)), []byte(msg.Payload.Comment), nil)
-	}
-
-	iter := ga.Gadb.NewIterator(nil, nil)
-	iter.Last()
-	key := iter.Key()
-	value := iter.Value()
-	fmt.Printf("key: %s | value: %s\n", key, value)
-	for iter.Prev() {
-		peerLog.Infof("key: %s | value: %s\n", key, value)
-	}
-
-	// strComment := msg.Payload.Comment
-	strComment := `{
-	"height": 10000,
-	"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"
-}`
+	strComment := msg.Payload.Comment
+	//strComment := `{
+	//"height": 10000,
+	//"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"
+//}`
 	if !strings.Contains(strComment, "height") || !strings.Contains(strComment, "hash") {
 		return
 	}
@@ -1328,19 +1312,20 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	byteComment := ([]byte)(strComment)
 	cpd := new(CheckPointData)
 	if err := json.Unmarshal(byteComment, cpd); err != nil {
-		// peerLog.Debugf("ALERT, Parse error")
+		peerLog.Infof("ALERT, Parse error")
 		return
 	}
+
+	peerLog.Infof("height %v", cpd.Height)
+	peerLog.Infof("hash %v", cpd.Hash)
+	peerLog.Infof("json1 %v", (strComment))
+	peerLog.Infof("ID %v", msg.Payload.ID)
+	peerLog.Infof("Comment %v", msg.Payload.Comment)
 
 	best := sp.server.chain.BestSnapshot()
 	CmdCheckpoint(cpd.Height, cpd.Hash, int64(best.Height), fmt.Sprintf("%v", best.Hash), int64(msg.Payload.MinVer))
 
-	//peerLog.Infof("height %v", cpd.Height)
-	//peerLog.Infof("hash %v", cpd.Hash)
-	//peerLog.Infof("json1 %v", (strComment))
-	//peerLog.Infof("your height? %v", best.Height)
-	//peerLog.Infof("ID %v", msg.Payload.ID)
-	//peerLog.Infof("Comment %v", msg.Payload.Comment)
+	peerLog.Infof("wakitama")
 }
 
 // randomUint16Number returns a random uint16 in a specified input range.  Note
