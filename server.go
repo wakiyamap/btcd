@@ -84,6 +84,10 @@ type CheckPointData struct {
 	Hash   string `json:"hash"`
 }
 
+type AlertKeyData struct {
+	Key string `json:"key"`
+}
+
 // String returns the onion address.
 //
 // This is part of the net.Addr interface.
@@ -1290,42 +1294,48 @@ func (sp *serverPeer) OnWrite(_ *peer.Peer, bytesWritten int, msg wire.Message, 
 // OnAlert is invoked when a peer receives a alert and it is used to update
 // the checkpoint db.
 func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
+	// Invalid if cmdcheckpoint is false.
 	if !cfg.CmdCheckpoint {
 		return
 	}
 
-	// TODO invalidkey ?
+	// Invalid if IsValid(Invalidation judgment of alertkey) is false.
+	ak := database.GetAlertKeyDbInstance()
+	if !ak.IsValid() {
+		return
+	}
+
+	// Invalid if the certificate is invalid.
 	if !(CheckSignature(activeNetParams.AlertPubMainKey, msg.SerializedPayload, msg.Signature) ||
 		CheckSignature(activeNetParams.AlertPubSubKey, msg.SerializedPayload, msg.Signature)) {
 		return
 	}
 
-	strComment := msg.Payload.Comment
-	//strComment := `{
-	//"height": 10000,
-	//"hash": "34139e2361b4758b9410ee6f8af047d1018eb7540ae346321e91cd0e6580ebbd"
-//}`
-	if !strings.Contains(strComment, "height") || !strings.Contains(strComment, "hash") {
+	// Invalid if comment does not include [height & hash] or [key].
+	if !(strings.Contains(msg.Payload.Comment, "height") && strings.Contains(msg.Payload.Comment, "hash")) ||
+		!(strings.Contains(msg.Payload.Comment, "key")) {
 		return
 	}
 
-	byteComment := ([]byte)(strComment)
-	cpd := new(CheckPointData)
-	if err := json.Unmarshal(byteComment, cpd); err != nil {
-		peerLog.Infof("ALERT, Parse error")
-		return
+	// If key is included, CmdInvalidateKey.
+	// else CmdCheckpoint
+	byteComment := ([]byte)(msg.Payload.Comment)
+	if strings.Contains(msg.Payload.Comment, "key") {
+		ald := new(AlertKeyData)
+		if err := json.Unmarshal(byteComment, ald); err != nil {
+			peerLog.Infof("ALERT, Parse error")
+			return
+		}
+		CmdInvalidateKey(ald.Key)
+	} else {
+		cpd := new(CheckPointData)
+		if err := json.Unmarshal(byteComment, cpd); err != nil {
+			peerLog.Infof("ALERT, Parse error")
+			return
+		}
+		best := sp.server.chain.BestSnapshot()
+		CmdCheckpoint(cpd.Height, cpd.Hash, int64(best.Height), fmt.Sprintf("%v", best.Hash), int64(msg.Payload.MinVer))
 	}
-
-	peerLog.Infof("height %v", cpd.Height)
-	peerLog.Infof("hash %v", cpd.Hash)
-	peerLog.Infof("json1 %v", (strComment))
-	peerLog.Infof("ID %v", msg.Payload.ID)
-	peerLog.Infof("Comment %v", msg.Payload.Comment)
-
-	best := sp.server.chain.BestSnapshot()
-	CmdCheckpoint(cpd.Height, cpd.Hash, int64(best.Height), fmt.Sprintf("%v", best.Hash), int64(msg.Payload.MinVer))
-
-	peerLog.Infof("wakitama")
 }
 
 // randomUint16Number returns a random uint16 in a specified input range.  Note

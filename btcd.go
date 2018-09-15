@@ -110,6 +110,14 @@ func monadMain(serverChan chan<- *server) error {
 		db.Close()
 	}()
 
+	ak := database.GetAlertKeyDbInstance()
+	ak.OpenDB()
+	ak.IsValid()
+	defer func() {
+		monadLog.Infof("Gracefully shutting down the alertkey database...")
+		database.GetAlertKeyDbInstance().CloseDB()
+	}()
+
 	uc := database.GetUserCheckpointDbInstance()
 	uc.OpenDB()
 	defer func() {

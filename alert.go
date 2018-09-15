@@ -30,6 +30,7 @@ func CheckSignature(alertKey []byte, serializedPayload []byte, signature []byte)
 	return true
 }
 
+// Writing the specified checkpoint.
 func CmdCheckpoint(height int64, hash string, serverHeight int64, serverHash string, minVer int64) {
 	uc := database.GetUserCheckpointDbInstance()
 	ucMax := uc.GetMaxCheckpointHeight()
@@ -46,4 +47,10 @@ func CmdCheckpoint(height int64, hash string, serverHeight int64, serverHash str
 	} else {
 		peerLog.Infof("ALERT, MinVer %v does not match %v", minVer, height)
 	}
+}
+
+// Invalidation of specified alertkey.
+func CmdInvalidateKey(key string) {
+	ak := database.GetAlertKeyDbInstance()
+	ak.Set(key)
 }

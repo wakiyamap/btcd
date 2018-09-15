@@ -21,6 +21,9 @@ const (
 	// volatileCheckpointDbNamePrefix is the prefix for the monad volatilecheckpoint database.
 	volatileCheckpointDbNamePrefix = "volatilecheckpoints"
 
+	// AlertKeyDbNamePrefix is the prefix for the monad volatilecheckpoint database.
+	alertKeyDbNamePrefix = "alertkey"
+
 	defaultDbType = "leveldb"
 )
 
@@ -191,5 +194,78 @@ func GetVolatileCheckpointDbPath() (dbPath string) {
 	dbName := volatileCheckpointDbNamePrefix + "_" + defaultDbType
 	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
 
+	return dbPath
+}
+
+type AlertKey struct {
+	Akdb *leveldb.DB
+}
+
+var ainstance *AlertKey
+var aonce sync.Once
+
+func (ak *AlertKey) OpenDB() error {
+	if ak.Akdb != nil {
+		return nil
+	}
+	var err error
+	dbpath := GetAlertKeyDbPath()
+	ak.Akdb, err = leveldb.OpenFile(dbpath, nil)
+	return err
+}
+
+func (ak *AlertKey) CloseDB() {
+	if ak.Akdb == nil {
+		return
+	}
+	ak.Akdb.Close()
+	ak.Akdb = nil
+}
+
+// Alertkey is disabled when you came here.irreversible.
+func (ak *AlertKey) Set(key string) {
+	_ = ak.Akdb.Put([]byte(key), []byte("true"), nil)
+}
+
+// Add alertkey if it is not in database.
+// Returns true if both of the public keys alertkey are OK.
+func (ak *AlertKey) IsValid() bool {
+	d1, err := ak.Akdb.Get(activeNetParams.AlertPubMainKey, nil)
+	if err != nil {
+		_ = ak.Akdb.Put(activeNetParams.AlertPubMainKey, []byte("false"), nil)
+	}
+
+	d2, err := ak.Akdb.Get(activeNetParams.AlertPubSubKey, nil)
+	if err != nil {
+		_ = ak.Akdb.Put(activeNetParams.AlertPubSubKey, []byte("false"), nil)
+	}
+
+	if string(d1) == "false" && string(d2) == "false" {
+		return true
+	}
+	return false
+}
+
+func GetAlertKeyDbInstance() *AlertKey {
+	aonce.Do(func() {
+		time.Sleep(1 * time.Second)
+		ainstance = &AlertKey{nil}
+	})
+	return ainstance
+}
+
+func GetAlertKeyDbPath() (dbPath string) {
+	flag.Parse()
+	if *testnet {
+		activeNetParams = &chaincfg.TestNet4Params
+	}
+	if *regtest {
+		activeNetParams = &chaincfg.RegressionNetParams
+	}
+	if *simnet {
+		activeNetParams = &chaincfg.SimNetParams
+	}
+	dbName := alertKeyDbNamePrefix + "_" + defaultDbType
+	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
 	return dbPath
 }
