@@ -235,9 +235,9 @@ var MainNetParams = Params{
 	DNSSeeds: []DNSSeed{
 		{"monacoin.org", false},
 		{"dnsseed.monacoin.org", false},
-		{"electrumx.tamami-foundation.org", true},
-		{"electrumx2.tamami-foundation.org", true},
-		{"electrumx3.tamami-foundation.org", true},
+		{"dnsseed.nodes.directory", true},
+		{"dnsseed.tamami-foundation.org", true},
+		{"dnsseed.monacoin.ninja", true},
 	},
 
 	// Chain parameters
