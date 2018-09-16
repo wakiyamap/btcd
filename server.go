@@ -1311,23 +1311,16 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 		return
 	}
 
-	// Invalid if comment does not include [height & hash] or [key].
-	if !(strings.Contains(msg.Payload.Comment, "height") && strings.Contains(msg.Payload.Comment, "hash")) ||
-		!(strings.Contains(msg.Payload.Comment, "key")) {
-		return
-	}
-
-	// If key is included, CmdInvalidateKey.
-	// else CmdCheckpoint
-	byteComment := ([]byte)(msg.Payload.Comment)
-	if strings.Contains(msg.Payload.Comment, "key") {
-		ald := new(AlertKeyData)
-		if err := json.Unmarshal(byteComment, ald); err != nil {
-			peerLog.Infof("ALERT, Parse error")
+	switch {
+	case strings.Contains(msg.Payload.Comment, "height") && strings.Contains(msg.Payload.Comment, "hash"):
+		if !(len(string(msg.Payload.SetCancel)) == 0) ||
+			!(len(msg.Payload.SetSubVer) == 0) ||
+			!(len(msg.Payload.StatusBar) == 0) ||
+			!(len(msg.Payload.Reserved) == 0) ||
+			len(msg.Payload.Comment) > 128 {
 			return
 		}
-		CmdInvalidateKey(ald.Key)
-	} else {
+		byteComment := ([]byte)(msg.Payload.Comment)
 		cpd := new(CheckPointData)
 		if err := json.Unmarshal(byteComment, cpd); err != nil {
 			peerLog.Infof("ALERT, Parse error")
@@ -1335,6 +1328,21 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 		}
 		best := sp.server.chain.BestSnapshot()
 		CmdCheckpoint(cpd.Height, cpd.Hash, int64(best.Height), fmt.Sprintf("%v", best.Hash), int64(msg.Payload.MinVer))
+
+	case strings.Contains(msg.Payload.Comment, "key"):
+		// MainKey only
+		if !(CheckSignature(activeNetParams.AlertPubMainKey, msg.SerializedPayload, msg.Signature)) {
+			return
+		}
+		byteComment := ([]byte)(msg.Payload.Comment)
+		akd := new(AlertKeyData)
+		if err := json.Unmarshal(byteComment, akd); err != nil {
+			peerLog.Infof("ALERT, Parse error")
+			return
+		}
+		CmdInvalidateKey(akd.Key)
+
+	default:
 	}
 }
 

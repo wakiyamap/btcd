@@ -14,6 +14,7 @@ const (
 	checkpointWriteThreshol = 20
 )
 
+// alert payload's signature check
 func CheckSignature(alertKey []byte, serializedPayload []byte, signature []byte) bool {
 	pAlertPubKey, err := btcec.ParsePubKey(alertKey, btcec.S256())
 	if err != nil {
