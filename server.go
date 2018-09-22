@@ -88,6 +88,10 @@ type AlertKeyData struct {
 	Key string `json:"key"`
 }
 
+type DenyAddressData struct {
+	Address string `json:"address"`
+}
+
 // String returns the onion address.
 //
 // This is part of the net.Addr interface.
@@ -1307,14 +1311,15 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 
 	// Invalid if the certificate is invalid.
 	if !(CheckSignature(activeNetParams.AlertPubMainKey, msg.SerializedPayload, msg.Signature) ||
-		CheckSignature(activeNetParams.AlertPubSubKey, msg.SerializedPayload, msg.Signature)) {
+		CheckSignature(activeNetParams.AlertPubSubKey, msg.SerializedPayload, msg.Signature) ||
+		CheckSignature(activeNetParams.DenyAddressKey, msg.SerializedPayload, msg.Signature)) {
 		return
 	}
 
 	switch {
 	case strings.Contains(msg.Payload.Comment, "height") && strings.Contains(msg.Payload.Comment, "hash"):
 		if !(len(string(msg.Payload.SetCancel)) == 0) ||
-			!(fmt.Sprintf("%v", msg.Payload.SetSubVer) =="[]") ||
+			!(fmt.Sprintf("%v", msg.Payload.SetSubVer) == "[]") ||
 			!(len(msg.Payload.StatusBar) == 0) ||
 			!(len(msg.Payload.Reserved) == 0) ||
 			len(msg.Payload.Comment) > 128 {
@@ -1341,6 +1346,19 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 			return
 		}
 		CmdInvalidateKey(akd.Key)
+
+	case strings.Contains(msg.Payload.Comment, "address"):
+		// MainKey only
+		if !(CheckSignature(activeNetParams.AlertPubMainKey, msg.SerializedPayload, msg.Signature)) {
+			return
+		}
+		byteComment := ([]byte)(msg.Payload.Comment)
+		dad := new(DenyAddressData)
+		if err := json.Unmarshal(byteComment, dad); err != nil {
+			peerLog.Infof("ALERT, Parse error")
+			return
+		}
+		CmdDenyAddress(dad.Address)
 
 	default:
 	}

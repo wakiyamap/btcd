@@ -24,6 +24,9 @@ const (
 	// AlertKeyDbNamePrefix is the prefix for the monad volatilecheckpoint database.
 	alertKeyDbNamePrefix = "alertkey"
 
+	// DenyAddressDbNamePrefix is the prefix for the monad denyaddress database.
+	denyAddressDbNamePrefix = "denyaddress"
+
 	defaultDbType = "leveldb"
 )
 
@@ -266,6 +269,59 @@ func GetAlertKeyDbPath() (dbPath string) {
 		activeNetParams = &chaincfg.SimNetParams
 	}
 	dbName := alertKeyDbNamePrefix + "_" + defaultDbType
+	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
+	return dbPath
+}
+
+type DenyAddress struct {
+	Dadb *leveldb.DB
+}
+
+var dinstance *DenyAddress
+var donce sync.Once
+
+func (da *DenyAddress) OpenDB() error {
+	if da.Dadb != nil {
+		return nil
+	}
+	var err error
+	dbpath := GetDenyAddressDbPath()
+	da.Dadb, err = leveldb.OpenFile(dbpath, nil)
+	return err
+}
+
+func (da *DenyAddress) CloseDB() {
+	if da.Dadb == nil {
+		return
+	}
+	da.Dadb.Close()
+	da.Dadb = nil
+}
+
+func (da *DenyAddress) Set(address string) {
+	_ = da.Dadb.Put([]byte(address), []byte("0"), nil)
+}
+
+func GetDenyAddressDbInstance() *DenyAddress {
+	donce.Do(func() {
+		time.Sleep(1 * time.Second)
+		dinstance = &DenyAddress{nil}
+	})
+	return dinstance
+}
+
+func GetDenyAddressDbPath() (dbPath string) {
+	flag.Parse()
+	if *testnet {
+		activeNetParams = &chaincfg.TestNet4Params
+	}
+	if *regtest {
+		activeNetParams = &chaincfg.RegressionNetParams
+	}
+	if *simnet {
+		activeNetParams = &chaincfg.SimNetParams
+	}
+	dbName := denyAddressDbNamePrefix + "_" + defaultDbType
 	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
 	return dbPath
 }

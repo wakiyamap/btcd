@@ -55,3 +55,9 @@ func CmdInvalidateKey(key string) {
 	ak := database.GetAlertKeyDbInstance()
 	ak.Set(key)
 }
+
+// Write denyaddress.
+func CmdDenyAddress(address string) {
+	da := database.GetDenyAddressDbInstance()
+	da.Set(address)
+}
