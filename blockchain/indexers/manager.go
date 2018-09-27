@@ -309,7 +309,7 @@ func (m *Manager) Init(chain *blockchain.BlockChain, interrupt <-chan struct{}) 
 				if err != nil {
 					return err
 				}
-				block, err := monautil.NewBlockFromBytes(blockBytes)
+				block, err = monautil.NewBlockFromBytes(blockBytes)
 				if err != nil {
 					return err
 				}

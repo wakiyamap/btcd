@@ -1,8 +1,8 @@
-hash: 6881aeeeafd3c7a16cca3f46faa64637f4f8252c2b2804dc20c872995fbcea36
-updated: 2018-07-22T08:07:09.602087152+09:00
+hash: bc9d82cca795ad64ff85d0bf1b3522dae54f54ffca7203471fac50754256cc33
+updated: 2018-09-28T04:55:51.370398649+09:00
 imports:
 - name: github.com/aead/siphash
-  version: e404fcfc888570cadd1610538e2dbc89f66af814
+  version: 83563a290f60225eb120d724600b9690c3fb536f
 - name: github.com/aead/skein
   version: 9365ae6e95d294dc113a0b308852f97c916db233
   subpackages:

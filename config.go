@@ -29,6 +29,7 @@ import (
 	"github.com/wakiyamap/monad/database"
 	_ "github.com/wakiyamap/monad/database/ffldb"
 	"github.com/wakiyamap/monad/mempool"
+	"github.com/wakiyamap/monad/peer"
 	"github.com/wakiyamap/monautil"
 )
 
@@ -47,6 +48,7 @@ const (
 	defaultMaxRPCConcurrentReqs  = 20
 	defaultDbType                = "ffldb"
 	defaultFreeTxRelayLimit      = 15.0
+	defaultTrickleInterval       = peer.DefaultTrickleInterval
 	defaultBlockMinSize          = 0
 	defaultBlockMaxSize          = 750000
 	defaultBlockMinWeight        = 0
@@ -141,6 +143,7 @@ type config struct {
 	MinRelayTxFee        float64       `long:"minrelaytxfee" description:"The minimum transaction fee in BTC/kB to be considered a non-zero fee."`
 	FreeTxRelayLimit     float64       `long:"limitfreerelay" description:"Limit relay of transactions with no transaction fee to the given amount in thousands of bytes per minute"`
 	NoRelayPriority      bool          `long:"norelaypriority" description:"Do not require free or low-fee transactions to have high priority for relaying"`
+	TrickleInterval      time.Duration `long:"trickleinterval" description:"Minimum time between attempts to send new inventory to a connected peer"`
 	MaxOrphanTxs         int           `long:"maxorphantx" description:"Max number of orphan transactions to keep in memory"`
 	Generate             bool          `long:"generate" description:"Generate (mine) bitcoins using the CPU"`
 	MiningAddrs          []string      `long:"miningaddr" description:"Add the specified payment address to the list of addresses to use for generated blocks -- At least one address is required if the generate option is set"`
@@ -417,6 +420,7 @@ func loadConfig() (*config, []string, error) {
 		RPCCert:              defaultRPCCertFile,
 		MinRelayTxFee:        mempool.DefaultMinRelayTxFee.ToBTC(),
 		FreeTxRelayLimit:     defaultFreeTxRelayLimit,
+		TrickleInterval:      defaultTrickleInterval,
 		BlockMinSize:         defaultBlockMinSize,
 		BlockMaxSize:         defaultBlockMaxSize,
 		BlockMinWeight:       defaultBlockMinWeight,
