@@ -228,19 +228,22 @@ var helpDescsEnUS = map[string]string{
 	"checkpoint--synopsis": "Manage user's checkpoint.",
 	"checkpoint-subcmd":    "'add' to add a user's checkpoint, 'delete' to delete a user's checkpoint.",
 	"checkpoint-index":     "The block height",
-	"checkpoint-height":    "The block hash",
+	"checkpoint-hash":      "The block hash",
+	"checkpoint--result0":  "User's checkpoints",
 
 	// DumpCheckpointCmd help.
-	"dumpcheckpoint--synopsis": "Returns user's checkpoints",
+	"dumpcheckpoint--synopsis": "Manage user's checkpoint.",
 	"dumpcheckpoint--index":    "The block height",
 	"dumpcheckpoint--height":   "The block hash",
+	"dumpcheckpoint-maxnum":    "Maxnum dump checkpoints",
 	"dumpcheckpoint--result0":  "User's checkpoints",
 
 	// VolatileCheckpointCmd help.
-	"volatilecheckpoint--synopsis": "Manage volatile checkpoint.",
+	"volatilecheckpoint--synopsis": "Manage alert's checkpoint.",
 	"volatilecheckpoint-subcmd":    "'set' to add a volatile checkpoint, 'clear' to clear volatile checkpoint.",
 	"volatilecheckpoint-index":     "The block height",
-	"volatilecheckpoint-height":    "The block hash",
+	"volatilecheckpoint-hash":      "The block hash",
+	"volatilecheckpoint--result0":  "From alert checkpoints",
 
 	// DumpVolatileCheckpointCmd help.
 	"dumpvolatilecheckpoint--synopsis": "Returns volatile checkpoints",

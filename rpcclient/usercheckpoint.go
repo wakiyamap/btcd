@@ -85,13 +85,13 @@ func (r FutureDumpCheckpointResult) Receive() ([]btcjson.DumpCheckpointResult, e
 // returned instance.
 //
 // See DumpCheckpoint for the blocking version and more details.
-func (c *Client) DumpCheckpointAsync() FutureDumpCheckpointResult {
-	cmd := btcjson.NewDumpCheckpointCmd()
+func (c *Client) DumpCheckpointAsync(maxnum *int32) FutureDumpCheckpointResult {
+	cmd := btcjson.NewDumpCheckpointCmd(maxnum)
 	return c.sendCmd(cmd)
 }
 
 // DumpCheckpoint returns the hash of the block in the best block chain at the
 // given height.
-func (c *Client) DumpCheckpoint() ([]btcjson.DumpCheckpointResult, error) {
-	return c.DumpCheckpointAsync().Receive()
+func (c *Client) DumpCheckpoint(maxnum *int32) ([]btcjson.DumpCheckpointResult, error) {
+	return c.DumpCheckpointAsync(maxnum).Receive()
 }

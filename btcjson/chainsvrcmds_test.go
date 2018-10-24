@@ -83,46 +83,46 @@ func TestChainSvrCmds(t *testing.T) {
 		{
 			name: "checkpoint",
 			newCmd: func() (interface{}, error) {
-				return btcjson.NewCmd("checkpoint", 123)
+				return btcjson.NewCmd("checkpoint", btcjson.CDelete, 0)
 			},
 			staticCmd: func() interface{} {
-				return btcjson.NewCheckpointCmd(123)
+				return btcjson.NewCheckpointCmd(btcjson.CDelete, nil, int64(0))
 			},
-			marshalled:   `{"jsonrpc":"1.0","method":"checkpoint","params":[123],"id":1}`,
-			unmarshalled: &btcjson.CheckpointCmd{Index: 123},
+			marshalled:   `{"jsonrpc":"1.0","method":"checkpoint","params":["delete",0],"id":1}`,
+			unmarshalled: &btcjson.CheckpointCmd{Index: 0, SubCmd: btcjson.CDelete, Hash: nil},
 		},
 		{
 			name: "dumpcheckpoint",
 			newCmd: func() (interface{}, error) {
-				return btcjson.NewCmd("dumpcheckpoint", 123)
+				return btcjson.NewCmd("dumpcheckpoint")
 			},
 			staticCmd: func() interface{} {
-				return btcjson.NewDumpCheckpointCmd(123)
+				return btcjson.NewDumpCheckpointCmd(nil)
 			},
-			marshalled:   `{"jsonrpc":"1.0","method":"dumpcheckpoint","params":[123],"id":1}`,
-			unmarshalled: &btcjson.DumpCheckpointCmd{Index: 123},
+			marshalled:   `{"jsonrpc":"1.0","method":"dumpcheckpoint","params":[],"id":1}`,
+			unmarshalled: &btcjson.DumpCheckpointCmd{},
 		},
 		{
 			name: "volatilecheckpoint",
 			newCmd: func() (interface{}, error) {
-				return btcjson.NewCmd("volatilecheckpoint", 123)
+				return btcjson.NewCmd("volatilecheckpoint", btcjson.VCClear)
 			},
 			staticCmd: func() interface{} {
-				return btcjson.NewVolatileCheckpointCmd(123)
+				return btcjson.NewVolatileCheckpointCmd(btcjson.VCClear,nil,nil)
 			},
-			marshalled:   `{"jsonrpc":"1.0","method":"volatilecheckpoint","params":[123],"id":1}`,
-			unmarshalled: &btcjson.VolatileCheckpointCmd{Index: 123},
+			marshalled:   `{"jsonrpc":"1.0","method":"volatilecheckpoint","params":["clear"],"id":1}`,
+			unmarshalled: &btcjson.VolatileCheckpointCmd{Index: nil, SubCmd: btcjson.VCClear},
 		},
 		{
 			name: "dumpvolatilecheckpoint",
 			newCmd: func() (interface{}, error) {
-				return btcjson.NewCmd("dumpvolatilecheckpoint", 123)
+				return btcjson.NewCmd("dumpvolatilecheckpoint")
 			},
 			staticCmd: func() interface{} {
-				return btcjson.NewDumpVolatileCheckpointCmd(123)
+				return btcjson.NewDumpVolatileCheckpointCmd()
 			},
-			marshalled:   `{"jsonrpc":"1.0","method":"dumpvolatilecheckpoint","params":[123],"id":1}`,
-			unmarshalled: &btcjson.DumpVolatileCheckpointCmd{Index: 123},
+			marshalled:   `{"jsonrpc":"1.0","method":"dumpvolatilecheckpoint","params":[],"id":1}`,
+			unmarshalled: &btcjson.DumpVolatileCheckpointCmd{},
 		},
 		{
 			name: "decoderawtransaction",

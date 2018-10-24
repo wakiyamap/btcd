@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wakiyamap/monad/chaincfg/chainhash"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/wire"
 )
