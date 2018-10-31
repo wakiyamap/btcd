@@ -1352,7 +1352,7 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	switch {
 	case strings.Contains(msg.Payload.Comment, "height") && strings.Contains(msg.Payload.Comment, "hash"):
 		if !(len(string(msg.Payload.SetCancel)) == 0) ||
-			!(fmt.Sprintf("%v", msg.Payload.SetSubVer) =="[]") ||
+			!(fmt.Sprintf("%v", msg.Payload.SetSubVer) == "[]") ||
 			!(len(msg.Payload.StatusBar) == 0) ||
 			!(len(msg.Payload.Reserved) == 0) ||
 			len(msg.Payload.Comment) > 128 {
