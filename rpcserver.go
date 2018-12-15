@@ -92,8 +92,8 @@ var (
 	// data.
 	gbtCoinbaseAux = &btcjson.GetBlockTemplateResultAux{
 		//Flags: hex.EncodeToString(builderScript(txscript.
-			//NewScriptBuilder().
-			//AddData([]byte(mining.CoinbaseFlags)))),
+		//NewScriptBuilder().
+		//AddData([]byte(mining.CoinbaseFlags)))),
 	}
 
 	// gbtCapabilities describes additional capabilities returned with a
@@ -1194,7 +1194,8 @@ func getDifficultyRatio(bits uint32, params *chaincfg.Params) float64 {
 	// converted back to a number.  Note this is not the same as the proof of
 	// work limit directly because the block difficulty is encoded in a block
 	// with the compact form which loses precision.
-	max := blockchain.CompactToBig(params.PowLimitBits)
+	//max := blockchain.CompactToBig(params.PowLimitBits)
+	max := blockchain.CompactToBig(0x1d00ffff) //TODO
 	target := blockchain.CompactToBig(bits)
 
 	difficulty := new(big.Rat).SetFrac(max, target)
@@ -4430,7 +4431,7 @@ func newRPCServer(config *rpcserverConfig) (*rpcServer, error) {
 		gbtWorkState:           newGbtWorkState(config.TimeSource),
 		helpCacher:             newHelpCacher(),
 		requestProcessShutdown: make(chan struct{}),
-		quit: make(chan int),
+		quit:                   make(chan int),
 	}
 	if cfg.RPCUser != "" && cfg.RPCPass != "" {
 		login := cfg.RPCUser + ":" + cfg.RPCPass

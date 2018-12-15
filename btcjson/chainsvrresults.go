@@ -187,7 +187,7 @@ type GetBlockTemplateResult struct {
 	RejectReasion string   `json:"reject-reason,omitempty"`
 
 	// blockchain proposal from soft-fork
-	Rules    []string `json:"rules,omitempty"`
+	Rules []string `json:"rules,omitempty"`
 }
 
 // GetMempoolEntryResult models the data returned from the getmempoolentry
