@@ -91,9 +91,9 @@ var (
 	// overhead of creating a new object on every invocation for constant
 	// data.
 	gbtCoinbaseAux = &btcjson.GetBlockTemplateResultAux{
-		Flags: hex.EncodeToString(builderScript(txscript.
-			NewScriptBuilder().
-			AddData([]byte(mining.CoinbaseFlags)))),
+		//Flags: hex.EncodeToString(builderScript(txscript.
+			//NewScriptBuilder().
+			//AddData([]byte(mining.CoinbaseFlags)))),
 	}
 
 	// gbtCapabilities describes additional capabilities returned with a
