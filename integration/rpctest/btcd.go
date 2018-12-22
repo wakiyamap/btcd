@@ -6,7 +6,6 @@ package rpctest
 
 import (
 	"fmt"
-	"go/build"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -44,24 +43,14 @@ func monadExecutablePath() (string, error) {
 		return "", err
 	}
 
-	// Determine import path of this package. Not necessarily btcsuite/monad if
-	// this is a forked repo.
-	_, rpctestDir, _, ok := runtime.Caller(1)
-	if !ok {
-		return "", fmt.Errorf("Cannot get path to monad source code")
-	}
-	monadPkgPath := filepath.Join(rpctestDir, "..", "..", "..")
-	monadPkg, err := build.ImportDir(monadPkgPath, build.FindOnly)
-	if err != nil {
-		return "", fmt.Errorf("Failed to build monad: %v", err)
-	}
-
-	// Build monad and output an executable in a static temp path.
-	outputPath := filepath.Join(testDir, "monad")
+	// Build btcd and output an executable in a static temp path.
+	outputPath := filepath.Join(testDir, "btcd")
 	if runtime.GOOS == "windows" {
 		outputPath += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", outputPath, monadPkg.ImportPath)
+	cmd := exec.Command(
+		"go", "build", "-o", outputPath, "github.com/wakiyamap/monad",
+	)
 	err = cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("Failed to build monad: %v", err)
