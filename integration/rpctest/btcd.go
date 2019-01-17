@@ -44,7 +44,7 @@ func monadExecutablePath() (string, error) {
 	}
 
 	// Build btcd and output an executable in a static temp path.
-	outputPath := filepath.Join(testDir, "btcd")
+	outputPath := filepath.Join(testDir, "monad")
 	if runtime.GOOS == "windows" {
 		outputPath += ".exe"
 	}
