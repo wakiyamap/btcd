@@ -312,6 +312,10 @@ func GetAlertKeyDbInstance() *AlertKey {
 }
 
 func GetAlertKeyDbPath() (dbPath string) {
+	cfg, _, err := loadConfig()
+	if err != nil {
+		os.Exit(1)
+	}
 	if cfg.TestNet4 {
 		activeNetParams = &chaincfg.TestNet4Params
 	}
