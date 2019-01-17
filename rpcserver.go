@@ -34,6 +34,7 @@ import (
 	"github.com/wakiyamap/monad/btcjson"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/checkpoint"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/mempool"
 	"github.com/wakiyamap/monad/mining"
@@ -877,7 +878,7 @@ const (
 func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.CheckpointCmd)
 
-	uc := database.GetUserCheckpointDbInstance()
+	uc := checkpoint.GetUserCheckpointDbInstance()
 	if c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
@@ -912,7 +913,7 @@ func handleCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) 
 func handleDumpCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.DumpCheckpointCmd)
 	var n int32
-	uc := database.GetUserCheckpointDbInstance()
+	uc := checkpoint.GetUserCheckpointDbInstance()
 	iter := uc.Ucdb.NewIterator(nil, nil)
 	iter.Last()
 	if !iter.Valid() || *c.Maxnum <= 0 {
@@ -946,7 +947,7 @@ const (
 func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.VolatileCheckpointCmd)
 
-	vc := database.GetVolatileCheckpointDbInstance()
+	vc := checkpoint.GetVolatileCheckpointDbInstance()
 	if *c.Index < 0 {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInvalidParameter,
@@ -980,7 +981,7 @@ func handleVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan st
 // handleDumpVolatilecheckpoint handles dumpVolatilecheckpoint commands.
 func handleDumpVolatileCheckpoint(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	var n int32
-	vc := database.GetVolatileCheckpointDbInstance()
+	vc := checkpoint.GetVolatileCheckpointDbInstance()
 	iter := vc.Vcdb.NewIterator(nil, nil)
 	iter.Last()
 	if !iter.Valid() {

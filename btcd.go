@@ -16,6 +16,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/wakiyamap/monad/blockchain/indexers"
+	"github.com/wakiyamap/monad/checkpoint"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/limits"
 )
@@ -110,27 +111,27 @@ func monadMain(serverChan chan<- *server) error {
 		db.Close()
 	}()
 
-	ak := database.GetAlertKeyDbInstance()
+	ak := checkpoint.GetAlertKeyDbInstance()
 	ak.OpenDB()
 	ak.IsValid()
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the alertkey database...")
-		database.GetAlertKeyDbInstance().CloseDB()
+		checkpoint.GetAlertKeyDbInstance().CloseDB()
 	}()
 
-	uc := database.GetUserCheckpointDbInstance()
+	uc := checkpoint.GetUserCheckpointDbInstance()
 	uc.OpenDB()
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the usercheckpoint database...")
-		database.GetUserCheckpointDbInstance().CloseDB()
+		checkpoint.GetUserCheckpointDbInstance().CloseDB()
 	}()
 
-	vc := database.GetVolatileCheckpointDbInstance()
+	vc := checkpoint.GetVolatileCheckpointDbInstance()
 	vc.OpenDB()
 	defer func() {
-		database.GetVolatileCheckpointDbInstance().ClearDB()
+		checkpoint.GetVolatileCheckpointDbInstance().ClearDB()
 		monadLog.Infof("Gracefully shutting down the volatilecheckpoint database...")
-		database.GetVolatileCheckpointDbInstance().CloseDB()
+		checkpoint.GetVolatileCheckpointDbInstance().CloseDB()
 	}()
 
 	// Return now if an interrupt signal was triggered.

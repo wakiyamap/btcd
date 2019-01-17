@@ -28,6 +28,7 @@ import (
 	"github.com/wakiyamap/monad/blockchain/indexers"
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
+	"github.com/wakiyamap/monad/checkpoint"
 	"github.com/wakiyamap/monad/connmgr"
 	"github.com/wakiyamap/monad/database"
 	"github.com/wakiyamap/monad/mempool"
@@ -1338,7 +1339,7 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 	}
 
 	// Invalid if IsValid(Invalidation judgment of alertkey) is false.
-	ak := database.GetAlertKeyDbInstance()
+	ak := checkpoint.GetAlertKeyDbInstance()
 	if !ak.IsValid() {
 		return
 	}

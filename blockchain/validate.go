@@ -13,7 +13,7 @@ import (
 
 	"github.com/wakiyamap/monad/chaincfg"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
-	"github.com/wakiyamap/monad/database"
+	"github.com/wakiyamap/monad/checkpoint"
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
@@ -712,7 +712,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 	}
 
 	// Use usercheckpointdb to check checkpoint
-	uc := database.GetUserCheckpointDbInstance()
+	uc := checkpoint.GetUserCheckpointDbInstance()
 	byteHash, err := uc.Ucdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
 	if err == nil {
 		cpHash, err := chainhash.NewHashFromStr(string(byteHash))
@@ -750,7 +750,7 @@ func (b *BlockChain) checkBlockHeaderContext(header *wire.BlockHeader, prevNode 
 	}
 
 	// Use volatilecheckpointdb to check checkpoint
-	vc := database.GetVolatileCheckpointDbInstance()
+	vc := checkpoint.GetVolatileCheckpointDbInstance()
 	byteHash, err = vc.Vcdb.Get([]byte(fmt.Sprintf("%020d", blockHeight)), nil)
 	if err == nil {
 		cpHash, err := chainhash.NewHashFromStr(string(byteHash))

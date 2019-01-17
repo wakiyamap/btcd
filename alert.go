@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/wakiyamap/monad/btcec"
 	"github.com/wakiyamap/monad/chaincfg/chainhash"
-	"github.com/wakiyamap/monad/database"
+	"github.com/wakiyamap/monad/checkpoint"
 )
 
 const (
@@ -33,7 +33,7 @@ func CheckSignature(alertKey []byte, serializedPayload []byte, signature []byte)
 
 // Writing the specified checkpoint.
 func CmdCheckpoint(height int64, hash string, serverHeight int64, serverHash string, minVer int64) {
-	uc := database.GetUserCheckpointDbInstance()
+	uc := checkpoint.GetUserCheckpointDbInstance()
 	ucMax := uc.GetMaxCheckpointHeight()
 	if height == minVer {
 		if height > ucMax && height < serverHeight {
@@ -42,7 +42,7 @@ func CmdCheckpoint(height int64, hash string, serverHeight int64, serverHash str
 					uc.Add(height, hash)
 				}
 			}
-			vc := database.GetVolatileCheckpointDbInstance()
+			vc := checkpoint.GetVolatileCheckpointDbInstance()
 			vc.Set(height, hash)
 		}
 	} else {
@@ -52,6 +52,6 @@ func CmdCheckpoint(height int64, hash string, serverHeight int64, serverHash str
 
 // Invalidation of specified alertkey.
 func CmdInvalidateKey(key string) {
-	ak := database.GetAlertKeyDbInstance()
+	ak := checkpoint.GetAlertKeyDbInstance()
 	ak.Set(key)
 }

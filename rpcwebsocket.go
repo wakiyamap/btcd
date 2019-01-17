@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btcsuite/websocket"
 	"github.com/wakiyamap/monad/blockchain"
 	"github.com/wakiyamap/monad/btcjson"
 	"github.com/wakiyamap/monad/chaincfg"
@@ -28,7 +29,6 @@ import (
 	"github.com/wakiyamap/monad/txscript"
 	"github.com/wakiyamap/monad/wire"
 	"github.com/wakiyamap/monautil"
-	"github.com/btcsuite/websocket"
 	"golang.org/x/crypto/ripemd160"
 )
 
