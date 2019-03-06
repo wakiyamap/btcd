@@ -112,22 +112,22 @@ func monadMain(serverChan chan<- *server) error {
 	}()
 
 	ak := checkpoint.GetAlertKeyDbInstance()
-	ak.OpenDB()
-	ak.IsValid()
+	ak.OpenDB(activeNetParams.Params)
+	ak.IsValid(activeNetParams.Params)
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the alertkey database...")
 		checkpoint.GetAlertKeyDbInstance().CloseDB()
 	}()
 
 	uc := checkpoint.GetUserCheckpointDbInstance()
-	uc.OpenDB()
+	uc.OpenDB(activeNetParams.Params)
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the usercheckpoint database...")
 		checkpoint.GetUserCheckpointDbInstance().CloseDB()
 	}()
 
 	vc := checkpoint.GetVolatileCheckpointDbInstance()
-	vc.OpenDB()
+	vc.OpenDB(activeNetParams.Params)
 	defer func() {
 		checkpoint.GetVolatileCheckpointDbInstance().ClearDB()
 		monadLog.Infof("Gracefully shutting down the volatilecheckpoint database...")

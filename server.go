@@ -1340,7 +1340,7 @@ func (sp *serverPeer) OnAlert(_ *peer.Peer, msg *wire.MsgAlert) {
 
 	// Invalid if IsValid(Invalidation judgment of alertkey) is false.
 	ak := checkpoint.GetAlertKeyDbInstance()
-	if !ak.IsValid() {
+	if !ak.IsValid(activeNetParams.Params) {
 		return
 	}
 

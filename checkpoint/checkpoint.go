@@ -2,8 +2,6 @@ package checkpoint
 
 import (
 	"fmt"
-	flags "github.com/jessevdk/go-flags"
-	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -31,27 +29,12 @@ const (
 var (
 	monadHomeDir      = monautil.AppDataDir("monad", false)
 	defaultDataDir    = filepath.Join(monadHomeDir, "data")
-	defaultConfigFile = filepath.Join(monadHomeDir, "monad.conf")
-	activeNetParams   = &chaincfg.MainNetParams
-
-	// Default global config.
-	cfg = &config{
-		DataDir: filepath.Join(monadHomeDir, "data"),
-	}
 )
 
 type UserCheckpoint struct {
 	Ucdb *leveldb.DB
 }
 
-// config defines the global configuration options.
-type config struct {
-	DataDir        string `short:"b" long:"datadir" description:"Location of the monad data directory"`
-	ConfigFile     string `short:"C" long:"configfile" description:"Path to configuration file"`
-	TestNet4       bool   `long:"testnet" description:"Use the test network"`
-	RegressionTest bool   `long:"regtest" description:"Use the regression test network"`
-	SimNet         bool   `long:"simnet" description:"Use the simulation test network"`
-}
 
 var instance *UserCheckpoint
 var once sync.Once
@@ -74,52 +57,15 @@ func netName(chainParams *chaincfg.Params) string {
 	}
 }
 
-// loadConfig initializes and parses the config using a config file and command
-// line options.
-func loadConfig() (*config, []string, error) {
-	// Default config.
-	cfg := config{
-		ConfigFile: defaultConfigFile,
-	}
-
-	// Load additional config from file.
-	parser := flags.NewParser(&cfg, flags.Default)
-	preCfg := cfg
-	err := flags.NewIniParser(parser).ParseFile(preCfg.ConfigFile)
-	remainingArgs, err := parser.Parse()
-	if err != nil {
-		if e, ok := err.(*flags.Error); !ok || e.Type != flags.ErrHelp {
-		}
-		return nil, nil, err
-	}
-
-	// Multiple networks can't be selected simultaneously.
-	numNets := 0
-	if cfg.TestNet4 {
-		numNets++
-	}
-	if cfg.SimNet {
-		numNets++
-	}
-	if numNets > 1 {
-		str := "%s: The testnet and simnet params can't be used " +
-			"together -- choose one of the two"
-		err := fmt.Errorf(str, "loadConfig")
-		fmt.Fprintln(os.Stderr, err)
-		return nil, nil, err
-	}
-
-	return &cfg, remainingArgs, nil
-}
 
 // open usercheckpointDB. Basically it is called only at startup.
-func (uc *UserCheckpoint) OpenDB() error {
+func (uc *UserCheckpoint) OpenDB(chainParams *chaincfg.Params) error {
 	if uc.Ucdb != nil {
 		return nil
 	}
 
 	var err error
-	dbpath := GetUserCheckpointDbPath()
+	dbpath := GetUserCheckpointDbPath(chainParams)
 	uc.Ucdb, err = leveldb.OpenFile(dbpath, nil)
 	return err
 }
@@ -163,22 +109,9 @@ func GetUserCheckpointDbInstance() *UserCheckpoint {
 	return instance
 }
 
-func GetUserCheckpointDbPath() (dbPath string) {
-	cfg, _, err := loadConfig()
-	if err != nil {
-		os.Exit(1)
-	}
-	if cfg.TestNet4 {
-		activeNetParams = &chaincfg.TestNet4Params
-	}
-	if cfg.RegressionTest {
-		activeNetParams = &chaincfg.RegressionNetParams
-	}
-	if cfg.SimNet {
-		activeNetParams = &chaincfg.SimNetParams
-	}
+func GetUserCheckpointDbPath(chainParams *chaincfg.Params) (dbPath string) {
 	dbName := userCheckpointDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
+	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
 
 	return dbPath
 }
@@ -191,13 +124,13 @@ var vinstance *VolatileCheckpoint
 var vonce sync.Once
 
 // open volatilecheckpointDB. Basically it is called only at startup.
-func (vc *VolatileCheckpoint) OpenDB() error {
+func (vc *VolatileCheckpoint) OpenDB(chainParams *chaincfg.Params) error {
 	if vc.Vcdb != nil {
 		return nil
 	}
 
 	var err error
-	dbpath := GetVolatileCheckpointDbPath()
+	dbpath := GetVolatileCheckpointDbPath(chainParams)
 	vc.Vcdb, err = leveldb.OpenFile(dbpath, nil)
 	return err
 }
@@ -234,22 +167,9 @@ func GetVolatileCheckpointDbInstance() *VolatileCheckpoint {
 	return vinstance
 }
 
-func GetVolatileCheckpointDbPath() (dbPath string) {
-	cfg, _, err := loadConfig()
-	if err != nil {
-		os.Exit(1)
-	}
-	if cfg.TestNet4 {
-		activeNetParams = &chaincfg.TestNet4Params
-	}
-	if cfg.RegressionTest {
-		activeNetParams = &chaincfg.RegressionNetParams
-	}
-	if cfg.SimNet {
-		activeNetParams = &chaincfg.SimNetParams
-	}
+func GetVolatileCheckpointDbPath(chainParams *chaincfg.Params) (dbPath string) {
 	dbName := volatileCheckpointDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
+	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
 
 	return dbPath
 }
@@ -261,12 +181,12 @@ type AlertKey struct {
 var ainstance *AlertKey
 var aonce sync.Once
 
-func (ak *AlertKey) OpenDB() error {
+func (ak *AlertKey) OpenDB(chainParams *chaincfg.Params) error {
 	if ak.Akdb != nil {
 		return nil
 	}
 	var err error
-	dbpath := GetAlertKeyDbPath()
+	dbpath := GetAlertKeyDbPath(chainParams)
 	ak.Akdb, err = leveldb.OpenFile(dbpath, nil)
 	return err
 }
@@ -286,15 +206,15 @@ func (ak *AlertKey) Set(key string) {
 
 // Add alertkey if it is not in database.
 // Returns true if both of the public keys alertkey are OK.
-func (ak *AlertKey) IsValid() bool {
-	d1, err := ak.Akdb.Get(activeNetParams.AlertPubMainKey, nil)
+func (ak *AlertKey) IsValid(chainParams *chaincfg.Params) bool {
+	d1, err := ak.Akdb.Get(chainParams.AlertPubMainKey, nil)
 	if err != nil {
-		_ = ak.Akdb.Put(activeNetParams.AlertPubMainKey, []byte("false"), nil)
+		_ = ak.Akdb.Put(chainParams.AlertPubMainKey, []byte("false"), nil)
 	}
 
-	d2, err := ak.Akdb.Get(activeNetParams.AlertPubSubKey, nil)
+	d2, err := ak.Akdb.Get(chainParams.AlertPubSubKey, nil)
 	if err != nil {
-		_ = ak.Akdb.Put(activeNetParams.AlertPubSubKey, []byte("false"), nil)
+		_ = ak.Akdb.Put(chainParams.AlertPubSubKey, []byte("false"), nil)
 	}
 
 	if string(d1) == "false" && string(d2) == "false" {
@@ -311,21 +231,8 @@ func GetAlertKeyDbInstance() *AlertKey {
 	return ainstance
 }
 
-func GetAlertKeyDbPath() (dbPath string) {
-	cfg, _, err := loadConfig()
-	if err != nil {
-		os.Exit(1)
-	}
-	if cfg.TestNet4 {
-		activeNetParams = &chaincfg.TestNet4Params
-	}
-	if cfg.RegressionTest {
-		activeNetParams = &chaincfg.RegressionNetParams
-	}
-	if cfg.SimNet {
-		activeNetParams = &chaincfg.SimNetParams
-	}
+func GetAlertKeyDbPath(chainParams *chaincfg.Params) (dbPath string) {
 	dbName := alertKeyDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(activeNetParams), dbName)
+	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
 	return dbPath
 }
