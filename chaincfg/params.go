@@ -225,6 +225,9 @@ type Params struct {
 	// vAlertPubKey is used checkpoint's deliverty
 	AlertPubMainKey []byte
 	AlertPubSubKey  []byte
+
+	// DGWv3's hardfork height
+	DGWv3Height int32
 }
 
 // MainNetParams defines the network parameters for the main Bitcoin network.
@@ -341,6 +344,9 @@ var MainNetParams = Params{
 		0x6c, 0x0a, 0xf4, 0x3f, 0xa5, 0xa1, 0xa1, 0xb6,
 		0x82,
 	},
+
+	// DGWv3's HF height. Used to calculate target.
+	DGWv3Height: 450000,
 }
 
 // RegressionNetParams defines the network parameters for the regression test
@@ -419,6 +425,9 @@ var RegressionNetParams = Params{
 	// vAlertPubKey is used checkpoint's deliverty
 	AlertPubMainKey: []byte{},
 	AlertPubSubKey:  []byte{},
+
+	// DGWv3's HF height. Used to calculate target.
+	DGWv3Height: 60,
 }
 
 // TestNet4Params defines the network parameters for the test Bitcoin network
@@ -532,6 +541,9 @@ var TestNet4Params = Params{
 		0x79, 0x63, 0xa9, 0x5a, 0x6a, 0xa9, 0x4d, 0x10,
 		0x96,
 	},
+
+	// DGWv3's HF height. Used to calculate target.
+	DGWv3Height: 30,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -616,6 +628,9 @@ var SimNetParams = Params{
 	// vAlertPubKey is used checkpoint's deliverty
 	AlertPubMainKey: []byte{},
 	AlertPubSubKey:  []byte{},
+
+	// DGWv3's HF height. Used to calculate target.
+	DGWv3Height: 0,
 }
 
 var (
