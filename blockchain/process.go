@@ -165,11 +165,21 @@ func (b *BlockChain) ProcessBlock(block *monautil.Block, flags BehaviorFlags) (b
 	}
 
 	// Perform preliminary sanity checks on the block and its transactions.
+	// monacoin is OK ?
+	// Allow still DGWv3's height.
+	// PoW hardfork from 450000blocks(mainnet).
+	// But for convenience of calculation, check is starting from 450025(DGWv3Height + 25).
 	tip := b.bestChain.Tip()
-	checkHeight := tip.height + 1
-	err = checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, checkHeight, flags)
-	if err != nil {
-		return false, false, err
+	if b.chainParams.DGWv3Height + 25 < tip.height + 1 {
+		err := checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, flags)
+		if err != nil {
+			return false, false, err
+		}
+	} else {
+		err := checkBlockSanity(block, b.chainParams.PowLimit, b.timeSource, BFNoPoWCheck)
+		if err != nil {
+			return false, false, err
+		}
 	}
 
 	// Find the previous checkpoint and perform some additional checks based
