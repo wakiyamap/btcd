@@ -843,10 +843,11 @@ mempoolLoop:
 	// is potentially adjusted to ensure it comes after the median time of
 	// the last several blocks per the chain consensus rules.
 	ts := medianAdjustedTime(best, g.timeSource)
-	reqDifficulty, err := g.chain.CalcNextRequiredDifficulty(ts)
+	reqDifficulty, err := g.chain.CalcNextRequiredDifficulty(ts, g.chainParams.DGWv3Height, nextBlockHeight, g.chainParams.PowLimitBits)
 	if err != nil {
 		return nil, err
 	}
+
 
 	// Calculate the next expected block version based on the state of the
 	// rule change deployments.
@@ -907,10 +908,12 @@ func (g *BlkTmplGenerator) UpdateBlockTime(msgBlock *wire.MsgBlock) error {
 	// rules.
 	newTime := medianAdjustedTime(g.chain.BestSnapshot(), g.timeSource)
 	msgBlock.Header.Timestamp = newTime
+	best := g.chain.BestSnapshot()
+	nextBlockHeight := best.Height + 1
 
 	// Recalculate the difficulty if running on a network that requires it.
 	if g.chainParams.ReduceMinDifficulty {
-		difficulty, err := g.chain.CalcNextRequiredDifficulty(newTime)
+		difficulty, err := g.chain.CalcNextRequiredDifficulty(newTime, g.chainParams.DGWv3Height, nextBlockHeight, g.chainParams.PowLimitBits)
 		if err != nil {
 			return err
 		}

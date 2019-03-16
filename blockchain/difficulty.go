@@ -224,6 +224,9 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 		return b.chainParams.PowLimitBits, nil
 	}
 
+	//if b.chainParams.Name == "simnet" {
+	//	return b.chainParams.PowLimitBits, nil
+	//}
 	if b.chainParams.DGWv3Height + 24 > lastNode.height {
 		return b.chainParams.PowLimitBits, nil
 	}
@@ -309,9 +312,12 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 // rules.
 //
 // This function is safe for concurrent access.
-func (b *BlockChain) CalcNextRequiredDifficulty(timestamp time.Time) (uint32, error) {
+func (b *BlockChain) CalcNextRequiredDifficulty(timestamp time.Time, dgwv3Height int32, checkHeight int32, powLimitBits uint32) (uint32, error) {
 	b.chainLock.Lock()
 	difficulty, err := b.calcNextRequiredDifficulty(b.bestChain.Tip(), timestamp)
 	b.chainLock.Unlock()
+	if dgwv3Height + 25 > checkHeight {
+		difficulty = powLimitBits
+	}
 	return difficulty, err
 }
