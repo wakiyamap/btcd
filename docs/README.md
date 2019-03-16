@@ -95,11 +95,9 @@ recommended that `GOPATH` is set to a directory in your home directory such as
 - Run the following commands to obtain monad, all dependencies, and install it:
 
 ```bash
-$ go get -u github.com/Masterminds/glide
 $ git clone https://github.com/wakiyamap/monad $GOPATH/src/github.com/wakiyamap/monad
 $ cd $GOPATH/src/github.com/wakiyamap/monad
-$ glide install
-$ go install . ./cmd/...
+$ GO111MODULE=on go install -v . ./cmd/...
 ```
 
 - monad (and utilities) will now be installed in ```$GOPATH/bin```.  If you did
@@ -112,8 +110,7 @@ $ go install . ./cmd/...
 
 ```bash
 $ cd $GOPATH/src/github.com/wakiyamap/monad
-$ git pull && glide install
-$ go install . ./cmd/...
+$ git pull && GO111MODULE=on go install -v . ./cmd/...
 ```
 
 <a name="GentooInstallation" />
