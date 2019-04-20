@@ -3647,9 +3647,9 @@ func verifyChain(s *rpcServer, level, depth int32) error {
 			// monacoin is OK ?
 			// Can't verify still DGWv3's height.
 			// PoW hardfork from 450000blocks(mainnet).
-			// But for convenience of calculation, 
+			// But for convenience of calculation,
 			// check is starting from 450025(DGWv3Height + 25).
-			if s.cfg.ChainParams.DGWv3Height + 25 > height {
+			if s.cfg.ChainParams.DGWv3Height+25 > height {
 				rpcsLog.Errorf("Can't verify still DGWv3's height")
 				return err
 			}

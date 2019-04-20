@@ -27,14 +27,13 @@ const (
 )
 
 var (
-	monadHomeDir      = monautil.AppDataDir("monad", false)
-	defaultDataDir    = filepath.Join(monadHomeDir, "data")
+	monadHomeDir   = monautil.AppDataDir("monad", false)
+	defaultDataDir = filepath.Join(monadHomeDir, "data")
 )
 
 type UserCheckpoint struct {
 	Ucdb *leveldb.DB
 }
-
 
 var instance *UserCheckpoint
 var once sync.Once
@@ -56,7 +55,6 @@ func netName(chainParams *chaincfg.Params) string {
 		return chainParams.Name
 	}
 }
-
 
 // open usercheckpointDB. Basically it is called only at startup.
 func (uc *UserCheckpoint) OpenDB(chainParams *chaincfg.Params) error {

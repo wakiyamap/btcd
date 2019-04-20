@@ -224,7 +224,7 @@ func (b *BlockChain) calcNextRequiredDifficulty(lastNode *blockNode, newBlockTim
 		return b.chainParams.PowLimitBits, nil
 	}
 
-	if b.chainParams.DGWv3Height + 24 > lastNode.height {
+	if b.chainParams.DGWv3Height+24 > lastNode.height {
 		return b.chainParams.PowLimitBits, nil
 	}
 
