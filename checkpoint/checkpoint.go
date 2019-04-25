@@ -147,6 +147,9 @@ func (vc *VolatileCheckpoint) Set(height int64, hash string) {
 }
 
 func (vc *VolatileCheckpoint) ClearDB() {
+	if vc.Vcdb == nil {
+		return
+	}
 	iter := vc.Vcdb.NewIterator(nil, nil)
 	for iter.Next() {
 		err := vc.Vcdb.Delete([]byte(string(iter.Key())), nil)
@@ -205,6 +208,9 @@ func (ak *AlertKey) Set(key string) {
 // Add alertkey if it is not in database.
 // Returns true if both of the public keys alertkey are OK.
 func (ak *AlertKey) IsValid(chainParams *chaincfg.Params) bool {
+	if ak.Akdb == nil {
+		return true
+	}
 	d1, err := ak.Akdb.Get(chainParams.AlertPubMainKey, nil)
 	if err != nil {
 		_ = ak.Akdb.Put(chainParams.AlertPubMainKey, []byte("false"), nil)
