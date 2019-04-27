@@ -14,6 +14,6 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
 	github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec // indirect
-	github.com/wakiyamap/monautil v0.0.0-20180721224902-c1fba54cb210
+	github.com/wakiyamap/monautil v0.0.0-20190427085431-0b7aac242e96
 	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc
 )

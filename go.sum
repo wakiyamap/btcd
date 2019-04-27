@@ -28,8 +28,8 @@ github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec h1:n1NeQ3SgUHyISrjFF
 github.com/kkdai/bstream v0.0.0-20181106074824-b3251f7901ec/go.mod h1:J+Gs4SYgM6CZQHDETBtE9HaSEkGmuNXF86RwHhHUvq4=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.1/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
-github.com/wakiyamap/monautil v0.0.0-20180721224902-c1fba54cb210 h1:r0MSYYQLZnaM/9urfCSE5KjmNmixo31HHQq6zZTKjaU=
-github.com/wakiyamap/monautil v0.0.0-20180721224902-c1fba54cb210/go.mod h1:Tc0ZfwQnciD+0GtqI6dVBaAK2+mmIZGZqHO2y9dmUes=
+github.com/wakiyamap/monautil v0.0.0-20190427085431-0b7aac242e96 h1:F6oT7T+ARHfAsokRtLoXrMr5SGNJohlnG0+ZhJw6VhE=
+github.com/wakiyamap/monautil v0.0.0-20190427085431-0b7aac242e96/go.mod h1:Tc0ZfwQnciD+0GtqI6dVBaAK2+mmIZGZqHO2y9dmUes=
 golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc h1:F5tKCVGp+MUAHhKp5MZtGqAlGX3+oCsiL1Q629FL90M=
 golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/net v0.0.0-20180719180050-a680a1efc54d/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
