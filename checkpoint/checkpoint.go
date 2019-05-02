@@ -35,8 +35,8 @@ type UserCheckpoint struct {
 	Ucdb *leveldb.DB
 }
 
-var instance *UserCheckpoint
-var once sync.Once
+var uinstance *UserCheckpoint
+var uonce sync.Once
 
 // netName returns the name used when referring to a bitcoin network.  At the
 // time of writing, monad currently places blocks for testnet version 3 in the
@@ -57,15 +57,15 @@ func netName(chainParams *chaincfg.Params) string {
 }
 
 // open usercheckpointDB. Basically it is called only at startup.
-func (uc *UserCheckpoint) OpenDB(chainParams *chaincfg.Params) error {
+func (uc *UserCheckpoint) OpenDB(dataDir string, chainParams *chaincfg.Params) (*leveldb.DB, error) {
 	if uc.Ucdb != nil {
-		return nil
+		return uc.Ucdb, nil
 	}
 
 	var err error
-	dbpath := GetUserCheckpointDbPath(chainParams)
+	dbpath := GetUserCheckpointDbPath(dataDir, chainParams)
 	uc.Ucdb, err = leveldb.OpenFile(dbpath, nil)
-	return err
+	return uc.Ucdb, err
 }
 
 // Basically it is called only at the end.
@@ -100,16 +100,16 @@ func (uc *UserCheckpoint) GetMaxCheckpointHeight() (height int64) {
 }
 
 func GetUserCheckpointDbInstance() *UserCheckpoint {
-	once.Do(func() {
+	uonce.Do(func() {
 		time.Sleep(1 * time.Second)
-		instance = &UserCheckpoint{nil}
+		uinstance = &UserCheckpoint{nil}
 	})
-	return instance
+	return uinstance
 }
 
-func GetUserCheckpointDbPath(chainParams *chaincfg.Params) (dbPath string) {
+func GetUserCheckpointDbPath(dataDir string, chainParams *chaincfg.Params) (dbPath string) {
 	dbName := userCheckpointDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
+	dbPath = filepath.Join(dataDir, dbName)
 
 	return dbPath
 }
@@ -122,15 +122,15 @@ var vinstance *VolatileCheckpoint
 var vonce sync.Once
 
 // open volatilecheckpointDB. Basically it is called only at startup.
-func (vc *VolatileCheckpoint) OpenDB(chainParams *chaincfg.Params) error {
+func (vc *VolatileCheckpoint) OpenDB(dataDir string, chainParams *chaincfg.Params) (*leveldb.DB, error) {
 	if vc.Vcdb != nil {
-		return nil
+		return vc.Vcdb, nil
 	}
 
 	var err error
-	dbpath := GetVolatileCheckpointDbPath(chainParams)
+	dbpath := GetVolatileCheckpointDbPath(dataDir, chainParams)
 	vc.Vcdb, err = leveldb.OpenFile(dbpath, nil)
-	return err
+	return vc.Vcdb, err
 }
 
 // close volatilecheckpointDB. Basically it is called only at the end.
@@ -168,9 +168,9 @@ func GetVolatileCheckpointDbInstance() *VolatileCheckpoint {
 	return vinstance
 }
 
-func GetVolatileCheckpointDbPath(chainParams *chaincfg.Params) (dbPath string) {
+func GetVolatileCheckpointDbPath(dataDir string, chainParams *chaincfg.Params) (dbPath string) {
 	dbName := volatileCheckpointDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
+	dbPath = filepath.Join(dataDir, dbName)
 
 	return dbPath
 }
@@ -182,14 +182,14 @@ type AlertKey struct {
 var ainstance *AlertKey
 var aonce sync.Once
 
-func (ak *AlertKey) OpenDB(chainParams *chaincfg.Params) error {
+func (ak *AlertKey) OpenDB(dataDir string, chainParams *chaincfg.Params) (*leveldb.DB, error) {
 	if ak.Akdb != nil {
-		return nil
+		return ak.Akdb, nil
 	}
 	var err error
-	dbpath := GetAlertKeyDbPath(chainParams)
+	dbpath := GetAlertKeyDbPath(dataDir, chainParams)
 	ak.Akdb, err = leveldb.OpenFile(dbpath, nil)
-	return err
+	return ak.Akdb, err
 }
 
 func (ak *AlertKey) CloseDB() {
@@ -235,8 +235,8 @@ func GetAlertKeyDbInstance() *AlertKey {
 	return ainstance
 }
 
-func GetAlertKeyDbPath(chainParams *chaincfg.Params) (dbPath string) {
+func GetAlertKeyDbPath(dataDir string, chainParams *chaincfg.Params) (dbPath string) {
 	dbName := alertKeyDbNamePrefix + "_" + defaultDbType
-	dbPath = filepath.Join(defaultDataDir, netName(chainParams), dbName)
+	dbPath = filepath.Join(dataDir, dbName)
 	return dbPath
 }
