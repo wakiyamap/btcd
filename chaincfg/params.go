@@ -630,7 +630,9 @@ var SimNetParams = Params{
 	AlertPubSubKey:  []byte{},
 
 	// DGWv3's HF height. Used to calculate target.
-	DGWv3Height: 0,
+	// simnet only works up to the height specified in DGWv3Height.
+	// Please increase if you don't have enough value.
+	DGWv3Height: 1000000,
 }
 
 var (
