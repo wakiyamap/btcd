@@ -112,7 +112,10 @@ func monadMain(serverChan chan<- *server) error {
 	}()
 
 	ak := checkpoint.GetAlertKeyDbInstance()
-	ak.OpenDB(activeNetParams.Params)
+	_, aerr := ak.OpenDB(cfg.DataDir, activeNetParams.Params)
+	if aerr != nil {
+		monadLog.Errorf("Error in opning AlertKeyDB: %v", aerr)
+	}
 	ak.IsValid(activeNetParams.Params)
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the alertkey database...")
@@ -120,14 +123,20 @@ func monadMain(serverChan chan<- *server) error {
 	}()
 
 	uc := checkpoint.GetUserCheckpointDbInstance()
-	uc.OpenDB(activeNetParams.Params)
+	_, uerr := uc.OpenDB(cfg.DataDir, activeNetParams.Params)
+	if uerr != nil {
+		monadLog.Errorf("Error in opning UserCheckpointDB: %v", uerr)
+	}
 	defer func() {
 		monadLog.Infof("Gracefully shutting down the usercheckpoint database...")
 		checkpoint.GetUserCheckpointDbInstance().CloseDB()
 	}()
 
 	vc := checkpoint.GetVolatileCheckpointDbInstance()
-	vc.OpenDB(activeNetParams.Params)
+	_, verr := vc.OpenDB(cfg.DataDir, activeNetParams.Params)
+	if verr != nil {
+		monadLog.Errorf("Error in opning VolatileCheckpointDB: %v", verr)
+	}
 	defer func() {
 		checkpoint.GetVolatileCheckpointDbInstance().ClearDB()
 		monadLog.Infof("Gracefully shutting down the volatilecheckpoint database...")
