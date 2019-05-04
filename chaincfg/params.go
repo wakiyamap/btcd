@@ -228,6 +228,9 @@ type Params struct {
 
 	// DGWv3's hardfork height
 	DGWv3Height int32
+
+	// Lyra2re2's hardfork height
+	Lyra2re2Height int32
 }
 
 // MainNetParams defines the network parameters for the main Bitcoin network.
@@ -346,7 +349,10 @@ var MainNetParams = Params{
 	},
 
 	// DGWv3's HF height. Used to calculate target.
-	DGWv3Height: 450000,
+	DGWv3Height: 450025,
+
+	// Lyra2re2's HF height. Used to calculate Pow.
+	Lyra2re2Height: 450000,
 }
 
 // RegressionNetParams defines the network parameters for the regression test
@@ -427,7 +433,10 @@ var RegressionNetParams = Params{
 	AlertPubSubKey:  []byte{},
 
 	// DGWv3's HF height. Used to calculate target.
-	DGWv3Height: 60,
+	DGWv3Height: 85,
+
+	// Lyra2re2's HF height. Used to calculate PoW.
+	Lyra2re2Height: 60,
 }
 
 // TestNet4Params defines the network parameters for the test Bitcoin network
@@ -543,7 +552,10 @@ var TestNet4Params = Params{
 	},
 
 	// DGWv3's HF height. Used to calculate target.
-	DGWv3Height: 30,
+	DGWv3Height: 55,
+
+	// Lyra2re2's HF height. Used to calculate Pow.
+	Lyra2re2Height: 30,
 }
 
 // SimNetParams defines the network parameters for the simulation test Bitcoin
@@ -632,7 +644,10 @@ var SimNetParams = Params{
 	// DGWv3's HF height. Used to calculate target.
 	// simnet only works up to the height specified in DGWv3Height.
 	// Please increase if you don't have enough value.
-	DGWv3Height: 1000000,
+	DGWv3Height: 1000025,
+
+	// Lyra2re2's HF height. Used to calculate Pow.
+	Lyra2re2Height: 1000000,
 }
 
 var (
