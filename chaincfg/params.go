@@ -433,7 +433,9 @@ var RegressionNetParams = Params{
 	AlertPubSubKey:  []byte{},
 
 	// DGWv3's HF height. Used to calculate target.
-	DGWv3Height: 85,
+	// regtest only works up to the height specified in DGWv3Height.
+	// Please increase if you don't have enough value.
+	DGWv3Height: 1000085,
 
 	// Lyra2re2's HF height. Used to calculate PoW.
 	Lyra2re2Height: 60,
@@ -647,7 +649,7 @@ var SimNetParams = Params{
 	DGWv3Height: 1000025,
 
 	// Lyra2re2's HF height. Used to calculate Pow.
-	Lyra2re2Height: 1000000,
+	Lyra2re2Height: 0,
 }
 
 var (
