@@ -1,3 +1,8 @@
+## Attention
+This repository is old.
+Please use the following URL for monacoin's monad.
+https://github.com/monasuite/monad
+
 monad
 ====
 
